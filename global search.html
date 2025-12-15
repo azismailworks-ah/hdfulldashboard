@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Global Search Ticket</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+<div class="card mb-3">
+<div class="card-body">
+<h5>Global Search Ticket (Last 3 Months)</h5>
+
+<div class="row g-2 mb-3">
+<div class="col-md-3">
+<select id="searchType" class="form-select">
+<option value="vip">VIP</option>
+<option value="ctt">CTT</option>
+<option value="sqdt">SQDT</option>
+<option value="traffic">Traffic Degradation</option>
+</select>
+</div>
+
+<div class="col-md-6">
+<input id="searchInput" class="form-control" placeholder="Search TT or Site ID">
+</div>
+
+<div class="col-md-3">
+<button id="btnSearch" class="btn btn-primary w-100">Search</button>
+</div>
+</div>
+
+<table id="searchTable" class="display" style="width:100%">
+<thead></thead>
+<tbody></tbody>
+</table>
+
+</div>
+</div>
+
+<!-- DETAIL -->
+<div class="card" id="detailPanel" style="display:none">
+<div class="card-body">
+<h6>Ticket Detail</h6>
+<div id="detailContent"></div>
+
+<hr>
+<h6>Time Periode</h6>
+<div class="border rounded p-2" style="max-height:200px;overflow:auto" id="detailTime"></div>
+</div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+/* ================= CSV ================= */
+const CSV = {
+ vip:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv',
+ ctt:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?gid=0&single=true&output=csv',
+ sqdt:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCGmQN_5YHTVsniFBgUlJ_-Ssz1eIkoJwBuYwG_DcX2YceKyNFWXJHlPpYVKot4mIzr12xVwDpkUuI/pub?gid=0&single=true&output=csv',
+ traffic:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv'
+};
+
+let table;
+
+/* ================= RESET ================= */
+function resetView(){
+ if(table) table.clear().draw();
+ $('#detailPanel').hide();
+ $('#detailContent').html('');
+ $('#detailTime').html('');
+}
+
+/* ================= HEADERS ================= */
+const HEADERS={
+ vip:['TT','WO','Site ID','Site Name','Open Date','Escalate To','Aging','Status','Closed Date'],
+ ctt:['TT','WO','Region','Site ID','Site Name','Open Date','Aging','Type','Status','Closed Date'],
+ sqdt:['TT','Region','Priority','Issue Title','Open Date','Aging','Status','Closed Date'],
+ traffic:['SN','WO','Site ID','Site Name','Open Date','Aging','Type','Status','Closed Date']
+};
+
+function buildTable(type){
+ if(table) table.destroy();
+ $('#searchTable thead').html(
+  '<tr>'+HEADERS[type].map(h=>`<th>${h}</th>`).join('')+'</tr>'
+ );
+ table=$('#searchTable').DataTable({order:[[4,'desc']]});
+}
+
+/* ================= SEARCH ================= */
+$('#btnSearch').on('click',function(){
+ const type=$('#searchType').val();
+ const q=$('#searchInput').val().toLowerCase().trim();
+
+ resetView();
+ buildTable(type);
+
+ Papa.parse(CSV[type],{
+  download:true,header:true,skipEmptyLines:true,
+  complete:function(res){
+   res.data.forEach(r=>{
+    let tt=(r['TT']||'').toLowerCase();
+    let site=(r['Site ID']||'').toLowerCase();
+    if(!tt.includes(q)&&!site.includes(q)) return;
+
+    let row=[];
+    if(type==='vip') row=[r['TT'],r['WO'],r['Site ID'],r['Site Name'],r['Open Date'],r['Escalate to'],r['Aging Hours'],r['Status NOC'],r['End Escalate']];
+    if(type==='ctt') row=[r['TT'],r['TT FSO'],r['Region'],r['Site ID'],r['Site Name'],r['Open Date MM/DD/YYYY'],r['Aging'],r['Type'],r['Status NOC'],r['Closed Date MM/DD/YYYY']];
+    if(type==='sqdt') row=[r['TT'],r['Region'],r['Priority'],r['Issue Title'],r['TT Submit Date MM/DD/YYYY HH:MM'],r['MTTR /Hours'],r['Status NOC'],r['End Time M/D/YYYY HH:MM']];
+    if(type==='traffic') row=[r['SN'],r['TT/WO'],r['Site ID'],r['Site Name'],r['First Create'],r['Aging'],r['Type'],r['Status NOC'],r['Closed Date NOC']];
+
+    const node=table.row.add(row).draw(false).node();
+    node._raw=r;
+   });
+  }
+ });
+});
+
+/* ================= DETAIL (FIXED) ================= */
+$('#searchTable tbody').on('click','tr',function(){
+ const r=this._raw; if(!r) return;
+ const type=$('#searchType').val();
+ let html='', time='';
+
+ if(type==='vip'){
+  html=`
+  <b>TT:</b> ${r['TT']}<br>
+  <b>WO:</b> ${r['WO']}<br>
+  <b>Site ID:</b> ${r['Site ID']}<br>
+  <b>Site Name:</b> ${r['Site Name']}<br>
+  <b>Open Date:</b> ${r['Open Date']}<br>
+  <b>Closed Date:</b> ${r['End Escalate']}<br>
+  <b>Aging:</b> ${r['Aging Hours']} Hours<br>
+  <b>Escalate To:</b> ${r['Escalate to']}<br>
+  <b>Status:</b> ${r['Status NOC']}<br>
+  <b>Service Impact:</b> ${r['Service Impact']}<br>
+  <b>Finding:</b> ${r['Founding']}
+  `;
+  time=r['Time Periode'];
+ }
+
+ if(type==='ctt'){
+  html=`
+  <b>TT:</b> ${r['TT']}<br>
+  <b>Type:</b> ${r['Type']}<br>
+  <b>WO (TT FSO):</b> ${r['TT FSO']}<br>
+  <b>Region:</b> ${r['Region']}<br>
+  <b>Site ID:</b> ${r['Site ID']}<br>
+  <b>Site Name:</b> ${r['Site Name']}<br>
+  <b>Open Date:</b> ${r['Open Date MM/DD/YYYY']}<br>
+  <b>Closed Date:</b> ${r['Closed Date MM/DD/YYYY']}<br>
+  <b>Aging:</b> ${r['Aging']} Days<br>
+  <b>Escalate To:</b> ${r['Escalate To']}<br>
+  <b>Status:</b> ${r['Status NOC']}<br>
+  <b>Finding:</b> ${r['Founding']}
+  `;
+  time=r['Time Periode'];
+ }
+
+ if(type==='sqdt'){
+  html=`
+  <b>TT:</b> ${r['TT']}<br>
+  <b>TT IM:</b> ${r['TT Incident NOC']}<br>
+  <b>Priority:</b> ${r['Priority']}<br>
+  <b>Region:</b> ${r['Region']}<br>
+  <b>Kab/Branch:</b> ${r['Kabupaten/Branch']}<br>
+  <b>Issue Title:</b> ${r['Issue Title']}<br>
+  <b>Open Date:</b> ${r['TT Submit Date MM/DD/YYYY HH:MM']}<br>
+  <b>Closed Date:</b> ${r['End Time M/D/YYYY HH:MM']}<br>
+  <b>Status TT:</b> ${r['Status NOC']}<br>
+  <b>Aging:</b> ${r['MTTR /Hours']} Hours<br>
+  <b>Escalate To:</b> ${r['Escalate To']}<br>
+  <b>Link Impact:</b> ${r['Link 1']}<br>
+  <b>Congest Status:</b> ${r['Congest Status']}<br>
+  <b>Backup Link:</b> ${r['Backup Link 1']}<br>
+  <b>Finding:</b> ${r['Finding']}
+  `;
+  time=r['Time Period'];
+ }
+
+ if(type==='traffic'){
+  html=`
+  <b>SN:</b> ${r['SN']}<br>
+  <b>WO:</b> ${r['TT/WO']}<br>
+  <b>Region:</b> ${r['Region']}<br>
+  <b>Site ID:</b> ${r['Site ID']}<br>
+  <b>Site Name:</b> ${r['Site Name']}<br>
+  <b>Open Date:</b> ${r['First Create']}<br>
+  <b>Closed Date:</b> ${r['Closed Date NOC']}<br>
+  <b>Aging:</b> ${r['Aging']}<br>
+  <b>Escalate To:</b> ${r['Escalated to']}<br>
+  <b>Status:</b> ${r['Status NOC']}<br>
+  <b>Finding:</b> ${r['Remaks']}
+  `;
+  time=r['Time Periode'];
+ }
+
+ $('#detailContent').html(html);
+ $('#detailTime').html(
+  (time||'').split('\n').map(l=>`<div>${l}</div>`).join('')
+ );
+ $('#detailPanel').slideDown();
+});
+</script>
+
+</body>
+</html>

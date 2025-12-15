@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>VIP – Open Ticket (FINAL)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+<div class="card mb-3">
+<div class="card-body">
+<h5>VIP – Open Ticket</h5>
+
+<table id="vipTable" class="display" style="width:100%">
+<thead>
+<tr>
+<th>TT</th>
+<th>WO</th>
+<th>Site ID</th>
+<th>Site Name</th>
+<th>Open Date</th>
+<th>Escalate To</th>
+<th>Finding</th>
+<th>Aging</th>
+<th>Service Impact</th>
+<th>Time Periode</th><!-- hidden -->
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<!-- DETAIL -->
+<div class="card" id="vipDetail" style="display:none">
+<div class="card-body">
+<h6>VIP Detail</h6>
+
+<div class="row g-3 mb-2">
+<div class="col-md-3"><b>TT</b><br><span id="d_tt"></span></div>
+<div class="col-md-3"><b>Site ID</b><br><span id="d_siteid"></span></div>
+<div class="col-md-3"><b>Site Name</b><br><span id="d_sitename"></span></div>
+<div class="col-md-3"><b>Open Date</b><br><span id="d_opendate"></span></div>
+<div class="col-md-3"><b>Aging</b><br><span id="d_aging"></span></div>
+<div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
+<div class="col-md-3"><b>WO</b><br><span id="d_wo"></span></div>
+<div class="col-md-3"><b>Service Impact</b><br><span id="d_impact"></span></div>
+<div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+</div>
+
+<hr>
+<h6>Time Periode</h6>
+<div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
+
+</div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+const VIP_CSV =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv';
+
+function toISO(d){
+ if(!d) return '';
+ const p=d.split('/');
+ return `${p[2]}-${p[1]}-${p[0]}`;
+}
+
+$(function(){
+
+const table = $('#vipTable').DataTable({
+ order:[[4,'desc']],
+ columnDefs:[
+   {
+     targets:4,
+     render:function(d,type){
+       if(type==='sort') return toISO(d);
+       return d;
+     }
+   },
+   {
+     targets:9,          // Time Periode
+     visible:false,
+     searchable:false
+   }
+ ]
+});
+
+Papa.parse(VIP_CSV,{
+ download:true,
+ header:true,
+ skipEmptyLines:true,
+ complete:function(res){
+
+  const openOnly = res.data.filter(r =>
+    (r['Status NOC']||'').trim().toLowerCase()==='open'
+  );
+
+  openOnly.forEach(r=>{
+    table.row.add([
+      r['TT'],
+      r['WO'],
+      r['Site ID'],
+      r['Site Name'],
+      r['Open Date'],
+      r['Escalate to'],
+      r['Founding'],
+      r['Aging Hours'],
+      r['Service Impact'],
+      r['Time Periode']   // ✅ FIX: ambil dari kolom Time Periode
+    ]);
+  });
+
+  table.draw();
+ }
+});
+
+/* CLICK ROW */
+$('#vipTable tbody').on('click','tr',function(){
+ const d = table.row(this).data(); if(!d) return;
+
+ $('#d_tt').text(d[0]);
+ $('#d_wo').text(d[1]);
+ $('#d_siteid').text(d[2]);
+ $('#d_sitename').text(d[3]);
+ $('#d_opendate').text(d[4]);
+ $('#d_escalate').text(d[5]);
+ $('#d_finding').text(d[6]);
+ $('#d_aging').text(d[7]);
+ $('#d_impact').text(d[8]);
+
+ // ✅ FIX: Time Periode BUKAN dari Finding
+ let html='';
+ (d[9]||'').split('\n').forEach(line=>{
+   if(line.trim()) html += `<div>${line}</div>`;
+ });
+ $('#d_time').html(html || '<i>No Time Periode</i>');
+
+ $('#vipDetail').slideDown();
+});
+
+});
+</script>
+
+</body>
+</html>

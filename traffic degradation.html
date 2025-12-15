@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Traffic Degradation – Open Ticket (FINAL)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+table.dataTable thead th{
+  background:#0b1c2d;
+  color:#fff;
+  font-size:13px;
+  white-space:nowrap;
+}
+table.dataTable tbody td{
+  font-size:13px;
+  vertical-align:top;
+}
+</style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+<div class="card mb-3">
+<div class="card-body">
+<h5>Traffic Degradation – Open Ticket</h5>
+
+<table id="trafficTable" class="display" style="width:100%">
+<thead>
+<tr>
+<th>SN</th>
+<th>WO</th>
+<th>Site ID</th>
+<th>Site Name</th>
+<th>Open Date</th>
+<th>Aging</th>
+<th>Escalate To</th>
+<th>Finding</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<!-- DETAIL -->
+<div class="card" id="trafficDetail" style="display:none">
+<div class="card-body">
+<h6>Traffic Degradation Detail</h6>
+
+<div class="row g-3 mb-2">
+<div class="col-md-2"><b>SN</b><br><span id="d_sn"></span></div>
+<div class="col-md-2"><b>WO</b><br><span id="d_wo"></span></div>
+<div class="col-md-2"><b>Region</b><br><span id="d_region"></span></div>
+<div class="col-md-2"><b>Type</b><br><span id="d_type"></span></div>
+
+<div class="col-md-3"><b>Site ID</b><br><span id="d_siteid"></span></div>
+<div class="col-md-3"><b>Site Name</b><br><span id="d_sitename"></span></div>
+<div class="col-md-3"><b>Open Date</b><br><span id="d_opendate"></span></div>
+<div class="col-md-3"><b>Aging</b><br><span id="d_aging"></span></div>
+
+<div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
+<div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+</div>
+
+<hr>
+<h6>Time Periode</h6>
+<div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
+
+</div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+const TRAFFIC_CSV =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv';
+
+$(function(){
+
+const table = $('#trafficTable').DataTable({
+  order:[[4,'desc']]
+});
+
+Papa.parse(TRAFFIC_CSV,{
+ download:true,
+ header:true,
+ skipEmptyLines:true,
+ complete:function(res){
+
+  res.data
+   .filter(r => (r['STATUS NOC']||'').trim().toLowerCase()==='open')
+   .forEach(r => {
+
+    const rowNode = table.row.add([
+      r['SN'],
+      r['TT/WO'],
+      r['Site ID'],
+      r['Site Name'],
+      r['First Create'],
+      r['Aging'],
+      r['Escalated to'],
+      r['Remaks']
+    ]).draw(false).node();
+
+    rowNode._raw = r;
+   });
+ }
+});
+
+$('#trafficTable tbody').on('click','tr',function(){
+ const raw = this._raw;
+ if(!raw) return;
+
+ $('#d_sn').text(raw['SN']);
+ $('#d_wo').text(raw['TT/WO']);
+ $('#d_region').text(raw['Region']);
+ $('#d_type').text(raw['Type']);
+ $('#d_siteid').text(raw['Site ID']);
+ $('#d_sitename').text(raw['Site Name']);
+ $('#d_opendate').text(raw['First Create']);
+ $('#d_aging').text(raw['Aging']);
+ $('#d_escalate').text(raw['Escalated to']);
+ $('#d_finding').text(raw['Remaks']);
+
+ $('#d_time').html(
+   (raw['Time Periode']||'')
+     .split('\n')
+     .map(l=>`<div>${l}</div>`)
+     .join('')
+ );
+
+ $('#trafficDetail').slideDown();
+});
+
+});
+</script>
+
+</body>
+</html>

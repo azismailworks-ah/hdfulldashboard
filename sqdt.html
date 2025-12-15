@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SQDT – Open Ticket (FINAL LOCK FIX)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
+
+/* === FIX OVERFLOW WITHOUT CHANGING STRUCTURE === */
+#sqdtTable th,
+#sqdtTable td{
+  vertical-align: top;
+}
+
+/* Small columns stay compact */
+#sqdtTable th:nth-child(1),
+#sqdtTable td:nth-child(1),
+#sqdtTable th:nth-child(2),
+#sqdtTable td:nth-child(2),
+#sqdtTable th:nth-child(3),
+#sqdtTable td:nth-child(3),
+#sqdtTable th:nth-child(10),
+#sqdtTable td:nth-child(10){
+  white-space: nowrap;
+}
+
+/* Long text allowed to wrap */
+#sqdtTable td:nth-child(4),
+#sqdtTable td:nth-child(7),
+#sqdtTable td:nth-child(9){
+  white-space: normal;
+}
+</style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+<div class="card mb-3">
+<div class="card-body">
+<h5>SQDT – Open Ticket</h5>
+
+<table id="sqdtTable" class="display" style="width:100%">
+<thead>
+<tr>
+<th>TT</th>
+<th>Region</th>
+<th>Priority</th>
+<th>Issue Title</th>
+<th>Open Date</th>
+<th>Escalate To</th>
+<th>Finding</th>
+<th>Aging</th>
+<th>Link Impact</th>
+<th>TT IM</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<div class="card" id="sqdtDetail" style="display:none">
+<div class="card-body">
+<h6>SQDT Detail</h6>
+
+<div class="row g-3 mb-2">
+<div class="col-md-3"><b>TT</b><br><span id="d_tt"></span></div>
+<div class="col-md-3"><b>TT IM</b><br><span id="d_im"></span></div>
+<div class="col-md-3"><b>Open Date</b><br><span id="d_opendate"></span></div>
+<div class="col-md-3"><b>Priority</b><br><span id="d_prio"></span></div>
+
+<div class="col-md-3"><b>Region</b><br><span id="d_region"></span></div>
+<div class="col-md-3"><b>Kab/Branch</b><br><span id="d_branch"></span></div>
+<div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
+<div class="col-md-3"><b>Link Impact</b><br><span id="d_linkimpact"></span></div>
+
+<div class="col-md-3"><b>Congest Status</b><br><span id="d_congest"></span></div>
+<div class="col-md-3"><b>Backup Link</b><br><span id="d_backup"></span></div>
+
+<div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+</div>
+
+<hr>
+<h6>Time Periode</h6>
+<div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
+
+</div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+const SQDT_CSV =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCGmQN_5YHTVsniFBgUlJ_-Ssz1eIkoJwBuYwG_DcX2YceKyNFWXJHlPpYVKot4mIzr12xVwDpkUuI/pub?gid=0&single=true&output=csv';
+
+$(function(){
+
+const table = $('#sqdtTable').DataTable({
+  order:[[4,'desc']],
+  scrollX: true,
+  autoWidth: false
+});
+
+Papa.parse(SQDT_CSV,{
+ download:true,
+ header:true,
+ skipEmptyLines:true,
+ complete:function(res){
+
+  res.data
+   .filter(r => (r['Status NOC']||'').toLowerCase().trim()==='open')
+   .forEach(r => {
+
+    const rowNode = table.row.add([
+      r['TT'],
+      r['Region'],
+      r['Priority'],
+      r['Issue Title'],
+      r['TT Submit Date MM/DD/YYYY HH:MM'],
+      r['Escalate To'],
+      r['Finding'],
+      r['MTTR /Hours'],
+      r['Link 1'],
+      r['TT Incident NOC']
+    ]).draw(false).node();
+
+    rowNode._raw = r;
+   });
+ }
+});
+
+$('#sqdtTable tbody').on('click','tr',function(){
+ const raw = this._raw;
+ if(!raw) return;
+
+ $('#d_tt').text(raw['TT']);
+ $('#d_im').text(raw['TT Incident NOC']);
+ $('#d_opendate').text(raw['TT Submit Date MM/DD/YYYY HH:MM']);
+ $('#d_prio').text(raw['Priority']);
+ $('#d_region').text(raw['Region']);
+ $('#d_branch').text(raw['Kabupaten/Branch']);
+ $('#d_escalate').text(raw['Escalate To']);
+ $('#d_linkimpact').text(raw['Link 1']);
+ $('#d_congest').text(raw['Congest Status']);
+ $('#d_backup').text(raw['Backup Link 1']);
+ $('#d_finding').text(raw['Finding']);
+
+ $('#d_time').html(
+   (raw['Time Period']||'')
+     .split('\n')
+     .map(l=>`<div>${l}</div>`)
+     .join('')
+ );
+
+ $('#sqdtDetail').slideDown();
+});
+
+});
+</script>
+
+</body>
+</html>

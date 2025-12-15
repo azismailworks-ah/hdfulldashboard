@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MAP OPEN TT</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+<style>
+html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
+#map{height:calc(100vh - 56px)}
+
+.legend{
+  background:#fff;
+  padding:8px 10px;
+  border-radius:6px;
+  font-size:12px;
+}
+
+.legend span{
+  display:inline-block;
+  width:12px;
+  height:12px;
+  margin-right:6px;
+}
+
+/* ===== SUMMARY PANEL ===== */
+.summary-panel{
+  position:absolute;
+  top:70px;
+  right:12px;
+  width:280px;
+  z-index:1000;
+}
+.summary-panel .card{
+  font-size:13px;
+}
+.summary-list{
+  max-height:250px;
+  overflow:auto;
+}
+</style>
+</head>
+<body>
+
+<!-- FILTER BAR -->
+<div class="p-2 bg-light d-flex gap-2">
+  <input id="fRegion" class="form-control form-control-sm" placeholder="Region">
+  <input id="fEsc" class="form-control form-control-sm" placeholder="Escalate To">
+  <input id="fType" class="form-control form-control-sm" placeholder="Type">
+  <input id="fService" class="form-control form-control-sm" placeholder="Service">
+  <button id="btnApply" class="btn btn-sm btn-primary">Apply</button>
+  <button id="btnReset" class="btn btn-sm btn-secondary">Reset</button>
+</div>
+
+<div id="map"></div>
+
+<!-- ===== SUMMARY BOX ===== -->
+<div class="summary-panel">
+  <div class="card mb-2">
+    <div class="card-header py-1 fw-bold">Type Count</div>
+    <div class="card-body py-2 summary-list" id="typeCount"></div>
+  </div>
+  <div class="card">
+    <div class="card-header py-1 fw-bold">Escalate To Count</div>
+    <div class="card-body py-2 summary-list" id="escCount"></div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+
+const CSV_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vSYa5ycy46JjEuQP9yDqCEfdXXWC42crlLPoW5mr5KW6vSUgGJirl39JS0Z1AJY3hhdSBaMYSlc7NBy/pub?gid=1893597653&single=true&output=csv";
+
+const INDONESIA_BOUNDS = L.latLngBounds([-11.5,95],[6.5,141]);
+
+/* ================= MAP ================= */
+
+const map=L.map('map');
+map.fitBounds(INDONESIA_BOUNDS);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+
+const markerLayer=L.layerGroup().addTo(map);
+let legendControl;
+
+/* ================= UTILS ================= */
+
+function col(r,n){
+  const k=Object.keys(r).find(x=>x.trim().toLowerCase()===n.toLowerCase());
+  return k?(r[k]||'').toString().trim():'';
+}
+
+function colorFromString(s){
+  let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);
+  return `hsl(${Math.abs(h)%360},65%,50%)`;
+}
+
+/* ================= DATA ================= */
+
+let RAW=[];
+
+/* ================= SUMMARY ================= */
+
+function buildSummary(rows){
+  const typeMap={}, escMap={};
+
+  rows.forEach(r=>{
+    const site=col(r,'Site ID');
+    if(!site) return;
+
+    const type=col(r,'Type')||'UNKNOWN';
+    const esc=col(r,'Escalate To')||'UNKNOWN';
+
+    typeMap[type] ??= new Set();
+    escMap[esc] ??= new Set();
+
+    typeMap[type].add(site);
+    escMap[esc].add(site);
+  });
+
+  const typeDiv=document.getElementById('typeCount');
+  const escDiv=document.getElementById('escCount');
+
+  /* ===== SORT DESCENDING ===== */
+
+  const typeSorted = Object.entries(typeMap)
+    .map(([k,v])=>({key:k,count:v.size}))
+    .sort((a,b)=>b.count-a.count);
+
+  const escSorted = Object.entries(escMap)
+    .map(([k,v])=>({key:k,count:v.size}))
+    .sort((a,b)=>b.count-a.count);
+
+  /* ===== RENDER ===== */
+
+  typeDiv.innerHTML='';
+  typeSorted.forEach(x=>{
+    typeDiv.innerHTML += `<div>${x.key} : <b>${x.count}</b></div>`;
+  });
+
+  escDiv.innerHTML='';
+  escSorted.forEach(x=>{
+    escDiv.innerHTML += `<div>${x.key} : <b>${x.count}</b></div>`;
+  });
+}
+
+
+/* ================= DRAW MAP ================= */
+
+function drawMap(rows){
+
+  markerLayer.clearLayers();
+  if(legendControl) map.removeControl(legendControl);
+
+  const legendSet={}, bounds=L.latLngBounds([]);
+
+  rows.forEach(r=>{
+    const lat=parseFloat(col(r,'Lat'));
+    const lng=parseFloat(col(r,'Long'));
+    if(isNaN(lat)||isNaN(lng)) return;
+
+    const type=col(r,'Type')||'UNKNOWN';
+    const color=colorFromString(type);
+    legendSet[type]=color;
+
+    bounds.extend([lat,lng]);
+
+    L.circleMarker([lat,lng],{
+      radius:6,color,fillColor:color,fillOpacity:.85,weight:1
+    })
+    .bindPopup(`
+      <b>Site:</b> ${col(r,'Site ID')}<br>
+      <b>Region:</b> ${col(r,'Region')}<br>
+      <b>Type:</b> ${type}<br>
+      <b>Escalate:</b> ${col(r,'Escalate To')}<br>
+      <b>Service:</b> ${col(r,'Service')}
+    `)
+    .addTo(markerLayer);
+  });
+
+  if(bounds.isValid()){
+    map.fitBounds(bounds,{padding:[40,40]});
+  }else{
+    map.fitBounds(INDONESIA_BOUNDS);
+  }
+
+  legendControl=L.control({position:'bottomright'});
+  legendControl.onAdd=()=>{
+    const div=L.DomUtil.create('div','legend');
+    div.innerHTML='<b>Type</b><br>';
+    Object.keys(legendSet).sort().forEach(k=>{
+      div.innerHTML+=`<span style="background:${legendSet[k]}"></span>${k}<br>`;
+    });
+    return div;
+  };
+  legendControl.addTo(map);
+
+  buildSummary(rows);
+  map.invalidateSize();
+}
+
+/* ================= LOAD ================= */
+
+Papa.parse(CSV_URL,{
+  download:true,header:true,
+  complete:r=>{
+    RAW=r.data.filter(x=>!isNaN(col(x,'Lat'))&&!isNaN(col(x,'Long')));
+    drawMap(RAW);
+  }
+});
+
+/* ================= FILTER ================= */
+
+btnApply.onclick=()=>{
+  drawMap(RAW.filter(r=>{
+    if(fRegion.value && !col(r,'Region').toLowerCase().includes(fRegion.value.toLowerCase())) return false;
+    if(fEsc.value && !col(r,'Escalate To').toLowerCase().includes(fEsc.value.toLowerCase())) return false;
+    if(fType.value && !col(r,'Type').toLowerCase().includes(fType.value.toLowerCase())) return false;
+    if(fService.value && !col(r,'Service').toLowerCase().includes(fService.value.toLowerCase())) return false;
+    return true;
+  }));
+};
+
+btnReset.onclick=()=>{
+  fRegion.value=fEsc.value=fType.value=fService.value='';
+  drawMap(RAW);
+};
+</script>
+</body>
+</html>

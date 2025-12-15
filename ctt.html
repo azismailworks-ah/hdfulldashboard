@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CTT – Open Ticket (FINAL)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="container mt-4">
+
+<div class="card mb-3">
+<div class="card-body">
+<h5>CTT – Open Ticket</h5>
+
+<table id="cttTable" class="display" style="width:100%">
+<thead>
+<tr>
+<th>TT</th>
+<th>WO</th>
+<th>Region</th>
+<th>Site ID</th>
+<th>Site Name</th>
+<th>Open Date</th>
+<th>Escalate To</th>
+<th>Finding</th>
+<th>Aging</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+<!-- DETAIL -->
+<div class="card" id="cttDetail" style="display:none">
+<div class="card-body">
+<h6>CTT Detail</h6>
+
+<div class="row g-3 mb-2">
+<div class="col-md-3"><b>TT</b><br><span id="d_tt"></span></div>
+<div class="col-md-3"><b>Type</b><br><span id="d_type"></span></div>
+<div class="col-md-3"><b>Site ID</b><br><span id="d_siteid"></span></div>
+<div class="col-md-3"><b>Site Name</b><br><span id="d_sitename"></span></div>
+
+<div class="col-md-3"><b>Open Date</b><br><span id="d_opendate"></span></div>
+<div class="col-md-3"><b>Aging</b><br><span id="d_aging"></span></div>
+<div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
+<div class="col-md-3"><b>WO</b><br><span id="d_wo"></span></div>
+
+<div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+</div>
+
+<hr>
+<h6>Time Periode</h6>
+<div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
+
+</div>
+</div>
+
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+const CTT_CSV =
+'https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?gid=0&single=true&output=csv';
+
+function agingDays(openDate){
+  if(!openDate) return '';
+  const d = new Date(openDate);
+  const now = new Date();
+  const diff = Math.floor((now - d) / 86400000);
+  return diff + ' Day';
+}
+
+$(function(){
+
+const table = $('#cttTable').DataTable({
+ order:[[5,'desc']],
+ columnDefs:[
+  { targets:5, render:(d,t)=>t==='sort'?new Date(d):d },
+  { targets:10, visible:false, searchable:false } // Time Periode hidden
+ ]
+});
+
+Papa.parse(CTT_CSV,{
+ download:true,
+ header:true,
+ skipEmptyLines:true,
+ complete:function(res){
+
+  const openOnly = res.data.filter(r =>
+    (r['Status NOC']||'').trim().toLowerCase()==='open'
+  );
+
+  openOnly.forEach(r=>{
+    table.row.add([
+      r['TT'],
+      r['TT FSO'],          // WO
+      r['Region'],
+      r['Site ID'],
+      r['Site Name'],
+      r['Open Date MM/DD/YYYY'],
+      r['Escalate To'],
+      r['Founding'],
+      agingDays(r['Open Date MM/DD/YYYY']),
+      r['Type'],
+      r['Time Periode']     // hidden
+    ]);
+  });
+
+  table.draw();
+ }
+});
+
+/* CLICK ROW */
+$('#cttTable tbody').on('click','tr',function(){
+ const d = table.row(this).data(); if(!d) return;
+
+ $('#d_tt').text(d[0]);
+ $('#d_wo').text(d[1]);
+ $('#d_siteid').text(d[3]);
+ $('#d_sitename').text(d[4]);
+ $('#d_opendate').text(d[5]);
+ $('#d_escalate').text(d[6]);
+ $('#d_finding').text(d[7]);
+ $('#d_aging').text(d[8]);
+ $('#d_type').text(d[9]);
+
+ const logs = (d[10]||'').split('\n');
+ $('#d_time').html(logs.map(l=>`<div>${l}</div>`).join(''));
+
+ $('#cttDetail').slideDown();
+});
+
+});
+</script>
+
+</body>
+</html>

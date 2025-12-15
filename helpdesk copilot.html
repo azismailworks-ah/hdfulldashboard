@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Helpdesk CoPilot</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<style>
+body{
+  background:#f4f6f9;
+  font-family:Segoe UI, Roboto;
+}
+
+/* ===== HEADER ===== */
+.header{
+  background:#0d6efd;
+  color:#fff;
+  padding:16px 20px;
+  font-size:20px;
+  font-weight:600;
+}
+
+/* ===== LAYOUT ===== */
+.main{
+  padding:20px;
+}
+
+.phone-wrapper{
+  display:flex;
+  justify-content:center;
+}
+
+/* ===== PHONE MOCKUP ===== */
+.phone{
+  width:380px;
+  height:820px;
+  border-radius:28px;
+  background:#000;
+  padding:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,.3);
+}
+
+.phone iframe{
+  width:100%;
+  height:100%;
+  border:none;
+  border-radius:20px;
+  background:#fff;
+}
+
+/* ===== INFO PANEL ===== */
+.info-panel{
+  background:#fff;
+  border-radius:10px;
+  padding:18px;
+  box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.info-panel h5{
+  font-weight:600;
+}
+
+.step{
+  margin-bottom:10px;
+}
+
+.step span{
+  display:inline-block;
+  width:22px;
+  height:22px;
+  background:#0d6efd;
+  color:#fff;
+  text-align:center;
+  border-radius:50%;
+  font-size:13px;
+  margin-right:6px;
+}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:768px){
+  .phone{
+    width:100%;
+    height:80vh;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  HELPDESK CoPilot
+</div>
+
+<!-- ===== CONTENT ===== -->
+<div class="container-fluid main">
+  <div class="row g-4 align-items-start">
+
+    <!-- PHONE VIEW -->
+    <div class="col-lg-5 phone-wrapper">
+      <div class="phone">
+        <iframe src="https://azismailworks-ah.github.io/helpdeskcopilot/"></iframe>
+      </div>
+    </div>
+
+    <!-- INFO PANEL -->
+    <div class="col-lg-7">
+      <div class="info-panel">
+        <h5>How to Use Helpdesk CoPilot</h5>
+        <p class="text-muted mb-3">
+          Interactive assistant to help you analyze, summarize, and respond to Helpdesk issues faster.
+        </p>
+
+        <div class="step"><span>1</span> Type <b>Hi Aziz</b> on the chat screen</div>
+        <div class="step"><span>2</span> Follow the step-by-step instructions shown</div>
+        <div class="step"><span>3</span> Ask about ticket analysis, Summary Ticket, or site information</div>
+        <div class="step"><span>4</span> Review suggested actions and summaries</div>
+
+        <hr>
+
+        <p class="mb-1"><b>Tips:</b></p>
+        <ul class="mb-0">
+          <li>Select Number You Want</li>
+          <li>Follow the recommended flow for best result</li>
+          <li>Ask Admin AZIZ HUSEN if Any Question</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

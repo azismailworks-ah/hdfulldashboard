@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Helpdesk Dashboard</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+canvas{max-height:420px}
+.filter-box{background:#fff;padding:12px;border-radius:8px}
+</style>
+</head>
+<body>
+
+<div class="container-fluid mt-3">
+
+<!-- ================= FILTER ================= -->
+<div class="row g-2 mb-3 filter-box align-items-end">
+  <div class="col-md-4">
+    <label class="small">Region (contains)</label>
+    <input id="fRegion" class="form-control form-control-sm" placeholder="ex: JKT, SUM">
+  </div>
+  <div class="col-md-4">
+    <label class="small">Escalate To (contains)</label>
+    <input id="fEsc" class="form-control form-control-sm" placeholder="ex: FLP">
+  </div>
+  <div class="col-md-4 d-flex gap-2">
+    <button id="btnApply" class="btn btn-sm btn-primary">Apply</button>
+    <button id="btnReset" class="btn btn-sm btn-secondary">Reset</button>
+  </div>
+</div>
+
+<!-- ================= TABS ================= -->
+<ul class="nav nav-tabs">
+<li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#vip">VIP</a></li>
+<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sqdt">SQDT</a></li>
+<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#ctt">CTT</a></li>
+<li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#traffic">Traffic Deg</a></li>
+</ul>
+
+<div class="tab-content mt-3">
+
+<!-- ================= PANELS ================= -->
+<div class="tab-pane fade show active" id="vip"><div class="row g-3">
+<div class="col-md-6"><canvas id="vip1"></canvas></div>
+<div class="col-md-6"><canvas id="vip2"></canvas></div>
+<div class="col-md-6"><canvas id="vip3"></canvas></div>
+<div class="col-md-6"><canvas id="vip4"></canvas></div>
+<div class="col-md-6"><canvas id="vip5"></canvas></div>
+<div class="col-md-6"><canvas id="vip6"></canvas></div>
+</div></div>
+
+<div class="tab-pane fade" id="sqdt"><div class="row g-3">
+<div class="col-md-6"><canvas id="sqdt1"></canvas></div>
+<div class="col-md-6"><canvas id="sqdt2"></canvas></div>
+<div class="col-md-6"><canvas id="sqdt3"></canvas></div>
+<div class="col-md-6"><canvas id="sqdt4"></canvas></div>
+<div class="col-md-6"><canvas id="sqdt5"></canvas></div>
+<div class="col-md-6"><canvas id="sqdt6"></canvas></div>
+</div></div>
+
+<div class="tab-pane fade" id="ctt"><div class="row g-3">
+<div class="col-md-6"><canvas id="ctt1"></canvas></div>
+<div class="col-md-6"><canvas id="ctt2"></canvas></div>
+<div class="col-md-6"><canvas id="ctt3"></canvas></div>
+<div class="col-md-6"><canvas id="ctt4"></canvas></div>
+<div class="col-md-6"><canvas id="ctt5"></canvas></div>
+<div class="col-md-6"><canvas id="ctt6"></canvas></div>
+</div></div>
+
+<div class="tab-pane fade" id="traffic"><div class="row g-3">
+<div class="col-md-6"><canvas id="traffic1"></canvas></div>
+<div class="col-md-6"><canvas id="traffic2"></canvas></div>
+<div class="col-md-6"><canvas id="traffic3"></canvas></div>
+<div class="col-md-6"><canvas id="traffic4"></canvas></div>
+<div class="col-md-6"><canvas id="traffic5"></canvas></div>
+<div class="col-md-6"><canvas id="traffic6"></canvas></div>
+</div></div>
+
+</div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const CSV={
+ vip:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv',
+ sqdt:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRCGmQN_5YHTVsniFBgUlJ_-Ssz1eIkoJwBuYwG_DcX2YceKyNFWXJHlPpYVKot4mIzr12xVwDpkUuI/pub?gid=0&single=true&output=csv',
+ ctt:'https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?gid=0&single=true&output=csv',
+ traffic:'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv'
+};
+
+const CFG={
+ vip:{rca:'RCA Category',esc:'Escalate to',status:'Status NOC'},
+ sqdt:{rca:'Category Problem',esc:'Escalate To',status:'Status NOC'},
+ ctt:{rca:'RCA Category',esc:'Escalate To',status:'Status NOC'},
+ traffic:{rca:'Problem Category',esc:'Escalate To',status:'STATUS NOC'}
+};
+
+const RAW={};
+const CHARTS={};
+
+function uniq(a){return [...new Set(a)].filter(Boolean);}
+function isOpen(row,type){
+ const col = CFG[type].status;
+ const val = (row[col]||'').toString().trim().toUpperCase();
+ return val === 'OPEN';
+}
+
+function destroy(type){
+ for(let i=1;i<=6;i++){
+  if(CHARTS[type+i]){
+    CHARTS[type+i].destroy();
+    delete CHARTS[type+i];
+  }
+ }
+}
+
+/* ================= COLOR UTILS ================= */
+function colorFromString(str){
+  let hash = 0;
+  for(let i=0;i<str.length;i++){
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash) % 360;
+  return `hsl(${h},65%,55%)`;
+}
+
+/* ================= BUILD ================= */
+
+function buildWithData(type,data){
+ destroy(type);
+ const cfg=CFG[type];
+ const d=data.filter(x=>x.Week);
+ const weeks=uniq(d.map(x=>x.Week)).slice(-12);
+
+ CHARTS[type+'1']=new Chart(document.getElementById(type+'1'),{
+  type:'bar',
+  data:{labels:weeks,datasets:[{label:'Total',data:weeks.map(w=>d.filter(x=>x.Week===w).length)}]}
+ });
+
+ CHARTS[type+'2']=new Chart(document.getElementById(type+'2'),{
+  type:'bar',
+  data:{labels:weeks,datasets:uniq(d.map(x=>x.Region)).map(r=>({
+   label:r,data:weeks.map(w=>d.filter(x=>x.Week===w&&x.Region===r).length)
+  }))},
+  options:{scales:{x:{stacked:true},y:{stacked:true}}}
+ });
+
+CHARTS[type+'3']=new Chart(document.getElementById(type+'3'),{
+  type:'bar',
+  data:{
+    labels: weeks,
+    datasets: uniq(d.map(x=>x[cfg.rca])).map(c=>({
+      label: c,
+      data: weeks.map(w =>
+        d.filter(x=>x.Week===w && x[cfg.rca]===c).length
+      ),
+      backgroundColor: colorFromString(c)
+    }))
+  },
+  options:{scales:{x:{stacked:true},y:{stacked:true}}}
+});
+
+
+ CHARTS[type+'4']=new Chart(document.getElementById(type+'4'),{
+  type:'bar',
+  data:{labels:weeks,datasets:[{label:'Open',data:weeks.map(w=>d.filter(x=>x.Week===w&&isOpen(x,type)).length)}]}
+ });
+
+ /* ===== FIX CHART 5 (OPEN ONLY) ===== */
+ const escDatasets = uniq(d.map(x=>x[cfg.esc])).map(e=>{
+  const vals = weeks.map(w =>
+    d.filter(x=>x.Week===w&&x[cfg.esc]===e&&isOpen(x,type)).length
+  );
+  return vals.reduce((a,b)=>a+b,0)>0 ? {
+  label: e,
+  data: vals,
+  backgroundColor: colorFromString(e)
+} : null;
+ }).filter(Boolean);
+
+ CHARTS[type+'5']=new Chart(document.getElementById(type+'5'),{
+  type:'bar',
+  data:{labels:weeks,datasets:escDatasets},
+  options:{scales:{x:{stacked:true},y:{stacked:true}}}
+ });
+
+ /* ===== FIX CHART 6 (OPEN ONLY) ===== */
+ const rcaLabels=[], rcaData=[];
+ uniq(d.map(x=>x[cfg.rca])).forEach(c=>{
+  const t=d.filter(x=>x[cfg.rca]===c&&isOpen(x,type)).length;
+  if(t>0){rcaLabels.push(c);rcaData.push(t);}
+ });
+
+CHARTS[type+'6']=new Chart(document.getElementById(type+'6'),{
+  type:'pie',
+  data:{
+    labels: rcaLabels,
+    datasets:[{
+      data: rcaData,
+      backgroundColor: rcaLabels.map(l => colorFromString(l))
+    }]
+  }
+});
+
+}
+
+/* ================= LOAD ================= */
+function load(type){
+ Papa.parse(CSV[type],{
+  download:true,header:true,
+  complete:r=>{
+   RAW[type]=r.data;
+   buildWithData(type,RAW[type]);
+  }
+ });
+}
+['vip','sqdt','ctt','traffic'].forEach(load);
+
+/* ================= FILTER ================= */
+function activeType(){
+ return document.querySelector('.tab-pane.active').id;
+}
+
+btnApply.onclick=()=>{
+ const type=activeType();
+ const reg=fRegion.value.toLowerCase();
+ const esc=fEsc.value.toLowerCase();
+ buildWithData(type,RAW[type].filter(r=>{
+  if(reg && !(r.Region||'').toLowerCase().includes(reg)) return false;
+  if(esc && !(r[CFG[type].esc]||'').toLowerCase().includes(esc)) return false;
+  return true;
+ }));
+};
+
+btnReset.onclick=()=>{
+ fRegion.value='';fEsc.value='';
+ buildWithData(activeType(),RAW[activeType()]);
+};
+
+document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(t=>{
+ t.addEventListener('shown.bs.tab',e=>{
+  const type=e.target.getAttribute('href').substring(1);
+  buildWithData(type,RAW[type]);
+ });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
