@@ -101,7 +101,7 @@ iframe{
 
     <hr class="text-secondary mx-3">
 
-    <a href="#" onclick="loadPage(this,'map analysis.html')">
+    <a href="#" onclick="loadPageWithPassword(this,'map analysis.html')">
       <i class="bi bi-map"></i> Map Analysis
     </a>
     <a href="#" onclick="loadPage(this,'map open tt.html')">
@@ -140,9 +140,26 @@ function loadPage(el, url){
   document.getElementById('mainFrame').src = url;
   document.getElementById('pageTitle').innerText = el.innerText.trim();
 }
+
+/* ===== PASSWORD ADDITION (BARU) ===== */
+const PAGE_PASSWORD = "123$%";
+const PROTECTED_PAGES = ["map analysis.html"];
+
+function loadPageWithPassword(el, url){
+  if(PROTECTED_PAGES.includes(url)){
+    const pwd = prompt("Masukkan password untuk mengakses menu ini:");
+    if(pwd !== PAGE_PASSWORD){
+      alert("Password salah.\nSilakan hubungi Admin Aziz Husen.");
+      return;
+    }
+  }
+  loadPage(el, url);
+}
+
 </script>
 
 </body>
 </html>
+
 
 
