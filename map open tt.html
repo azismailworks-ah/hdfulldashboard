@@ -10,16 +10,16 @@
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
 
 <style>
-html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
-#map{height:calc(100vh - 56px)}
+html,body{height:100%;margin:0;font-family:Segoe UI,Roboto;background:#f4f6f9;}
+#map{height:calc(100vh - 270px);}
 
+/* ===== LEGEND ===== */
 .legend{
   background:#fff;
   padding:8px 10px;
   border-radius:6px;
   font-size:12px;
 }
-
 .legend span{
   display:inline-block;
   width:12px;
@@ -27,7 +27,7 @@ html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
   margin-right:6px;
 }
 
-/* ===== SUMMARY PANEL ===== */
+/* ===== SUMMARY PANEL (KANAN) ===== */
 .summary-panel{
   position:absolute;
   top:70px;
@@ -41,6 +41,65 @@ html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
 .summary-list{
   max-height:250px;
   overflow:auto;
+}
+
+/* ===== REGION SUMMARY (BAWAH) ===== */
+.region-summary-container{
+  background:#fff;
+  border-top:1px solid #dee2e6;
+  padding:15px 20px 25px 20px;
+}
+.region-row{
+  display:flex;
+  flex-wrap:nowrap;
+  gap:12px;
+  overflow-x:auto;
+  padding-bottom:6px;
+}
+.region-row::-webkit-scrollbar{
+  height:6px;
+}
+.region-row::-webkit-scrollbar-thumb{
+  background:#cbd5e1;
+  border-radius:4px;
+}
+.region-card{
+  flex:1;
+  min-width:200px;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  background:#f9fafb;
+  box-shadow:0 2px 6px rgba(0,0,0,0.05);
+  padding:12px 15px;
+  transition:all .2s ease-in-out;
+}
+.region-card:hover{
+  background:#f1f5f9;
+  transform:translateY(-2px);
+}
+.region-card h6{
+  font-size:14px;
+  font-weight:600;
+  color:#0f172a;
+  margin-bottom:4px;
+  text-transform:uppercase;
+}
+.region-card .count{
+  font-size:22px;
+  font-weight:700;
+  color:#2563eb;
+  margin-bottom:8px;
+}
+.region-card small{
+  display:block;
+  color:#6b7280;
+  font-size:12px;
+  line-height:1.3;
+}
+.region-divider{
+  border-top:1px solid #e2e8f0;
+  margin-top:12px;
+  padding-top:10px;
 }
 </style>
 </head>
@@ -56,9 +115,10 @@ html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
   <button id="btnReset" class="btn btn-sm btn-secondary">Reset</button>
 </div>
 
+<!-- MAP -->
 <div id="map"></div>
 
-<!-- ===== SUMMARY BOX ===== -->
+<!-- ===== SUMMARY BOX (KANAN) ===== -->
 <div class="summary-panel">
   <div class="card mb-2">
     <div class="card-header py-1 fw-bold">Type Count</div>
@@ -68,6 +128,12 @@ html,body{height:100%;margin:0;font-family:Segoe UI,Roboto}
     <div class="card-header py-1 fw-bold">Escalate To Count</div>
     <div class="card-body py-2 summary-list" id="escCount"></div>
   </div>
+</div>
+
+<!-- ===== REGION SUMMARY (BAWAH) ===== -->
+<div class="region-summary-container">
+  <div id="mainRegionRow" class="region-row"></div>
+  <div id="otherRegionRow" class="region-row region-divider"></div>
 </div>
 
 <script>
@@ -82,9 +148,7 @@ const INDONESIA_BOUNDS = L.latLngBounds([-11.5,95],[6.5,141]);
 
 const map=L.map('map');
 map.fitBounds(INDONESIA_BOUNDS);
-
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
-
 const markerLayer=L.layerGroup().addTo(map);
 let legendControl;
 
@@ -94,66 +158,112 @@ function col(r,n){
   const k=Object.keys(r).find(x=>x.trim().toLowerCase()===n.toLowerCase());
   return k?(r[k]||'').toString().trim():'';
 }
-
 function colorFromString(s){
   let h=0;for(let i=0;i<s.length;i++)h=s.charCodeAt(i)+((h<<5)-h);
   return `hsl(${Math.abs(h)%360},65%,50%)`;
 }
 
 /* ================= DATA ================= */
-
 let RAW=[];
 
 /* ================= SUMMARY ================= */
 
 function buildSummary(rows){
   const typeMap={}, escMap={};
-
   rows.forEach(r=>{
     const site=col(r,'Site ID');
     if(!site) return;
-
     const type=col(r,'Type')||'UNKNOWN';
     const esc=col(r,'Escalate To')||'UNKNOWN';
-
     typeMap[type] ??= new Set();
     escMap[esc] ??= new Set();
-
     typeMap[type].add(site);
     escMap[esc].add(site);
   });
-
   const typeDiv=document.getElementById('typeCount');
   const escDiv=document.getElementById('escCount');
 
-  /* ===== SORT DESCENDING ===== */
-
-  const typeSorted = Object.entries(typeMap)
+  const typeSorted=Object.entries(typeMap)
     .map(([k,v])=>({key:k,count:v.size}))
     .sort((a,b)=>b.count-a.count);
-
-  const escSorted = Object.entries(escMap)
+  const escSorted=Object.entries(escMap)
     .map(([k,v])=>({key:k,count:v.size}))
     .sort((a,b)=>b.count-a.count);
-
-  /* ===== RENDER ===== */
 
   typeDiv.innerHTML='';
   typeSorted.forEach(x=>{
     typeDiv.innerHTML += `<div>${x.key} : <b>${x.count}</b></div>`;
   });
-
   escDiv.innerHTML='';
   escSorted.forEach(x=>{
     escDiv.innerHTML += `<div>${x.key} : <b>${x.count}</b></div>`;
   });
 }
 
+/* ================= REGION SUMMARY ================= */
+
+function buildRegionSummary(rows){
+  const regionMap={};
+  rows.forEach(r=>{
+    const reg=col(r,'Region')||'Not Found';
+    const type=col(r,'Type')||'UNKNOWN';
+    const site=col(r,'Site ID');
+    if(!site) return;
+    regionMap[reg] ??= {sites:new Set(), types:{}};
+    regionMap[reg].sites.add(site);
+    regionMap[reg].types[type] ??= new Set();
+    regionMap[reg].types[type].add(site);
+  });
+
+  const fixedOrder = ["SUMATERA","JABODETABEK","CWJ","EJBN","KALIMANTAN","SUMAPA"];
+  const mainRow=document.getElementById('mainRegionRow');
+  const otherRow=document.getElementById('otherRegionRow');
+  mainRow.innerHTML='';
+  otherRow.innerHTML='';
+
+  // Build fixed regions first
+  fixedOrder.forEach(name=>{
+    const data = regionMap[name];
+    if(!data) return;
+    let typeHTML='';
+    Object.entries(data.types)
+      .map(([t,v])=>({t,count:v.size}))
+      .sort((a,b)=>b.count-a.count)
+      .forEach(t=>{
+        typeHTML += `<small>• ${t.t}: ${t.count}</small>`;
+      });
+    mainRow.innerHTML += `
+      <div class="region-card">
+        <h6>${name}</h6>
+        <div class="count">${data.sites.size}</div>
+        ${typeHTML}
+      </div>`;
+    delete regionMap[name];
+  });
+
+  // Remaining regions (including Not Found)
+  Object.entries(regionMap)
+    .sort((a,b)=>a[0].localeCompare(b[0]))
+    .forEach(([reg,data])=>{
+      let typeHTML='';
+      Object.entries(data.types)
+        .map(([t,v])=>({t,count:v.size}))
+        .sort((a,b)=>b.count-a.count)
+        .forEach(t=>{
+          typeHTML += `<small>• ${t.t}: ${t.count}</small>`;
+        });
+      otherRow.innerHTML += `
+        <div class="region-card">
+          <h6>${reg}</h6>
+          <div class="count">${data.sites.size}</div>
+          ${typeHTML}
+        </div>`;
+    });
+}
 
 /* ================= DRAW MAP ================= */
 
 function drawMap(rows){
-
   markerLayer.clearLayers();
   if(legendControl) map.removeControl(legendControl);
 
@@ -163,13 +273,10 @@ function drawMap(rows){
     const lat=parseFloat(col(r,'Lat'));
     const lng=parseFloat(col(r,'Long'));
     if(isNaN(lat)||isNaN(lng)) return;
-
     const type=col(r,'Type')||'UNKNOWN';
     const color=colorFromString(type);
     legendSet[type]=color;
-
     bounds.extend([lat,lng]);
-
     L.circleMarker([lat,lng],{
       radius:6,color,fillColor:color,fillOpacity:.85,weight:1
     })
@@ -183,11 +290,8 @@ function drawMap(rows){
     .addTo(markerLayer);
   });
 
-  if(bounds.isValid()){
-    map.fitBounds(bounds,{padding:[40,40]});
-  }else{
-    map.fitBounds(INDONESIA_BOUNDS);
-  }
+  if(bounds.isValid()) map.fitBounds(bounds,{padding:[40,40]});
+  else map.fitBounds(INDONESIA_BOUNDS);
 
   legendControl=L.control({position:'bottomright'});
   legendControl.onAdd=()=>{
@@ -201,6 +305,7 @@ function drawMap(rows){
   legendControl.addTo(map);
 
   buildSummary(rows);
+  buildRegionSummary(rows);
   map.invalidateSize();
 }
 
@@ -225,7 +330,6 @@ btnApply.onclick=()=>{
     return true;
   }));
 };
-
 btnReset.onclick=()=>{
   fRegion.value=fEsc.value=fType.value=fService.value='';
   drawMap(RAW);
