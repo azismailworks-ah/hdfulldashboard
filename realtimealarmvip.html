@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HELPDESK VIP & HOTSPOT REALTIME ALARM</title>
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- PapaParse -->
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:'Inter', sans-serif;
+  background:#f4f6f9;
+  color:#1f2937;
+}
+
+/* ===== HEADER ===== */
+.header{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:#fff;
+  padding:24px 32px;
+}
+.header h1{
+  margin:0;
+  font-size:26px;
+  font-weight:700;
+  letter-spacing:.5px;
+}
+.header .update{
+  margin-top:6px;
+  font-size:13px;
+  opacity:.85;
+}
+
+/* ===== CONTENT ===== */
+.container{
+  padding:20px 24px;
+}
+
+/* ===== TABLE ===== */
+.table-wrapper{
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+  overflow:auto;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+thead{
+  background:#0f172a;
+  color:#fff;
+}
+
+th, td{
+  padding:10px 12px;
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+}
+
+th{
+  cursor:pointer;
+  user-select:none;
+  position:relative;
+}
+
+th:hover{
+  background:#1e293b;
+}
+
+th::after{
+  content:"⇅";
+  font-size:10px;
+  position:absolute;
+  right:8px;
+  opacity:.6;
+}
+
+tbody tr:hover{
+  background:#f9fafb;
+}
+
+.badge{
+  padding:3px 8px;
+  border-radius:12px;
+  font-size:11px;
+  font-weight:600;
+  background:#e0e7ff;
+  color:#1e3a8a;
+}
+
+/* ===== FOOTER ===== */
+.footer{
+  margin-top:10px;
+  font-size:11px;
+  color:#6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>HELPDESK VIP & HOTSPOT REALTIME ALARM</h1>
+  <div class="update" id="lastUpdate">UPDATE : -</div>
+</div>
+
+<div class="container">
+  <div class="table-wrapper">
+    <table id="alarmTable">
+      <thead>
+        <tr>
+          <th data-key="Source">MAE</th>
+          <th data-key="First Occurred (NT)">First Occurred</th>
+          <th data-key="Alarm Source">Site Name</th>
+          <th data-key="Name">Alarm Name</th>
+          <th data-key="Escalate to">Escalate to</th>
+          <th data-key="TT">TT</th>
+          <th data-key="WO">WO</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Data source: Google Sheets (Realtime CSV)
+  </div>
+</div>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v=" + Date.now();
+
+let tableData = [];
+let sortState = {};
+
+function normalizeRow(row){
+  const clean = {};
+  Object.keys(row).forEach(k=>{
+    if(k){
+      clean[k.trim()] = row[k];
+    }
+  });
+  return clean;
+}
+
+function loadData(){
+  Papa.parse(CSV_URL,{
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:(res)=>{
+      if(!res.data || !res.data.length){
+        alert("CSV terbaca tapi kosong");
+        return;
+      }
+
+      tableData = res.data.map(normalizeRow);
+
+      console.log("HEADER CSV:", Object.keys(tableData[0]));
+
+      renderTable(tableData);
+      setLastUpdate(tableData);
+    }
+  });
+}
+
+function setLastUpdate(data){
+  const dates = data
+    .map(r => new Date(r["Updated At"]))
+    .filter(d => !isNaN(d));
+  if(dates.length){
+    const last = new Date(Math.max(...dates));
+    document.getElementById("lastUpdate").innerText =
+      "UPDATE : " + last.toLocaleString();
+  }
+}
+
+function renderTable(data){
+  const tbody = document.querySelector("#alarmTable tbody");
+  tbody.innerHTML = "";
+
+  data.forEach(r=>{
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${r["Source"] || "-"}</td>
+      <td>${r["First Occurred (NT)"] || "-"}</td>
+      <td>${r["Alarm Source"] || "-"}</td>
+      <td>${r["Name"] || "-"}</td>
+      <td>${r["Escalate to"] || "-"}</td>
+      <td>${r["TT"] || "-"}</td>
+      <td>${r["WO"] || "-"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+/* SORT */
+document.querySelectorAll("th").forEach(th=>{
+  th.onclick=()=>{
+    const key=th.dataset.key;
+    const asc=sortState[key]=!sortState[key];
+    tableData.sort((a,b)=>{
+      const A=(a[key]||"").toString().toLowerCase();
+      const B=(b[key]||"").toString().toLowerCase();
+      return asc?A.localeCompare(B):B.localeCompare(A);
+    });
+    renderTable(tableData);
+  }
+});
+
+loadData();
+</script>
+
+</body>
+</html>
