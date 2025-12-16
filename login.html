@@ -85,7 +85,8 @@ function doLogin(){
     sessionStorage.setItem("user",u);
     sessionStorage.setItem("role"USERS[u].role);
     sessionStorage.setItem("loginTime",Date.now());
-    location.href="index.html";
+    console.log("LOGIN OK", u, USERS[u].role);
+    window.location.replace("index.html");
   }else{
     alert("Login gagal. Hubungi Admin (Aziz Husen).");
   }
@@ -103,3 +104,4 @@ document.addEventListener("keydown",e=>{
 
 </body>
 </html>
+
