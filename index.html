@@ -47,7 +47,7 @@ iframe{width:100%;height:100%;border:none}
 <script>
 /* ===== AUTH CHECK ===== */
 if(sessionStorage.getItem("auth")!=="1"){
-  location.href="login.html";
+  window.location.replace("login.html");
 }
 </script>
 
@@ -144,3 +144,4 @@ function logout(){
 
 </body>
 </html>
+
