@@ -94,7 +94,7 @@ function doLogin(){
 
 /* ===== AUTO REDIRECT ===== */
 if(sessionStorage.getItem("auth")==="1"){
-  location.href="index.html";
+  window.location.replace("index.html");
 }
 
 document.addEventListener("keydown",e=>{
@@ -104,4 +104,5 @@ document.addEventListener("keydown",e=>{
 
 </body>
 </html>
+
 
