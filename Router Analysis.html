@@ -14,16 +14,11 @@ html,body{margin:0;height:100%;background:#0b1220;color:#e5e7eb;font-family:Aria
 #header input{padding:6px;background:#020617;border:1px solid #334155;color:#fff}
 #header button{padding:6px 14px;border:none;font-weight:bold;color:#fff}
 #btnAnalyze{background:#2563eb}
+#btnLookup{background:#334155}
 #lldp{padding:10px;border-bottom:1px solid #1e293b}
-.container{
-  display:flex;
-  flex-direction:column;
-  height:calc(100% - 110px)
-}
-.box{
-  flex:1;
-  border-top:1px solid #1e293b;
-}
+#lookup{padding:10px;border-bottom:1px solid #1e293b}
+.container{display:flex;flex-direction:column;height:calc(100% - 170px)}
+.box{flex:1;border-top:1px solid #1e293b}
 .cy{width:100%;height:100%}
 </style>
 </head>
@@ -36,6 +31,13 @@ html,body{margin:0;height:100%;background:#0b1220;color:#e5e7eb;font-family:Aria
   <button id="btnAnalyze">Analyzing</button>
 </div>
 
+<div id="lookup">
+  <strong>NE Lookup</strong><br/>
+  <input id="lookupInput" placeholder="Site ID / Site DEPS / NE Name"/>
+  <button id="btnLookup">Search</button>
+  <div id="lookupResult" style="margin-top:6px;color:#93c5fd"></div>
+</div>
+
 <div id="lldp"></div>
 
 <div class="container">
@@ -44,114 +46,73 @@ html,body{margin:0;height:100%;background:#0b1220;color:#e5e7eb;font-family:Aria
 </div>
 
 <script>
-let cyPrimary = null;
-let cyBackup = null;
-
 function render(containerId, data){
   if(!data || !data.nodes) return;
-
   const container = document.getElementById(containerId);
-
-  if(container._cy){
-    container._cy.destroy();
-  }
+  if(container._cy) container._cy.destroy();
 
   const elements = [];
   const grouped = {};
-
   data.nodes.forEach(n=>{
-    if(grouped[n.level] === undefined) grouped[n.level] = [];
+    if(grouped[n.level]===undefined) grouped[n.level]=[];
     grouped[n.level].push(n);
   });
 
   Object.keys(grouped).forEach(level=>{
     grouped[level].forEach((n,i)=>{
       elements.push({
-        data:{ id:n.id },
-        position:{
-          x: level * 260 + 120,
-          y: i * 150 + 120
-        },
-        classes: n.type === "CORE" ? "core" : "router"
+        data:{id:n.id},
+        position:{x:level*260+120,y:i*150+120},
+        classes:n.type==="CORE"?"core":"router"
       });
     });
   });
 
   data.edges.forEach(e=>{
-    elements.push({
-      data:{
-        id: e.source + "_" + e.target,
-        source: e.source,
-        target: e.target
-      }
-    });
+    elements.push({data:{id:e.source+"_"+e.target,source:e.source,target:e.target}});
   });
 
   const cy = cytoscape({
     container,
     elements,
-    layout:{ name:"preset" },
+    layout:{name:"preset"},
     style:[
-      {
-        selector:"node",
-        style:{
-          label:"data(id)",
-          color:"#fff",
-          "text-valign":"top",
-          "text-margin-y":-10,
-          "background-color":"#2563eb",
-          width:60,
-          height:60
-        }
-      },
-      { selector:".core", style:{ width:80, height:80 }},
-
-      /* ===== FIX: ACTIVE STATE ===== */
-      {
-        selector:"node.active",
-        style:{ "background-color":"#dc2626" }
-      },
-      {
-        selector:"edge",
-        style:{ "line-color":"#9ca3af", width:4 }
-      },
-      {
-        selector:"edge.active",
-        style:{ "line-color":"#dc2626", width:6 }
-      }
+      {selector:"node",style:{label:"data(id)",color:"#fff","text-valign":"top","text-margin-y":-10,"background-color":"#2563eb",width:60,height:60}},
+      {selector:".core",style:{width:80,height:80}},
+      {selector:"node.active",style:{"background-color":"#dc2626"}},
+      {selector:"edge",style:{"line-color":"#9ca3af",width:4}},
+      {selector:"edge.active",style:{"line-color":"#dc2626",width:6}}
     ]
   });
 
-  /* ===== FIX: CLICK TOGGLE ===== */
-  cy.on("tap", "node", e=>{
-    e.target.toggleClass("active");
-  });
-
-  cy.on("tap", "edge", e=>{
-    e.target.toggleClass("active");
-  });
-
+  cy.on("tap","node",e=>e.target.toggleClass("active"));
+  cy.on("tap","edge",e=>e.target.toggleClass("active"));
   container._cy = cy;
 }
 
+/* ===== ANALYZE (LOCKED) ===== */
 btnAnalyze.onclick = async ()=>{
   const t = target.value.trim();
   if(!t) return;
-
   const res = await analyzePrimary(t);
-
-  render("cy1", res.topo);
-
-  document.getElementById("lldp").innerHTML =
-    "LLDP: " + res.lldp.map(n =>
-      `<button onclick="loadVia('${t}','${n}')">${n}</button>`
-    ).join(" ");
+  render("cy1",res.topo);
+  lldp.innerHTML = "LLDP: " + res.lldp.map(n=>`<button onclick="loadVia('${t}','${n}')">${n}</button>`).join(" ");
 };
 
-async function loadVia(t, via){
-  const topo = await analyzeVia(t, via);
-  render("cy2", topo);
+async function loadVia(t,via){
+  const topo = await analyzeVia(t,via);
+  render("cy2",topo);
 }
+
+/* ===== LOOKUP ONLY ===== */
+btnLookup.onclick = async ()=>{
+  const q = lookupInput.value.trim();
+  if(!q) return;
+  const res = await lookupNE(q);
+  lookupResult.innerHTML = res.length
+    ? res.map(n=>`<div>${n}</div>`).join("")
+    : "<i>No NE found</i>";
+};
 </script>
 
 </body>
