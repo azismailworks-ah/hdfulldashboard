@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:#0b1220;color:#e5e7eb;font-family:Aria
 #lldp{padding:10px;border-bottom:1px solid #1e293b}
 .container{
   display:flex;
-  flex-direction:column;   /* ⬅️ INI KUNCINYA */
+  flex-direction:column;
   height:calc(100% - 110px)
 }
 .box{
@@ -105,8 +105,30 @@ function render(containerId, data){
         }
       },
       { selector:".core", style:{ width:80, height:80 }},
-      { selector:"edge", style:{ "line-color":"#9ca3af", width:4 }}
+
+      /* ===== FIX: ACTIVE STATE ===== */
+      {
+        selector:"node.active",
+        style:{ "background-color":"#dc2626" }
+      },
+      {
+        selector:"edge",
+        style:{ "line-color":"#9ca3af", width:4 }
+      },
+      {
+        selector:"edge.active",
+        style:{ "line-color":"#dc2626", width:6 }
+      }
     ]
+  });
+
+  /* ===== FIX: CLICK TOGGLE ===== */
+  cy.on("tap", "node", e=>{
+    e.target.toggleClass("active");
+  });
+
+  cy.on("tap", "edge", e=>{
+    e.target.toggleClass("active");
   });
 
   container._cy = cy;
@@ -130,7 +152,6 @@ async function loadVia(t, via){
   const topo = await analyzeVia(t, via);
   render("cy2", topo);
 }
-
 </script>
 
 </body>
