@@ -178,3 +178,29 @@ async function analyzeVia(target, via) {
   return buildTopologyJSON(sub);
 }
 
+/* =========================================================
+   🔍 LOOKUP ONLY — DOES NOT AFFECT TOPOLOGY
+   ========================================================= */
+async function lookupNE(query) {
+  const rows = await loadCSV();
+  query = query.trim().toLowerCase();
+  const result = new Set();
+
+  rows.forEach(r => {
+    const ne = (r["NE Name"] || "").trim();
+    if (!ne) return;
+
+    const siteId = (r["Site ID"] || "").trim();
+    const deps = (r["Site DEPS"] || "")
+      .split(",")
+      .map(x => x.trim());
+
+    if (ne.toLowerCase().includes(query)) result.add(ne);
+    if (siteId.toLowerCase() === query) result.add(ne);
+    if (deps.some(d => d.toLowerCase() === query)) result.add(ne);
+  });
+
+  return [...result];
+}
+
+
