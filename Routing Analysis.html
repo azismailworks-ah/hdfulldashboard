@@ -61,7 +61,7 @@ html,body{
 <body>
 
 <div id="header">
-  <strong>Multi NE / Site Input</strong>
+  <strong>Multi NE / Site Input / Site Contributor</strong>
 
   <textarea id="targets"
     placeholder="Input NE Name / Site ID / Site Deps (1 per line)"></textarea>
@@ -139,8 +139,8 @@ function applyManual(){
   }
 
   document.getElementById("info").innerHTML =
-    `<b>Resolved NE:</b><br>${lastResult.resolved.join("<br>")}
-     <br><br><b>Convergence:</b> ${chosen||lastResult.convergence}`;
+    `<b>ME CONTRIBUTOR:</b><br>${lastResult.resolved.join("<br>")}
+     <br><br><b>SUSPECT NE:</b> ${chosen||lastResult.convergence}`;
 }
 
 /* ===================== APPLY LAYOUT ===================== */
@@ -260,3 +260,4 @@ function render(data){
 
 </body>
 </html>
+
