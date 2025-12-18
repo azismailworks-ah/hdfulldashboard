@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>Multi-NE Convergence Analysis</title>
+
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+<script src="convergence.js"></script>
+
+<style>
+html,body{
+  margin:0;height:100%;
+  background:#0b1220;color:#e5e7eb;font-family:Arial
+}
+#header{
+  padding:14px 20px;
+  background:#020617;
+  display:flex;
+  gap:14px;
+  align-items:flex-start
+}
+#header textarea{
+  width:360px;height:70px;
+  background:#020617;
+  border:1px solid #334155;
+  color:#fff;padding:6px
+}
+#header button{
+  padding:10px 18px;
+  font-weight:bold;
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  cursor:pointer
+}
+#selector{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+#selector select{
+  background:#020617;
+  color:#fff;
+  border:1px solid #334155;
+  padding:6px;
+}
+#info{
+  padding:10px 20px;
+  border-bottom:1px solid #1e293b;
+  font-size:14px;
+  color:#94a3b8
+}
+#cy{
+  width:100%;
+  height:calc(100% - 210px)
+}
+</style>
+</head>
+
+<body>
+
+<div id="header">
+  <strong>Multi NE / Site Input</strong>
+
+  <textarea id="targets"
+    placeholder="Input NE Name / Site ID / Site Deps (1 per line)"></textarea>
+
+  <button onclick="analyze()">Analyze</button>
+
+  <!-- 🔽 CONVERGENCE OVERRIDE -->
+  <div id="selector">
+    <label>Convergence Override</label>
+    <select id="convSelect">
+      <option value="">AUTO (Engine)</option>
+    </select>
+    <button onclick="applyManual()">Apply</button>
+  </div>
+
+  <!-- 🔽 TOPOLOGY LAYOUT -->
+  <div id="selector">
+    <label>Topology Layout</label>
+    <select id="layoutMode">
+      <option value="auto">Auto (Engine)</option>
+      <option value="compact">Compact Vertical</option>
+      <option value="radial">Radial / Diamond</option>
+      <option value="circle">Circle / Ring</option>
+	  <option value="box">Box / Grid</option>
+	  <option value="box-rotate">Box Rotated (Diamond)</option>
+
+    </select>
+    <button onclick="applyLayout()">Apply</button>
+  </div>
+</div>
+
+<div id="info"></div>
+<div id="cy"></div>
+
+<script>
+let cy=null;
+let lastResult=null;
+
+/* ===================== ANALYZE ===================== */
+async function analyze(){
+  const raw=targets.value.trim();
+  if(!raw) return alert("Minimal 2 input");
+
+  const inputs=raw.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  if(inputs.length<2) return alert("Minimal 2 target");
+
+  const res=await analyzeConvergence(inputs);
+  lastResult=res;
+
+  document.getElementById("info").innerHTML =
+    `<b>Resolved NE:</b><br>${res.resolved.join("<br>")}
+     <br><br><b>Auto Convergence:</b> ${res.convergence||"NOT FOUND"}`;
+
+  render(res.graph);
+
+  /* Populate convergence selector safely */
+  const sel=document.getElementById("convSelect");
+  sel.innerHTML=`<option value="">AUTO (Engine)</option>`;
+  res.graph.nodes.forEach(n=>{
+    sel.innerHTML+=`<option value="${n.id}">${n.id}</option>`;
+  });
+}
+
+/* ===================== APPLY MANUAL CONVERGENCE ===================== */
+function applyManual(){
+  if(!lastResult || !cy) return;
+
+  const chosen=document.getElementById("convSelect").value;
+
+  cy.nodes().removeClass("conv");
+
+  if(chosen){
+    const node=cy.getElementById(chosen);
+    if(node) node.addClass("conv");
+  }
+
+  document.getElementById("info").innerHTML =
+    `<b>Resolved NE:</b><br>${lastResult.resolved.join("<br>")}
+     <br><br><b>Convergence:</b> ${chosen||lastResult.convergence}`;
+}
+
+/* ===================== APPLY LAYOUT ===================== */
+function applyLayout(){
+  if(!cy) return;
+  cy.layout(getLayoutConfig()).run();
+}
+
+/* ===================== LAYOUT CONFIG ===================== */
+function getLayoutConfig(){
+  const mode=document.getElementById("layoutMode").value;
+
+  if(mode==="compact"){
+    return {
+      name:"breadthfirst",
+      directed:true,
+      spacingFactor:0.6,
+      padding:30
+    };
+  }
+
+  if(mode==="radial"){
+    return {
+      name:"concentric",
+      concentric: n => n.hasClass("conv") ? 2 : 1,
+      levelWidth: () => 1,
+      padding:40
+    };
+  }
+
+  if(mode==="circle"){
+    return {
+      name:"circle",
+      padding:40
+    };
+  }
+  
+    /* ===================== BOX GRID ===================== */
+  if(mode==="box"){
+    return {
+      name:"grid",
+      padding:40,
+      avoidOverlap:true,
+      rows: undefined
+    };
+  }
+
+  /* ===================== BOX ROTATED (DIAMOND) ===================== */
+  if(mode==="box-rotate"){
+    return {
+      name:"grid",
+      padding:40,
+      avoidOverlap:true,
+      transform: function(node, position){
+        const angle=Math.PI/4; // 45 derajat
+        return {
+          x: position.x * Math.cos(angle) - position.y * Math.sin(angle),
+          y: position.x * Math.sin(angle) + position.y * Math.cos(angle)
+        };
+      }
+    };
+  }
+
+  // AUTO (ENGINE)
+  return {
+    name:"breadthfirst",
+    directed:true,
+    padding:40
+  };
+}
+
+/* ===================== RENDER ===================== */
+function render(data){
+  if(cy) cy.destroy();
+
+  const elements=[];
+
+  data.nodes.forEach(n=>{
+    elements.push({
+      data:{id:n.id},
+      classes: n.convergence?"conv":n.source?"src":""
+    });
+  });
+
+  data.edges.forEach(e=>{
+    elements.push({
+      data:{id:e.source+"_"+e.target,source:e.source,target:e.target}
+    });
+  });
+
+  cy=cytoscape({
+    container:document.getElementById("cy"),
+    elements,
+    layout:getLayoutConfig(),
+    style:[
+      {
+        selector:"node",
+        style:{
+          label:"data(id)",
+          color:"#fff",
+          "background-color":"#2563eb",
+          width:60,height:60,
+          "text-valign":"top",
+          "text-margin-y":-10
+        }
+      },
+      { selector:"node.src", style:{ "background-color":"#16a34a" }},
+      { selector:"node.conv",style:{
+          "background-color":"#dc2626",
+          width:90,height:90
+      }},
+      { selector:"edge", style:{ "line-color":"#9ca3af", width:4 }}
+    ]
+  });
+}
+</script>
+
+</body>
+</html>
