@@ -109,8 +109,9 @@ tbody tr:hover{
 <body>
 
 <div class="header">
-  <h1>HELPDESK VIP & HOTSPOT REALTIME ALARM</h1>
+  <h1>HELPDESK VIP & HOTSPOT REALTIME ALARM V2</h1>
   <div class="update" id="lastUpdate">UPDATE : -</div>
+  <div class="footer">AZH AUTO MONITORING SYSTEM</div>
 </div>
 
 <div class="container">
@@ -125,7 +126,8 @@ tbody tr:hover{
           <th data-key="Escalate to">Escalate to</th>
           <th data-key="TT">TT</th>
           <th data-key="WO">WO</th>
-        </tr>
+		  <th data-key="MO Name">MO Location</th>
+		          </tr>
       </thead>
       <tbody></tbody>
     </table>
@@ -134,11 +136,11 @@ tbody tr:hover{
   <div class="footer">
     Data source: Google Sheets (Realtime CSV)
   </div>
+
 </div>
 
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v=" + Date.now();
-
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=420674249&single=true&output=csv&v=" + Date.now();
 let tableData = [];
 let sortState = {};
 
@@ -152,24 +154,41 @@ function normalizeRow(row){
   return clean;
 }
 
+function sortByFirstOccurredDesc(data){
+  data.sort((a, b) => {
+    const da = new Date(a["First Occurred (NT)"]);
+    const db = new Date(b["First Occurred (NT)"]);
+
+    if (isNaN(da) && isNaN(db)) return 0;
+    if (isNaN(da)) return 1;
+    if (isNaN(db)) return -1;
+
+    return db - da; // TERBARU DI ATAS
+  });
+}
+
 function loadData(){
   Papa.parse(CSV_URL,{
     download:true,
     header:true,
     skipEmptyLines:true,
-    complete:(res)=>{
-      if(!res.data || !res.data.length){
-        alert("CSV terbaca tapi kosong");
-        return;
-      }
-
-      tableData = res.data.map(normalizeRow);
-
-      console.log("HEADER CSV:", Object.keys(tableData[0]));
-
-      renderTable(tableData);
-      setLastUpdate(tableData);
-    }
+	complete:(res)=>{
+	if(!res.data || !res.data.length){
+		alert("CSV terbaca tapi kosong");
+		return;
+	}
+	
+	tableData = res.data.map(normalizeRow);
+	
+	// ==============================
+	// DEFAULT SORT: First Occurred TERBARU
+	// ==============================
+	sortByFirstOccurredDesc(tableData);
+	sortState = {}; // reset state sorting manual
+	
+	renderTable(tableData);
+	setLastUpdate(tableData);
+	}
   });
 }
 
@@ -195,9 +214,10 @@ function renderTable(data){
       <td>${r["First Occurred (NT)"] || "-"}</td>
       <td>${r["Alarm Source"] || "-"}</td>
       <td>${r["Name"] || "-"}</td>
-      <td>${r["Escalate to"] || "-"}</td>
+	  <td>${r["Escalate to"] || "-"}</td>
       <td>${r["TT"] || "-"}</td>
       <td>${r["WO"] || "-"}</td>
+	  <td>${r["MO Name"] || "-"}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -218,6 +238,15 @@ document.querySelectorAll("th").forEach(th=>{
 });
 
 loadData();
+
+// ==============================
+// AUTO REFRESH SETIAP 5 MENIT
+// ==============================
+setInterval(() => {
+  console.log("Auto refresh data...");
+  loadData();
+}, 4 * 60 * 1000); // 5 menit
+
 </script>
 
 </body>
