@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Repetitive Issue Analysis (12 Weeks)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+
+<style>
+body{
+  background:#f4f6f9;
+  font-family:Segoe UI,Roboto;
+}
+.page-title{
+  font-size:20px;
+  font-weight:600;
+}
+.table th{
+  font-size:12px;
+  background:#0b1c2d;
+  color:#fff;
+  cursor:pointer;
+  user-select:none;
+}
+.table th:hover{
+  background:#123456;
+}
+.table td{
+  font-size:12px;
+}
+.badge{
+  font-size:11px;
+}
+</style>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+
+  <!-- HEADER -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <div class="page-title">📊 Repetitive Issue Analysis (12 Weeks)</div>
+      <small class="text-muted">Site dengan RCA yang sama &gt; 3x dalam 12 minggu terakhir</small>
+    </div>
+    <button class="btn btn-success btn-sm" onclick="exportActiveTab()">
+      Export XLSX (Active Tab)
+    </button>
+  </div>
+
+  <!-- TABS -->
+  <ul class="nav nav-tabs mb-3" id="tabs">
+    <li class="nav-item"><a class="nav-link active" data-tab="VIP" href="#">VIP</a></li>
+    <li class="nav-item"><a class="nav-link" data-tab="TRAFFIC" href="#">Traffic Deg</a></li>
+  </ul>
+
+  <!-- TABLE -->
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm" id="resultTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================= CSV SOURCE ================= */
+
+const CSV = {
+  VIP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv",
+  TRAFFIC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv"
+};
+
+let ACTIVE = "VIP";
+let FINAL_ROWS = [];
+let SORT_COL = "Incident Count";
+let SORT_DIR = "desc";
+
+/* ================= COLUMN NORMALIZER ================= */
+
+function getCol(r, type){
+  const map = {
+    VIP:{
+      date:["open date"],
+      site:["site id"],
+      name:["site name"],
+      rca:["rca category"],
+      week:["week"]
+    },
+    TRAFFIC:{
+      date:["first create"],
+      site:["site id"],
+      name:["site name"],
+      rca:["problem category"],
+      week:["week"]
+    }
+  };
+
+  for(const k of map[ACTIVE][type]){
+    const key = Object.keys(r).find(x=>x.toLowerCase()===k);
+    if(key) return (r[key]||'').toString().trim();
+  }
+  return '';
+}
+
+/* ================= CORE PROCESS (TIDAK DIUBAH) ================= */
+
+function process(data){
+  const weeks = [...new Set(data.map(r=>getCol(r,'week')))]
+    .filter(x=>x)
+    .sort()
+    .slice(-12);
+
+  const filtered = data.filter(r=>weeks.includes(getCol(r,'week')));
+
+  const group = {};
+
+  filtered.forEach(r=>{
+    const site = getCol(r,'site');
+    const rca  = getCol(r,'rca');
+    const date = getCol(r,'date');
+    if(!site || !rca || !date) return;
+
+    const key = site+"||"+rca;
+    group[key] ??= {
+      site,
+      name:getCol(r,'name'),
+      rca,
+      dates:[]
+    };
+    group[key].dates.push(date);
+  });
+
+  FINAL_ROWS = Object.values(group)
+    .filter(x=>x.dates.length > 3)
+    .map(x=>({
+      "Site ID":x.site,
+      "Site Name":x.name,
+      "RCA Category":x.rca,
+      "Incident Count":x.dates.length,
+      "Incident Date":x.dates.sort().join(", ")
+    }));
+
+  applySort();
+}
+
+/* ================= SORT ================= */
+
+function applySort(){
+  FINAL_ROWS.sort((a,b)=>{
+    let v1 = a[SORT_COL];
+    let v2 = b[SORT_COL];
+
+    if(typeof v1 === "number"){
+      return SORT_DIR==="asc" ? v1-v2 : v2-v1;
+    }
+    return SORT_DIR==="asc"
+      ? v1.localeCompare(v2)
+      : v2.localeCompare(v1);
+  });
+
+  render(FINAL_ROWS);
+}
+
+/* ================= RENDER ================= */
+
+function render(rows){
+  const thead=document.querySelector("#resultTable thead");
+  const tbody=document.querySelector("#resultTable tbody");
+  thead.innerHTML='';
+  tbody.innerHTML='';
+
+  if(!rows.length){
+    tbody.innerHTML=`<tr><td colspan="5" class="text-center">No Repetitive Issue Found</td></tr>`;
+    return;
+  }
+
+  thead.innerHTML=`<tr>
+    <th onclick="sortBy('Site ID')">Site ID</th>
+    <th onclick="sortBy('Site Name')">Site Name</th>
+    <th onclick="sortBy('RCA Category')">RCA Category</th>
+    <th onclick="sortBy('Incident Count')">Count</th>
+    <th>Incident Date</th>
+  </tr>`;
+
+  rows.forEach(r=>{
+    tbody.innerHTML+=`
+      <tr>
+        <td>${r["Site ID"]}</td>
+        <td>${r["Site Name"]}</td>
+        <td><span class="badge bg-danger">${r["RCA Category"]}</span></td>
+        <td>${r["Incident Count"]}</td>
+        <td>${r["Incident Date"]}</td>
+      </tr>`;
+  });
+}
+
+function sortBy(col){
+  if(SORT_COL === col){
+    SORT_DIR = SORT_DIR === "asc" ? "desc" : "asc";
+  }else{
+    SORT_COL = col;
+    SORT_DIR = col === "Incident Count" ? "desc" : "asc";
+  }
+  applySort();
+}
+
+/* ================= LOAD ================= */
+
+function load(){
+  Papa.parse(CSV[ACTIVE],{
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:r=>process(r.data)
+  });
+}
+
+/* ================= EXPORT ================= */
+
+function exportActiveTab(){
+  if(!FINAL_ROWS.length) return alert("No data");
+  const ws=XLSX.utils.json_to_sheet(FINAL_ROWS);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"REPETITIVE");
+  XLSX.writeFile(wb,`Repetitive_${ACTIVE}.xlsx`);
+}
+
+/* ================= TAB HANDLER ================= */
+
+document.querySelectorAll("#tabs a").forEach(a=>{
+  a.onclick=e=>{
+    e.preventDefault();
+    document.querySelectorAll("#tabs a").forEach(x=>x.classList.remove("active"));
+    a.classList.add("active");
+    ACTIVE=a.dataset.tab;
+    load();
+  };
+});
+
+/* ================= INIT ================= */
+load();
+</script>
+
+</body>
+</html>

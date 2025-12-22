@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Repetitive Issue Analysis (12 Weeks)</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+body{background:#f4f6f9;font-family:Segoe UI,Roboto}
+.page-title{font-size:20px;font-weight:600}
+.table th{
+  font-size:12px;
+  background:#0b1c2d;
+  color:#fff;
+  cursor:pointer;
+  user-select:none;
+}
+.table th:hover{background:#123456}
+.table td{font-size:12px}
+.badge{font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+
+<div class="d-flex justify-content-between mb-3">
+  <div>
+    <div class="page-title">📊 Repetitive Issue Analysis (12 Weeks)</div>
+    <small class="text-muted">Same RCA &gt; 3x in last 12 weeks</small>
+  </div>
+  <button class="btn btn-success btn-sm" onclick="exportXLSX()">Export XLSX</button>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="tabs">
+  <li class="nav-item">
+    <a class="nav-link active" data-tab="CTT" href="#">CTT</a>
+  </li>
+</ul>
+
+<div class="card">
+<div class="card-body table-responsive">
+<table class="table table-bordered table-sm" id="tbl">
+<thead></thead>
+<tbody></tbody>
+</table>
+</div>
+</div>
+
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+
+const CSV={
+ CTT:"https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?output=csv"
+};
+
+let ACTIVE="CTT";
+let FINAL=[];
+
+/* ===== SORT STATE (TAMBAHAN) ===== */
+let SORT_COL="Incident Count";
+let SORT_DIR="desc";
+
+/* ---------- NORMALIZER (TIDAK DIUBAH) ---------- */
+function normWeek(w){
+ if(!w) return null;
+ const m=w.toString().match(/(\d{4}).*?W?\s*(\d{1,2})/i);
+ return m ? parseInt(m[1]+m[2].padStart(2,'0')) : null;
+}
+function normDate(d){
+ if(!d) return '';
+ if(d.includes('/')) return d;
+ const dt=new Date(d);
+ if(isNaN(dt)) return d;
+ return dt.toLocaleDateString('en-GB');
+}
+function col(r,arr){
+ for(const a of arr){
+  const k=Object.keys(r).find(x=>x.toLowerCase()===a);
+  if(k) return (r[k]||'').toString().trim();
+ }
+ return '';
+}
+
+/* ---------- PROCESS (TIDAK DIUBAH) ---------- */
+function process(rows){
+ const weeks=[...new Set(rows.map(r=>normWeek(col(r,['week']))).filter(Boolean))]
+   .sort((a,b)=>b-a).slice(0,12);
+
+ const map={};
+
+ rows.forEach(r=>{
+  const wk=normWeek(col(r,['week']));
+  if(!weeks.includes(wk)) return;
+
+  const site=col(r,['site id']);
+  const rca=col(r,['rca category']);
+  const date=normDate(col(r,['open date','open date mm/dd/yyyy']));
+  const name=col(r,['site name']);
+
+  if(!site || !rca) return;
+
+  const key=site+'||'+rca;
+  map[key] ??= {site,name,rca,dates:[]};
+  if(date) map[key].dates.push(date);
+ });
+
+ FINAL=Object.values(map)
+  .filter(x=>x.dates.length>3)
+  .map(x=>({
+    "Site ID":x.site,
+    "Site Name":x.name,
+    "RCA Category":x.rca,
+    "Incident Count":x.dates.length,
+    "Incident Date":x.dates.join(', ')
+  }));
+
+ applySort(); // ⬅️ SORT DIPANGGIL SETELAH PROCESS
+}
+
+/* ---------- SORT LOGIC (BARU) ---------- */
+function applySort(){
+ FINAL.sort((a,b)=>{
+  let v1=a[SORT_COL], v2=b[SORT_COL];
+
+  if(typeof v1==="number"){
+    return SORT_DIR==="asc" ? v1-v2 : v2-v1;
+  }
+  return SORT_DIR==="asc"
+    ? v1.localeCompare(v2)
+    : v2.localeCompare(v1);
+ });
+
+ render();
+}
+
+function sortBy(col){
+ if(SORT_COL===col){
+  SORT_DIR = SORT_DIR==="asc" ? "desc" : "asc";
+ }else{
+  SORT_COL = col;
+  SORT_DIR = col==="Incident Count" ? "desc" : "asc";
+ }
+ applySort();
+}
+
+/* ---------- RENDER (SEDIKIT DITAMBAH SORT CLICK) ---------- */
+function render(){
+ const th=document.querySelector('#tbl thead');
+ const tb=document.querySelector('#tbl tbody');
+ th.innerHTML=''; tb.innerHTML='';
+
+ if(!FINAL.length){
+  tb.innerHTML='<tr><td class="text-center">No Repetitive Issue Found</td></tr>';
+  return;
+ }
+
+ th.innerHTML=`<tr>
+  <th onclick="sortBy('Site ID')">Site ID</th>
+  <th onclick="sortBy('Site Name')">Site Name</th>
+  <th onclick="sortBy('RCA Category')">RCA</th>
+  <th onclick="sortBy('Incident Count')">Count</th>
+  <th>Incident Date</th>
+ </tr>`;
+
+ FINAL.forEach(r=>{
+  tb.innerHTML+=`<tr>
+   <td>${r["Site ID"]}</td>
+   <td>${r["Site Name"]}</td>
+   <td><span class="badge bg-danger">${r["RCA Category"]}</span></td>
+   <td>${r["Incident Count"]}</td>
+   <td>${r["Incident Date"]}</td>
+  </tr>`;
+ });
+}
+
+/* ---------- LOAD ---------- */
+function load(){
+ Papa.parse(CSV[ACTIVE],{
+  download:true,
+  header:true,
+  skipEmptyLines:true,
+  complete:r=>process(r.data)
+ });
+}
+
+/* ---------- EXPORT (TIDAK DIUBAH) ---------- */
+function exportXLSX(){
+ if(!FINAL.length) return alert("No data");
+ const ws=XLSX.utils.json_to_sheet(FINAL);
+ const wb=XLSX.utils.book_new();
+ XLSX.utils.book_append_sheet(wb,ws,"REPETITIVE");
+ XLSX.writeFile(wb,`Repetitive_${ACTIVE}.xlsx`);
+}
+
+/* ---------- INIT ---------- */
+load();
+</script>
+
+</body>
+</html>
