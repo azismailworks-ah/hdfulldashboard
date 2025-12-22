@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HELPDESK DIOC - Export Data</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- SheetJS -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+
+<style>
+body{
+  background:#f4f6f9;
+  font-family:Segoe UI,Roboto;
+}
+.page-title{
+  font-size:20px;
+  font-weight:600;
+}
+.card{
+  border-radius:10px;
+}
+.table th{
+  font-size:12px;
+  background:#0b1c2d;
+  color:#fff;
+  white-space:nowrap;
+}
+.table td{
+  font-size:12px;
+  white-space:nowrap;
+}
+small{
+  color:#6b7280;
+}
+</style>
+</head>
+<body>
+
+<div class="container-fluid p-4">
+
+  <!-- HEADER -->
+  <div class="mb-3">
+    <div class="page-title">📤 Export Tracker Data</div>
+    <small>Filter & export data from Helpdesk Tracker</small>
+  </div>
+
+  <!-- FILTER PANEL -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <div class="row g-3">
+
+        <!-- TRACKER -->
+        <div class="col-md-3">
+          <label class="form-label small">Tracker</label>
+          <select id="fTracker" class="form-select form-select-sm">
+            <option value="VIP">VIP</option>
+            <option value="CTT">CTT</option>
+            <option value="SQDT">SQDT</option>
+            <option value="TRAFFIC">Traffic Degradation</option>
+          </select>
+        </div>
+
+        <!-- STATUS -->
+        <div class="col-md-2">
+          <label class="form-label small">Status</label>
+          <select id="fStatus" class="form-select form-select-sm">
+            <option value="">Both</option>
+            <option value="open">Open</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+
+        <!-- REGION (DROPDOWN FINAL) -->
+        <div class="col-md-2">
+          <label class="form-label small">Region</label>
+          <select id="fRegion" class="form-select form-select-sm">
+            <option value="">Both</option>
+            <option value="jabodetabek">JABODETABEK</option>
+            <option value="cwj">CWJ</option>
+            <option value="ejbn">EJBN</option>
+            <option value="sumatera">SUMATERA</option>
+            <option value="kalimantan">KALIMANTAN</option>
+            <option value="sumapa">SUMAPA</option>
+          </select>
+        </div>
+
+        <!-- WEEK -->
+        <div class="col-md-2">
+          <label class="form-label small">Week</label>
+          <input id="fWeek" class="form-control form-control-sm" placeholder="2025 W30,2025 W31">
+        </div>
+
+        <!-- ESCALATE -->
+        <div class="col-md-3">
+          <label class="form-label small">Escalate To (Contain)</label>
+          <input id="fEsc" class="form-control form-control-sm" placeholder="FSO / FLP">
+        </div>
+
+      </div>
+
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary btn-sm" onclick="loadData()">Load Data</button>
+        <button class="btn btn-success btn-sm" onclick="exportXLSX()">Export XLSX</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportCSV()">Export CSV</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="card">
+    <div class="card-body">
+      <div class="fw-semibold mb-2">Preview Result (max 200 rows)</div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-sm" id="resultTable">
+          <thead></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<script>
+/* ================= CSV SOURCE ================= */
+
+const CSV_SOURCE = {
+  VIP: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv",
+  CTT: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?gid=0&single=true&output=csv",
+  SQDT: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRCGmQN_5YHTVsniFBgUlJ_-Ssz1eIkoJwBuYwG_DcX2YceKyNFWXJHlPpYVKot4mIzr12xVwDpkUuI/pub?gid=0&single=true&output=csv",
+  TRAFFIC: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv"
+};
+
+let RAW = [];
+let FILTERED = [];
+
+/* ================= LOAD ================= */
+
+function loadData(){
+  const tracker = fTracker.value;
+  const url = CSV_SOURCE[tracker];
+
+  if(!url){
+    alert("CSV URL not defined");
+    return;
+  }
+
+  Papa.parse(url,{
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:res=>{
+      RAW = res.data;
+      applyFilter();
+    }
+  });
+}
+
+/* ================= FILTER ================= */
+function getEscalate(row){
+  return (
+    row["Escalate To"] ||
+    row["Escalate to"] ||
+    row["ESCALATE TO"] ||
+    row["Escalate_To"] ||
+    ""
+  ).toString().trim().toLowerCase();
+}
+
+function getStatus(row){
+  return (
+    row["Status NOC"] ||
+    row["STATUS NOC"] ||
+    row["STATUS"] ||
+    row["Status"] ||
+    ""
+  ).toString().trim().toLowerCase();
+}
+
+function applyFilter(){
+  const status = fStatus.value.toLowerCase();
+  const region = fRegion.value.toLowerCase();
+  const esc = fEsc.value.toLowerCase();
+  const weeks = fWeek.value
+    .toUpperCase()
+    .split(',')
+    .map(x=>x.trim())
+    .filter(x=>x);
+
+  FILTERED = RAW.filter(r=>{
+    const rowStatus = getStatus(r);
+	if(status && rowStatus !== status) return false;
+    if(region && !(r.Region||'').toLowerCase().includes(region)) return false;
+    const rowEsc = getEscalate(r);
+	if(esc && !rowEsc.includes(esc)) return false;
+    if(weeks.length){
+      const w = (r.Week||'').toUpperCase();
+      if(!weeks.includes(w)) return false;
+    }
+    return true;
+  });
+
+  renderTable(FILTERED);
+}
+
+/* ================= TABLE ================= */
+
+function renderTable(rows){
+  const thead = document.querySelector('#resultTable thead');
+  const tbody = document.querySelector('#resultTable tbody');
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="30" class="text-center">No Data</td></tr>`;
+    return;
+  }
+
+  const cols = Object.keys(rows[0]);
+  thead.innerHTML = `<tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+
+  rows.slice(0,200).forEach(r=>{
+    tbody.innerHTML += `<tr>${cols.map(c=>`<td>${r[c]||''}</td>`).join('')}</tr>`;
+  });
+}
+
+/* ================= EXPORT ================= */
+
+function exportCSV(){
+  if(!FILTERED.length) return alert("No data to export");
+  const csv = Papa.unparse(FILTERED);
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = buildFileName("csv");
+  link.click();
+}
+
+function exportXLSX(){
+  if(!FILTERED.length){
+    alert("No data to export");
+    return;
+  }
+
+  const ws = XLSX.utils.json_to_sheet(FILTERED);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "DATA");
+
+  XLSX.writeFile(
+    wb,
+    buildFileName("xlsx"),
+    { bookType: "xlsx", compression: true }
+  );
+}
+
+function buildFileName(ext){
+  const d = new Date().toISOString().slice(0,10);
+  return `EXPORT_${fTracker.value}_${d}.${ext}`;
+}
+</script>
+
+</body>
+</html>
