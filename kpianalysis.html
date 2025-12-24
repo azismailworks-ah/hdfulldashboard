@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Helpdesk KPI Analysis</title>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:Inter;
+  background:#f4f6f9;
+}
+.header{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:#fff;
+  padding:22px 32px;
+}
+.controls{
+  background:#fff;
+  padding:16px 32px;
+  display:flex;
+  gap:16px;
+  align-items:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+.controls input{
+  padding:6px 10px;
+  font-size:13px;
+}
+button{
+  padding:8px 16px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  font-weight:600;
+  cursor:pointer;
+}
+button:hover{background:#1d4ed8}
+
+/* ===== GRID 2 COLUMN (FINAL) ===== */
+.grid{
+  padding:24px;
+  display:grid;
+  grid-template-columns:repeat(2, 1fr);
+  gap:24px;
+}
+
+/* ===== CARD ===== */
+.card{
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.06);
+}
+.card h3{
+  margin:0 0 12px 0;
+  font-size:15px;
+  font-weight:700;
+  color:#0f172a;
+}
+
+.placeholder{
+  height:300px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#94a3b8;
+  font-size:14px;
+  border:2px dashed #e5e7eb;
+  border-radius:8px;
+}
+
+canvas{height:300px!important}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1100px){
+  .grid{grid-template-columns:1fr}
+}
+
+/* ===== KPI SUMMARY ===== */
+.summary{
+  padding:24px;
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:16px;
+}
+.summary-card{
+  background:#fff;
+  padding:16px;
+  border-radius:12px;
+  box-shadow:0 4px 12px rgba(0,0,0,.06);
+  text-align:center;
+}
+.summary-title{
+  font-size:12px;
+  font-weight:600;
+  color:#64748b;
+}
+.summary-value{
+  font-size:24px;
+  font-weight:700;
+  margin-top:6px;
+}
+.summary-status{
+  margin-top:4px;
+  font-size:12px;
+  font-weight:600;
+}
+
+.good{color:#16a34a}
+.warn{color:#f59e0b}
+.bad{color:#dc2626}
+.na{color:#94a3b8}
+
+@media(max-width:1100px){
+  .summary{grid-template-columns:1fr 1fr}
+}
+
+/* ===== KPI TREND TITLE ===== */
+.kpi-title{
+  margin:20px 0 6px 0;
+  text-align:center;
+  font-size:18px;
+  font-weight:700;
+  color:#0f172a;
+  letter-spacing:.3px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>Helpdesk KPI Analysis</h2>
+</div>
+
+<div class="controls">
+  <input id="siteId" value="12JKP0255" placeholder="Site ID">
+  <input id="days" type="number" value="7">
+  <button onclick="loadData()">Analyze</button>
+  <button onclick="exportDashboard()">Export Dashboard (PNG)</button>
+  <button onclick="exportChart('chart1','KPI_Availability_Traffic')">Export KPI 1</button>
+  <button onclick="exportChart('chart2','KPI_Delay_PLR')">Export KPI 2</button>
+  <button onclick="exportChart('chart3','KPI_PRB')">Export KPI 3</button>
+</div>
+
+<div id="kpiTitle" class="kpi-title">
+  KPI Trend
+</div>
+
+<div class="summary">
+  <div class="summary-card">
+    <div class="summary-title">Availability (Last 6H)</div>
+    <div id="sumAvail" class="summary-value">-</div>
+    <div id="statAvail" class="summary-status na">-</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-title">Delay (Last 6H)</div>
+    <div id="sumDelay" class="summary-value">-</div>
+    <div id="statDelay" class="summary-status na">-</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-title">PLR (Last 6H)</div>
+    <div id="sumPLR" class="summary-value">-</div>
+    <div id="statPLR" class="summary-status na">-</div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-title">PRB Peak (Last 3D)</div>
+    <div id="sumPRB" class="summary-value">-</div>
+    <div id="statPRB" class="summary-status na">-</div>
+  </div>
+</div>
+
+<div class="grid">
+  <!-- BOX 1 -->
+  <div class="card">
+    <h3>KPI Availability & Traffic</h3>
+    <canvas id="chart1"></canvas>
+  </div>
+
+  <!-- BOX 2 -->
+  <div class="card">
+    <h3>KPI Delay & PLR</h3>
+    <canvas id="chart2"></canvas>
+  </div>
+
+  <!-- BOX 3 -->
+  <div class="card">
+    <h3>PRB Utilization (Sector 1 / 2 / 3)</h3>
+    <canvas id="chart3"></canvas>
+  </div>
+
+  <!-- BOX 4 -->
+  <div class="card">
+	<h3>4G Data Traffic (Sector 1 / 2 / 3)</h3>
+	<canvas id="chart4"></canvas>
+  </div>
+
+
+  <!-- BOX 5 -->
+  <div class="card">
+    <h3>Average TA 4G (Sector 1 / 2 / 3)</h3>
+    <canvas id="chart5"></canvas>
+  </div>
+
+  <!-- BOX 6 -->
+  <div class="card">
+    <h3>UL RSSI 4G (Sector 1 / 2 / 3)</h3>
+    <canvas id="chart6"></canvas>
+  </div>
+</div>
+
+<script>
+const API="http://127.0.0.1:8000/api/kpi";
+let c1,c2,c3,c4, c5, c6;
+
+function num(v){
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+function pct(v){
+  return num(v) * 100;
+}
+function destroy(){
+  [c1,c2,c3,c4,c5,c6].forEach(c=>{if(c) c.destroy()});
+}
+
+function avg(arr){
+  return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : null;
+}
+
+function setSummary(idVal,idStat,val,status){
+  const v=document.getElementById(idVal);
+  const s=document.getElementById(idStat);
+  v.innerText=val;
+  s.innerText=status.text;
+  s.className="summary-status "+status.cls;
+}
+
+function statusLabel(type,value){
+  if(value===null) return {text:"INSUFFICIENT",cls:"na"};
+
+  if(type==="avail"){
+    if(value<90) return {text:"BAD",cls:"bad"};
+    if(value<99) return {text:"WARNING",cls:"warn"};
+    return {text:"GOOD",cls:"good"};
+  }
+  if(type==="delay"){
+    if(value>11) return {text:"BAD",cls:"bad"};
+    if(value>8) return {text:"WARNING",cls:"warn"};
+    return {text:"GOOD",cls:"good"};
+  }
+  if(type==="plr"){
+    if(value>=2) return {text:"BAD",cls:"bad"};
+    if(value>1) return {text:"WARNING",cls:"warn"};
+    return {text:"GOOD",cls:"good"};
+  }
+  if(type==="prb"){
+    if(value>85) return {text:"BAD",cls:"bad"};
+    if(value>75) return {text:"WARNING",cls:"warn"};
+    return {text:"GOOD",cls:"good"};
+  }
+}
+
+async function loadData(){
+  destroy();
+  const site=document.getElementById("siteId").value;
+  const days=document.getElementById("days").value;
+
+  document.getElementById("kpiTitle").innerText = `KPI Trend "${site}"`;
+
+  const r=await fetch(`${API}?site_id=${site}&days=${days}`);
+  const j=await r.json();
+  if(!j.data || j.data.length===0){ alert("No data"); return; }
+
+  const L=j.data.map(d=>d.time);
+
+  // === KPI SUMMARY LOGIC ===
+  const last6 = j.data.slice(-6);
+  const availAvg = avg(last6.map(d=>pct(d.availability)));
+  const delayAvg = avg(last6.map(d=>num(d.delay)));
+  const plrAvg   = avg(last6.map(d=>num(d.plr)));
+  
+  const last3d = j.data.slice(-72); // asumsi hourly
+  const prbMax = Math.max(...last3d.map(
+    d=>Math.max(pct(d.prb_s1),pct(d.prb_s2),pct(d.prb_s3))
+  ));
+  
+  setSummary("sumAvail","statAvail",
+    availAvg?availAvg.toFixed(2)+"%":"-",
+    statusLabel("avail",availAvg)
+  );
+  
+  setSummary("sumDelay","statDelay",
+    delayAvg?delayAvg.toFixed(2)+" ms":"-",
+    statusLabel("delay",delayAvg)
+  );
+  
+  setSummary("sumPLR","statPLR",
+    plrAvg?plrAvg.toFixed(2)+"%":"-",
+    statusLabel("plr",plrAvg)
+  );
+  
+  setSummary("sumPRB","statPRB",
+    prbMax?prbMax.toFixed(1)+"%":"-",
+    statusLabel("prb",prbMax)
+  );
+
+  /* ===== BOX 1 ===== */
+  c1=new Chart(chart1,{
+    type:"bar",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Availability (%)",type:"line",data:j.data.map(d=>pct(d.availability)),borderColor:"#16a34a",yAxisID:"y1"},
+        {label:"LTE Traffic (GB)",data:j.data.map(d=>num(d.traffic_lte)),backgroundColor:"#93c5fd",yAxisID:"y2",stack:"traffic"},
+        {label:"5G Traffic (GB)",data:j.data.map(d=>num(d.traffic_5g)),backgroundColor:"#2563eb",yAxisID:"y2",stack:"traffic"}
+      ]
+    },
+    options:{
+      scales:{
+        y1:{min:0,max:100,ticks:{callback:v=>v+"%"},title:{display:true,text:"Availability (%)"}},
+        y2:{beginAtZero:true,stacked:true,position:"right",grid:{drawOnChartArea:false},title:{display:true,text:"Traffic (GB)"}}
+      }
+    }
+  });
+
+  /* ===== BOX 2 ===== */
+  c2=new Chart(chart2,{
+    type:"bar",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Delay (ms)",type:"line",data:j.data.map(d=>num(d.delay)),borderColor:"#dc2626",yAxisID:"y1"},
+        {label:"PLR (%)",data:j.data.map(d=>num(d.plr)),backgroundColor:"#f59e0b",yAxisID:"y2"}
+      ]
+    },
+    options:{
+      scales:{
+        y1:{beginAtZero:true,title:{display:true,text:"Delay (ms)"}},
+        y2:{beginAtZero:true,position:"right",grid:{drawOnChartArea:false},title:{display:true,text:"PLR (%)"}}
+      }
+    }
+  });
+
+  /* ===== BOX 3 ===== */
+  c3=new Chart(chart3,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"PRB S1 (%)",data:j.data.map(d=>pct(d.prb_s1)),borderColor:"#2563eb"},
+        {label:"PRB S2 (%)",data:j.data.map(d=>pct(d.prb_s2)),borderColor:"#16a34a"},
+        {label:"PRB S3 (%)",data:j.data.map(d=>pct(d.prb_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{min:0,max:100,ticks:{callback:v=>v+"%"},title:{display:true,text:"PRB Utilization (%)"}}
+      }
+    }
+  });
+  
+    /* ===== BOX 4 ===== */
+  c4 = new Chart(chart4,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Sector 1",data:j.data.map(d=>num(d.traffic4g_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>num(d.traffic4g_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>num(d.traffic4g_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{beginAtZero:true,title:{display:true,text:"Traffic (GB)"}}
+      }
+    }
+  });
+
+  /* ===== BOX 5 ===== */
+  c5 = new Chart(chart5,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Sector 1",data:j.data.map(d=>num(d.ta_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>num(d.ta_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>num(d.ta_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{beginAtZero:true,title:{display:true,text:"TA"}}
+      }
+    }
+  });
+
+  /* ===== BOX 6 ===== */
+  c6 = new Chart(chart6,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Sector 1",data:j.data.map(d=>num(d.ulrssi_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>num(d.ulrssi_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>num(d.ulrssi_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{title:{display:true,text:"UL RSSI (dBm)"}}
+      }
+    }
+  });
+}
+
+/* ===================== EXPORT PNG ===================== */
+
+// Export satu chart saja
+function exportChart(canvasId, filename){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas){
+    alert("Canvas not found");
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = canvas.toDataURL("image/png", 1.0);
+  link.download = filename + ".png";
+  link.click();
+}
+
+// Export seluruh dashboard
+async function exportDashboard(){
+  const target = document.body;
+
+  // Hilangkan tombol sementara (agar PNG bersih)
+  const buttons = document.querySelectorAll("button");
+  buttons.forEach(b=>b.style.display="none");
+
+  await html2canvas(target,{
+    scale:2,                 // kualitas tinggi
+    useCORS:true,
+    backgroundColor:"#f4f6f9",
+    windowWidth:document.body.scrollWidth,
+    windowHeight:document.body.scrollHeight
+  }).then(canvas=>{
+    const link=document.createElement("a");
+    link.href=canvas.toDataURL("image/png",1.0);
+    link.download="Helpdesk_KPI_Dashboard.png";
+    link.click();
+  });
+
+  // Kembalikan tombol
+  buttons.forEach(b=>b.style.display="inline-block");
+}
+</script>
+
+</body>
+</html>
