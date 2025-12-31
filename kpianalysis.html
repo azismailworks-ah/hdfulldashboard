@@ -214,11 +214,23 @@ canvas{height:300px!important}
     <h3>UL RSSI 4G (Sector 1 / 2 / 3)</h3>
     <canvas id="chart6"></canvas>
   </div>
+  
+  <!-- BOX 7 -->
+  <div class="card">
+    <h3>Connected User 4G (Sector 1 / 2 / 3)</h3>
+    <canvas id="chart7"></canvas>
+  </div>
+  
+  <!-- BOX 8 -->
+  <div class="card">
+    <h3>LTE User Throughput (Sector 1 / 2 / 3)</h3>
+    <canvas id="chart8"></canvas>
+  </div>
 </div>
 
 <script>
 const API = "https://api.azhautomation.com/api/kpi";
-let c1,c2,c3,c4, c5, c6;
+let c1,c2,c3,c4, c5, c6, c7, c8;
 
 function num(v){
   const n = Number(v);
@@ -228,7 +240,7 @@ function pct(v){
   return num(v) * 100;
 }
 function destroy(){
-  [c1,c2,c3,c4,c5,c6].forEach(c=>{if(c) c.destroy()});
+  [c1,c2,c3,c4,c5,c6,c7,c8].forEach(c=>{if(c) c.destroy()});
 }
 
 function avg(arr){
@@ -420,6 +432,43 @@ async function loadData(){
       }
     }
   });
+
+  /* ===== BOX 7 ===== */  
+  c7 = new Chart(chart7,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Sector 1",data:j.data.map(d=>num(d.rrc_user_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>num(d.rrc_user_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>num(d.rrc_user_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{beginAtZero:true,title:{display:true,text:"Connected User"}}
+      }
+    }
+  });
+
+  /* ===== BOX 8 ===== */ 
+  c8 = new Chart(chart8,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {label:"Sector 1",data:j.data.map(d=>num(d.thp_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>num(d.thp_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>num(d.thp_s3)),borderColor:"#dc2626"}
+      ]
+    },
+    options:{
+      scales:{
+        y:{beginAtZero:true,title:{display:true,text:"Throughput (Mbps)"}}
+      }
+    }
+  });
+
 }
 
 /* ===================== EXPORT PNG ===================== */
@@ -466,14 +515,4 @@ async function exportDashboard(){
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
 
