@@ -30,11 +30,12 @@ td.kpi{font-weight:600;background:#f8fafc}
 <body>
 
 <div class="header">
-  <h2>KPI Matrix – Last 24 Hours</h2>
+  <h2>Helpdesk KPI Matrix – Last 24 Hours</h2>
+  <h5>Max 10 Site ID</h5>
 </div>
 
 <div class="controls">
-  <input id="sites" value="" placeholder="Site ID, pisahkan dengan koma (max 10)">
+  <input id="sites" placeholder="Site ID, pisahkan dengan koma (max 10 Site ID)">
   <button onclick="loadMatrix()">Analyze</button>
   <button onclick="exportCSV()">Export CSV</button>
 </div>
@@ -165,5 +166,6 @@ function exportCSV(){
 
 </body>
 </html>
+
 
 
