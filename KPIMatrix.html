@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KPI Matrix 24H</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{margin:0;font-family:Inter;background:#f4f6f9}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:20px 32px}
+.controls{background:#fff;padding:16px 32px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.controls input{padding:8px 10px;font-size:13px;width:420px}
+.controls button{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+.controls button:hover{background:#1d4ed8}
+.table-wrap{padding:24px;overflow:auto}
+table{border-collapse:collapse;width:100%;background:#fff;font-size:12px}
+th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:center;white-space:nowrap}
+th{background:#0f172a;color:#fff;font-weight:600}
+th.date{background:#020617}
+td.site{font-weight:700;background:#f1f5f9}
+td.kpi{font-weight:600;background:#f8fafc}
+.good{color:#16a34a;font-weight:600}
+.bad{color:#dc2626;font-weight:700}
+.na{color:#94a3b8}
+.footer{padding:10px 24px;font-size:11px;color:#64748b}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>KPI Matrix – Last 24 Hours</h2>
+</div>
+
+<div class="controls">
+  <input id="sites" value="25MDO0035,12JKP0255" placeholder="Site ID, pisahkan dengan koma">
+  <button onclick="loadMatrix()">Analyze</button>
+  <button onclick="exportCSV()">Export CSV</button>
+</div>
+
+<div class="table-wrap">
+  <table id="matrixTable"></table>
+</div>
+
+<div class="footer">
+  Automatically KPI Matrix @AZH
+</div>
+
+<script>
+const API = "https://api.azhautomation.com/api/kpi/matrix";
+let lastMatrixData = null;
+
+/* ================= KPI RULES ================= */
+function cls(type,val){
+  if(val===null || val===undefined) return "na";
+  if(type==="AVAIL") return val===100 ? "good" : "bad";
+  if(type==="PLR")   return val>2 ? "bad" : "good";
+  if(type==="DELAY") return val>11 ? "bad" : "good";
+  return "";
+}
+
+/* ================= PARSE DB TIMESTAMP ================= */
+function parseDB(ts){
+  const d = new Date(ts.replace(" ","T"));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/* ================= BUILD HEADER (DB DRIVEN) ================= */
+function buildHeader(hours){
+  let h1 = "<tr><th rowspan='2'>Site ID</th><th rowspan='2'>KPI</th>";
+  let h2 = "<tr>";
+
+  let groups = [];
+  let lastDate = null;
+
+  hours.forEach(ts=>{
+    const d = parseDB(ts);
+    const dateStr = d
+      ? d.toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric"})
+      : "INVALID";
+    const hourStr = d
+      ? d.getHours().toString().padStart(2,"0")
+      : "--";
+
+    h2 += `<th>${hourStr}</th>`;
+
+    if(!groups.length || groups[groups.length-1].date !== dateStr){
+      groups.push({date:dateStr, span:1});
+    }else{
+      groups[groups.length-1].span++;
+    }
+  });
+
+  groups.forEach(g=>{
+    h1 += `<th class="date" colspan="${g.span}">${g.date}</th>`;
+  });
+
+  return h1 + "</tr>" + h2 + "</tr>";
+}
+
+/* ================= LOAD MATRIX ================= */
+async function loadMatrix(){
+  const sites = document.getElementById("sites").value;
+  const table = document.getElementById("matrixTable");
+  table.innerHTML = "<tr><td>Loading...</td></tr>";
+
+  const res = await fetch(`${API}?sites=${encodeURIComponent(sites)}&hours=24`);
+  const json = await res.json();
+
+  if(!json || !json.data || !Array.isArray(json.hours)){
+    table.innerHTML="<tr><td>No data</td></tr>";
+    return;
+  }
+
+  lastMatrixData = json;
+
+  const hours = json.hours;               // FINAL source of truth
+  let html = buildHeader(hours);
+
+  for(const site in json.data){
+    const row = json.data[site];
+
+    ["AVAIL","PLR","DELAY"].forEach((kpi,idx)=>{
+      html += "<tr>";
+      if(idx===0){
+        html += `<td class="site" rowspan="3">${site}</td>`;
+      }
+      html += `<td class="kpi">${kpi}</td>`;
+
+      hours.forEach((_,i)=>{
+        const v = row[kpi][i];   // 1:1 index, NO shifting
+        html += `<td class="${cls(kpi,v)}">${v ?? "-"}</td>`;
+      });
+
+      html += "</tr>";
+    });
+  }
+
+  table.innerHTML = html;
+}
+
+/* ================= EXPORT CSV ================= */
+function exportCSV(){
+  if(!lastMatrixData){ alert("Analyze dulu"); return; }
+
+  const {hours,data} = lastMatrixData;
+  let csv = "Site ID,KPI," + hours.join(",") + "\n";
+
+  for(const site in data){
+    ["AVAIL","PLR","DELAY"].forEach(kpi=>{
+      csv += site + "," + kpi + ",";
+      csv += data[site][kpi].map(v=>v ?? "").join(",") + "\n";
+    });
+  }
+
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `KPI_Matrix_${hours[hours.length-1].slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+
+
+</body>
+</html>
