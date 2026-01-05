@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>KPI Matrix 24H</title>
+<title>Helpdesk KPI Matrix 24H</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
@@ -10,7 +10,6 @@
 body{margin:0;font-family:Inter;background:#f4f6f9}
 .header{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:20px 32px}
 .controls{background:#fff;padding:16px 32px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
-.controls input{padding:8px 10px;font-size:13px;width:420px}
 .controls button{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer}
 .controls button:hover{background:#1d4ed8}
 .table-wrap{padding:24px;overflow:auto}
@@ -30,13 +29,12 @@ td.kpi{font-weight:600;background:#f8fafc}
 <body>
 
 <div class="header">
-  <h2>Helpdesk KPI Matrix – Last 24 Hours</h2>
-  <h5>Max 10 Site ID</h5>
+  <h2>Helpdesk KPI Matrix VIP SITE – Last 24 Hours</h2>
+  <h5>Auto updated hourly (AZH Automation)</h5>
 </div>
 
 <div class="controls">
-  <input id="sites" placeholder="Site ID, pisahkan dengan koma (max 10 Site ID)">
-  <button onclick="loadMatrix()">Analyze</button>
+  <button onclick="loadMatrix()">Refresh Data</button>
   <button onclick="exportCSV()">Export CSV</button>
 </div>
 
@@ -49,7 +47,7 @@ td.kpi{font-weight:600;background:#f8fafc}
 </div>
 
 <script>
-const API = "https://api.azhautomation.com/api/kpi/matrix";
+const API = "https://api.azhautomation.com/api/kpi/matrix/cache";
 let lastMatrixData = null;
 
 /* ================= KPI RULES ================= */
@@ -67,13 +65,12 @@ function parseDB(ts){
   return isNaN(d.getTime()) ? null : d;
 }
 
-/* ================= BUILD HEADER (DB DRIVEN) ================= */
+/* ================= BUILD HEADER ================= */
 function buildHeader(hours){
   let h1 = "<tr><th rowspan='2'>Site ID</th><th rowspan='2'>KPI</th>";
   let h2 = "<tr>";
 
   let groups = [];
-  let lastDate = null;
 
   hours.forEach(ts=>{
     const d = parseDB(ts);
@@ -102,48 +99,51 @@ function buildHeader(hours){
 
 /* ================= LOAD MATRIX ================= */
 async function loadMatrix(){
-  const sites = document.getElementById("sites").value;
   const table = document.getElementById("matrixTable");
   table.innerHTML = "<tr><td>Loading...</td></tr>";
 
-  const res = await fetch(`${API}?sites=${encodeURIComponent(sites)}&hours=24`);
-  const json = await res.json();
+  try{
+    const res = await fetch(API);
+    const json = await res.json();
 
-  if(!json || !json.data || !Array.isArray(json.hours)){
-    table.innerHTML="<tr><td>No data</td></tr>";
-    return;
-  }
+    if(!json || !json.data || !Array.isArray(json.hours)){
+      table.innerHTML="<tr><td>No data</td></tr>";
+      return;
+    }
 
-  lastMatrixData = json;
+    lastMatrixData = json;
+    const hours = json.hours;
+    let html = buildHeader(hours);
 
-  const hours = json.hours;               // FINAL source of truth
-  let html = buildHeader(hours);
+    for(const site in json.data){
+      const row = json.data[site];
 
-  for(const site in json.data){
-    const row = json.data[site];
+      ["AVAIL","PLR","DELAY"].forEach((kpi,idx)=>{
+        html += "<tr>";
+        if(idx===0){
+          html += `<td class="site" rowspan="3">${site}</td>`;
+        }
+        html += `<td class="kpi">${kpi}</td>`;
 
-    ["AVAIL","PLR","DELAY"].forEach((kpi,idx)=>{
-      html += "<tr>";
-      if(idx===0){
-        html += `<td class="site" rowspan="3">${site}</td>`;
-      }
-      html += `<td class="kpi">${kpi}</td>`;
+        hours.forEach((_,i)=>{
+          const v = row[kpi][i];
+          html += `<td class="${cls(kpi,v)}">${v ?? "-"}</td>`;
+        });
 
-      hours.forEach((_,i)=>{
-        const v = row[kpi][i];   // 1:1 index, NO shifting
-        html += `<td class="${cls(kpi,v)}">${v ?? "-"}</td>`;
+        html += "</tr>";
       });
+    }
 
-      html += "</tr>";
-    });
+    table.innerHTML = html;
+
+  }catch(e){
+    table.innerHTML="<tr><td>ERROR LOAD DATA</td></tr>";
   }
-
-  table.innerHTML = html;
 }
 
 /* ================= EXPORT CSV ================= */
 function exportCSV(){
-  if(!lastMatrixData){ alert("Analyze dulu"); return; }
+  if(!lastMatrixData){ alert("Data belum ada"); return; }
 
   const {hours,data} = lastMatrixData;
   let csv = "Site ID,KPI," + hours.join(",") + "\n";
@@ -161,11 +161,10 @@ function exportCSV(){
   a.download = `KPI_Matrix_${hours[hours.length-1].slice(0,10)}.csv`;
   a.click();
 }
-</script>
 
+/* AUTO LOAD */
+loadMatrix();
+</script>
 
 </body>
 </html>
-
-
-
