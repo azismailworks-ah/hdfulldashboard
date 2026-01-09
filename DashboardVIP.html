@@ -116,7 +116,8 @@ return html+"</tbody></table></div>";
 }
 
 async function loadData(){
-const csv=await (await fetch(CSV_URL)).text();
+const url = CSV_URL + "&_ts=" + Date.now();
+const csv = await (await fetch(url, { cache: "no-store" })).text();
 const data=Papa.parse(csv,{header:true}).data;
 let buckets={15:[],30:[],60:[],120:[],240:[]},
     next={},
