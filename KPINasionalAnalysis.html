@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KPI Daily Alert</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{margin:0;font-family:Inter;background:#f4f6f9;color:#0f172a}
+
+/* ===== HEADER ===== */
+.header{
+  background:#0f172a;
+  color:#fff;
+  padding:20px 28px;
+}
+.header h2{margin:0;font-size:22px}
+.header small{opacity:.85}
+
+/* ===== CONTROLS ===== */
+.controls{
+  background:#fff;
+  padding:14px 28px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.08)
+}
+.controls input{
+  padding:8px 10px;
+  width:280px;
+  font-size:13px;
+}
+.controls button{
+  padding:8px 18px;
+  background:#2563eb;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  font-weight:600;
+  cursor:pointer;
+}
+.controls button:hover{background:#1d4ed8}
+
+/* ===== SUMMARY ===== */
+.summary{
+  display:flex;
+  gap:16px;
+  padding:16px 28px;
+}
+.summary .box{
+  background:#fff;
+  padding:14px 18px;
+  border-radius:8px;
+  box-shadow:0 1px 3px rgba(0,0,0,.08);
+  min-width:180px;
+}
+.summary .box b{font-size:18px}
+
+/* ===== TABLE ===== */
+.table-wrap{padding:0 28px 28px;overflow:auto}
+table{
+  border-collapse:collapse;
+  background:#fff;
+  font-size:12px;
+}
+th,td{
+  border:1px solid #e5e7eb;
+  padding:6px 8px;
+  text-align:center;
+  white-space:nowrap;
+}
+th{
+  background:#1e293b;
+  color:#fff;
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+th.date{background:#020617}
+td.site{
+  font-weight:700;
+  background:#f1f5f9;
+}
+td.kpi{
+  font-weight:600;
+  background:#f8fafc;
+}
+.fail{color:#dc2626;font-weight:700}
+
+/* ===== FOOTER ===== */
+.footer{
+  padding:10px 28px;
+  font-size:11px;
+  color:#64748b;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h2>KPI DAILY ALERT – LAST 21 DAYS</h2>
+  <small>Auto updated daily | Only site with ≥7 bad days in last 7 days</small>
+</div>
+
+<div class="controls">
+  <input id="search" placeholder="Search Site ID">
+  <button onclick="exportCSV()">Export CSV</button>
+</div>
+
+<div class="summary" id="summary"></div>
+
+<div class="table-wrap">
+  <table id="tbl"></table>
+</div>
+
+<div class="footer">
+  Automatically KPI Daily Alert @AZH
+</div>
+
+<script>
+const API = "https://api.azhautomation.com/api/kpi/daily-alert";
+let raw = {};
+
+fetch(API)
+  .then(r => r.json())
+  .then(j => {
+    raw = j;
+    buildSummary();
+    render();
+  })
+  .catch(() => {
+    document.getElementById("tbl").innerHTML =
+      "<tr><td>Failed to load data</td></tr>";
+  });
+
+document.getElementById("search").oninput = render;
+
+/* ===== SUMMARY (UNCHANGED) ===== */
+function buildSummary(){
+  let total = Object.keys(raw).length;
+  let worstA = {v:100,s:"-"};
+  let worstP = {v:0,s:"-"};
+  let worstD = {v:0,s:"-"};
+
+  for(const s in raw){
+    raw[s].forEach(d=>{
+      if(d.avail < worstA.v){worstA={v:d.avail,s:s}}
+      if(d.plr > worstP.v){worstP={v:d.plr,s:s}}
+      if(d.delay > worstD.v){worstD={v:d.delay,s:s}}
+    });
+  }
+
+  document.getElementById("summary").innerHTML = `
+    <div class="box">Total Alert Site<br><b>${total}</b></div>
+    <div class="box">Worst Availability<br><b>${worstA.s}<br>${worstA.v}%</b></div>
+    <div class="box">Worst PLR<br><b>${worstP.s}<br>${worstP.v}%</b></div>
+    <div class="box">Worst Delay<br><b>${worstD.s}<br>${worstD.v} ms</b></div>
+  `;
+}
+
+/* ===== MATRIX STYLE RENDER (FIXED) ===== */
+function render(){
+  const keyword = document.getElementById("search").value.toUpperCase();
+  const table = document.getElementById("tbl");
+
+  // collect unique dates (YYYY-MM-DD only)
+  let dates = [];
+  for(const s in raw){
+    raw[s].forEach(d=>{
+      const day = d.date.slice(0,10);
+      if(!dates.includes(day)) dates.push(day);
+    });
+  }
+  dates.sort();
+
+  // header
+  let html = "<tr><th rowspan='2'>Site ID</th><th rowspan='2'>KPI</th>";
+  dates.forEach(d => html += `<th class="date">${d}</th>`);
+  html += "</tr><tr>";
+  dates.forEach(() => html += "<th></th>");
+  html += "</tr>";
+
+  for(const site in raw){
+    if(keyword && !site.includes(keyword)) continue;
+
+    const map = {};
+    raw[site].forEach(d => map[d.date.slice(0,10)] = d);
+
+    ["AVAIL","PLR","DELAY"].forEach((kpi,idx)=>{
+      html += "<tr>";
+      if(idx===0){
+        html += `<td class="site" rowspan="3">${site}</td>`;
+      }
+      html += `<td class="kpi">${kpi}</td>`;
+
+      dates.forEach(dt=>{
+        const d = map[dt];
+        let v = "-";
+        let c = "";
+        if(d){
+          if(kpi==="AVAIL"){ v=d.avail; if(v!=100) c="fail"; }
+          if(kpi==="PLR"){ v=d.plr; if(v>1) c="fail"; }
+          if(kpi==="DELAY"){ v=d.delay; if(v>5) c="fail"; }
+        }
+        html += `<td class="${c}">${v}</td>`;
+      });
+      html += "</tr>";
+    });
+  }
+
+  table.innerHTML = html;
+}
+
+/* ===== EXPORT CSV (UNCHANGED) ===== */
+function exportCSV(){
+  let csv="Site ID,Date,Availability (%),PLR (%),Delay (ms)\n";
+  for(const s in raw){
+    raw[s].forEach(d=>{
+      csv+=`${s},${d.date},${d.avail},${d.plr},${d.delay}\n`;
+    });
+  }
+  const blob=new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`KPI_Daily_Alert_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+</script>
+
+</body>
+</html>
