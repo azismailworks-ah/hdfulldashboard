@@ -94,7 +94,7 @@ function exportSnapshot(){
 }
 
 function renderSection(bucket,rows){
-const titleMap={15:"≥ 15 MENIT",30:"≥ 30 MENIT",60:"≥ 1 JAM",120:"≥ 2 JAM",240:"≥ 4 JAM (CRITICAL)"};
+const titleMap={15:"≥ 15 Minute",30:"≥ 30 Minute",60:"≥ 1 Hours",120:"≥ 2 Hours",240:"≥ 4 Hours (CRITICAL)"};
 const classMap={15:"h15",30:"h30",60:"h1h",120:"h2h",240:"h4h"};
 let html=`<div class="section"><h2 class="${classMap[bucket]}">${titleMap[bucket]} (${rows.length})</h2>
 <table><thead><tr>
@@ -244,4 +244,5 @@ setInterval(loadData,REFRESH_INTERVAL);
 </script>
 </body>
 </html>
+
 
