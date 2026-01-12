@@ -229,7 +229,7 @@ canvas{height:300px!important}
 </div>
 
 <script>
-const API = "https://api.azhautomation.com/api/kpi";
+const API = "http://localhost:8000/api/kpi";
 let c1,c2,c3,c4, c5, c6, c7, c8;
 
 function num(v){
@@ -239,6 +239,18 @@ function num(v){
 function pct(v){
   return num(v) * 100;
 }
+// === KHUSUS LINE CHART (AMAN) ===
+function numLine(v){
+  if(v === null || v === undefined || v === "" || v === "NA") return null;
+  const n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
+function pctLine(v){
+  const n = numLine(v);
+  return n === null ? null : n * 100;
+}
+
 function destroy(){
   [c1,c2,c3,c4,c5,c6,c7,c8].forEach(c=>{if(c) c.destroy()});
 }
@@ -330,7 +342,7 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Availability (%)",type:"line",data:j.data.map(d=>pct(d.availability)),borderColor:"#16a34a",yAxisID:"y1"},
+        {label:"Availability (%)",type:"line",data:j.data.map(d=>pctLine(d.availability)),borderColor:"#16a34a",yAxisID:"y1",spanGaps:false},
         {label:"LTE Traffic (GB)",data:j.data.map(d=>num(d.traffic_lte)),backgroundColor:"#93c5fd",yAxisID:"y2",stack:"traffic"},
         {label:"5G Traffic (GB)",data:j.data.map(d=>num(d.traffic_5g)),backgroundColor:"#2563eb",yAxisID:"y2",stack:"traffic"}
       ]
@@ -349,7 +361,7 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Delay (ms)",type:"line",data:j.data.map(d=>num(d.delay)),borderColor:"#dc2626",yAxisID:"y1"},
+        {label:"Delay (ms)",type:"line",data:j.data.map(d=>numLine(d.delay)),borderColor:"#dc2626",yAxisID:"y1",spanGaps:false},
         {label:"PLR (%)",data:j.data.map(d=>num(d.plr)),backgroundColor:"#f59e0b",yAxisID:"y2"}
       ]
     },
@@ -367,9 +379,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"PRB S1 (%)",data:j.data.map(d=>pct(d.prb_s1)),borderColor:"#2563eb"},
-        {label:"PRB S2 (%)",data:j.data.map(d=>pct(d.prb_s2)),borderColor:"#16a34a"},
-        {label:"PRB S3 (%)",data:j.data.map(d=>pct(d.prb_s3)),borderColor:"#dc2626"}
+        {label:"PRB S1 (%)",data:j.data.map(d=>pctLine(d.prb_s1)),borderColor:"#2563eb",spanGaps:false},
+        {label:"PRB S2 (%)",data:j.data.map(d=>pctLine(d.prb_s2)),borderColor:"#16a34a",spanGaps:false},
+        {label:"PRB S3 (%)",data:j.data.map(d=>pctLine(d.prb_s3)),borderColor:"#dc2626",spanGaps:false}
       ]
     },
     options:{
@@ -385,9 +397,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>num(d.traffic4g_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>num(d.traffic4g_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>num(d.traffic4g_s3)),borderColor:"#dc2626"}
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.traffic4g_s1)),borderColor:"#2563eb",spanGaps:false},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.traffic4g_s2)),borderColor:"#16a34a",spanGaps:false},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.traffic4g_s3)),borderColor:"#dc2626",spanGaps:false}
       ]
     },
     options:{
@@ -403,9 +415,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>num(d.ta_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>num(d.ta_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>num(d.ta_s3)),borderColor:"#dc2626"}
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.ta_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.ta_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.ta_s3)),borderColor:"#dc2626"}
       ]
     },
     options:{
@@ -421,9 +433,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>num(d.ulrssi_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>num(d.ulrssi_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>num(d.ulrssi_s3)),borderColor:"#dc2626"}
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.ulrssi_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.ulrssi_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.ulrssi_s3)),borderColor:"#dc2626"}
       ]
     },
     options:{
@@ -439,9 +451,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>num(d.rrc_user_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>num(d.rrc_user_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>num(d.rrc_user_s3)),borderColor:"#dc2626"}
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.rrc_user_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.rrc_user_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.rrc_user_s3)),borderColor:"#dc2626"}
       ]
     },
     options:{
@@ -457,9 +469,9 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>num(d.thp_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>num(d.thp_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>num(d.thp_s3)),borderColor:"#dc2626"}
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.thp_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.thp_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.thp_s3)),borderColor:"#dc2626"}
       ]
     },
     options:{
@@ -515,4 +527,3 @@ async function exportDashboard(){
 
 </body>
 </html>
-
