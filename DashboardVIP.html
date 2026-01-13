@@ -132,7 +132,7 @@ let buckets={15:[],30:[],60:[],120:[],240:[]},
 data.forEach(r=>{
 const siteId=r["Site ID"]?.trim();
 const status=(r["Status NOC"]||"").toUpperCase();
-if(!siteId||status==="CLOSED"||!SUPER_VIP_SITES.has(siteId))return;
+if(!siteId||status==="CLOSED"||status==="MONITORING"||!SUPER_VIP_SITES.has(siteId))return;
 
 const impactRaw = (r["Service Impact"] || "");
 
@@ -244,5 +244,6 @@ setInterval(loadData,REFRESH_INTERVAL);
 </script>
 </body>
 </html>
+
 
 
