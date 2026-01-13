@@ -99,7 +99,7 @@ const classMap={15:"h15",30:"h30",60:"h1h",120:"h2h",240:"h4h"};
 let html=`<div class="section"><h2 class="${classMap[bucket]}">${titleMap[bucket]} (${rows.length})</h2>
 <table><thead><tr>
 <th>Site ID</th><th>Site Name</th><th>Finding</th><th>Service Impact</th>
-<th>Escalate To</th><th>Open</th><th>Aging (H)</th><th>TT</th><th>WO</th>
+<th>Escalate To</th><th>RCA Category</th><th>Open</th><th>Aging (H)</th><th>TT</th><th>WO</th>
 </tr></thead><tbody>`;
 rows.forEach(r=>{
 html+=`<tr class="${r.highlight?'highlight':''}">
@@ -244,6 +244,7 @@ setInterval(loadData,REFRESH_INTERVAL);
 </script>
 </body>
 </html>
+
 
 
 
