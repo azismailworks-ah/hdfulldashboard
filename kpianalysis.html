@@ -303,6 +303,11 @@ async function loadData(){
   const j=await r.json();
   if(!j.data || j.data.length===0){ alert("No data"); return; }
 
+  // ✅ Tampilkan Site ID + Site Name
+  const siteName = j.site_name || "-";
+  document.getElementById("kpiTitle").innerText =
+    `KPI Trend ${site} — ${siteName}`;
+	
   const L=j.data.map(d=>d.time);
 
   // === KPI SUMMARY LOGIC ===
@@ -527,4 +532,3 @@ async function exportDashboard(){
 
 </body>
 </html>
-
