@@ -133,8 +133,8 @@ function exportSnapshot(){
 }
 
 function renderSection(bucket,rows){
-const titleMap={15:"≥ 15 Minute",60:"≥ 1 Hours",120:"≥ 2 Hours",240:"≥ 4 Hours",480:"≥ 8 Hours (CRITICAL)"};
-const classMap={15:"h15",60:"h30",1200:"h1h",240:"h2h",480:"h4h"};
+const titleMap={15:"≥ 15 Minute",120:"≥ 2 Hours",240:"≥ 4 Hours",480:"≥ 8 Hours",720:"≥ 12 Hours (CRITICAL)"};
+const classMap={15:"h15",120:"h30",240:"h1h",480:"h2h",720:"h4h"};
 let html=`<div class="section"><h2 class="${classMap[bucket]}">${titleMap[bucket]} (${rows.length})</h2>
 <table><thead><tr>
 <th>Site ID</th>
@@ -172,7 +172,7 @@ const url = CSV_URL + "&_ts=" + Date.now();
 const csv = await (await fetch(url,{cache:"no-store"})).text();
 const data = Papa.parse(csv,{header:true}).data;
 
-let buckets={15:[],60:[],120:[],240:[],480:[]},
+let buckets={15:[],120:[],240:[],480:[],720:[]},
     next={}, sf=0, sp=0, sld=0, sdeg=0;
 
 data.forEach(r=>{
@@ -197,7 +197,10 @@ if(isNaN(agingH))return;
 const min = agingH * 60;
 
 let bucket;
-if (min >= 480) {
+if (min >= 720) {
+  bucket = 720;
+}
+else if (min >= 480) {
   bucket = 480;
 }
 else if (min >= 240) {
@@ -206,9 +209,6 @@ else if (min >= 240) {
 else if (min >= 120) {
   bucket = 120;
 }
-else if (min >= 60) {
-  bucket = 60;
-}
 else if (min >= 15) {
   bucket = 15;
 }
@@ -216,14 +216,14 @@ else {
   return; // < 15 menit, tidak ditampilkan
 }
 
-if(previousBucket[siteId]==="480")bucket=480;
+if(previousBucket[siteId]==="720")bucket=720;
 next[siteId]=bucket;
 
 const isNew=previousBucket[siteId]===undefined;
 const isMove=!isNew&&previousBucket[siteId]!==bucket;
 
 if(isNew){soundNew.play().catch(()=>{});}
-else if(isMove&&bucket===480){soundCritical.play().catch(()=>{});}
+else if(isMove&&bucket===720){soundCritical.play().catch(()=>{});}
 else if(isMove){soundMove.play().catch(()=>{});}
 
 /* ===== MATRIX (MINIMAL & SAFE) ===== */
@@ -262,10 +262,10 @@ sumDeg.innerText=sdeg;
 
 dashboard.innerHTML =
   renderSection(15,buckets[15]) +
-  renderSection(60,buckets[60]) +
   renderSection(120,buckets[120]) +
   renderSection(240,buckets[240]) +
-  renderSection(480,buckets[480]);
+  renderSection(480,buckets[480]) +
+  renderSection(720,buckets[720]);
 
 updateTime.innerText="Last Update: "+new Date().toLocaleString();
 }
@@ -275,4 +275,5 @@ setInterval(loadData,REFRESH_INTERVAL);
 </script>
 </body>
 </html>
+
 
