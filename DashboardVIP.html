@@ -37,9 +37,6 @@ th{background:#f1f5f9}
 .fully{background:#fee2e2;color:#991b1b}
 .partial{background:#ffedd5;color:#9a3412}
 .deg{background:#fef9c3;color:#854d0e}
-.impact-high{background:#dc2626;color:#fff}
-.impact-medium{background:#f59e0b;color:#fff}
-.impact-low{background:#16a34a;color:#fff}
 .highlight{background:#dbeafe!important;animation:blink 1s ease-in-out 3}
 @keyframes blink{0%{opacity:1}50%{opacity:.4}100%{opacity:1}}
 .footer{text-align:right;font-size:12px;color:#64748b;padding:0 20px 10px}
@@ -56,8 +53,8 @@ td {max-width: 220px;word-break: break-word;vertical-align: top;}
   <div class="summary-box sum-partial"><span>Partial Down</span><strong id="sumPartial">0</strong></div>
   <div class="summary-box sum-deg"><span>Link Degradation</span><strong id="sumDeg">0</strong></div>
   <div class="summary-box sum-linkdown">
-  <span>Link Down</span>
-  <strong id="sumLinkDown">0</strong>
+    <span>Link Down</span>
+    <strong id="sumLinkDown">0</strong>
   </div>
 </div>
 
@@ -76,19 +73,22 @@ td {max-width: 220px;word-break: break-word;vertical-align: top;}
 /* === CONFIG TIDAK BERUBAH === */
 const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv";
 const REFRESH_INTERVAL=120000;
-const SUPER_VIP_SITES=new Set(["11TGR0200","11TGR0239","11TGR0416","11TGX0144","11TGX0193","11TGX0459","12JKP0041","12JKP0146","12JKP0178","12JKP0200","12JKP0201","12JKP0209","12JKP0211","12JKP0293","12JKP0294","12JKP0310","12JKP0344","12JKP0608","12JKS0054","12JKS0061","12JKS0134","12JKS0140","12JKS0196","12JKS0295","12JKS0310","12JKS0350","12JKS0351","12JKS0456","12JKS0504","12JKS0521","12JKS1068","12JKT0278","12JKU0016","12JKP0250","12JKP0313"]);
+const SUPER_VIP_SITES=new Set([
+  "11TGR0200","11TGR0239","11TGR0416","11TGX0144","11TGX0193","11TGX0459",
+  "12JKP0041","12JKP0146","12JKP0178","12JKP0200","12JKP0201","12JKP0209",
+  "12JKP0211","12JKP0293","12JKP0294","12JKP0310","12JKP0344","12JKP0608",
+  "12JKS0054","12JKS0061","12JKS0134","12JKS0140","12JKS0196","12JKS0295",
+  "12JKS0310","12JKS0350","12JKS0351","12JKS0456","12JKS0504","12JKS0521",
+  "12JKS1068","12JKT0278","12JKU0016","12JKP0250","12JKP0313"
+]);
 let previousBucket={};
 
 function exportSnapshot(){
-  const target = document.body; // atau bisa "#dashboard" jika mau tabel saja
-
-  html2canvas(target, {
-    scale: 2,
-    useCORS: true
-  }).then(canvas => {
-    const link = document.createElement("a");
-    link.download = "Dashboard_Super_VIP_" + new Date().toISOString().slice(0,19).replace(/:/g,"-") + ".png";
-    link.href = canvas.toDataURL("image/png");
+  const target = document.body;
+  html2canvas(target,{scale:2,useCORS:true}).then(canvas=>{
+    const link=document.createElement("a");
+    link.download="Dashboard_Super_VIP_"+new Date().toISOString().slice(0,19).replace(/:/g,"-")+".png";
+    link.href=canvas.toDataURL("image/png");
     link.click();
   });
 }
@@ -98,8 +98,17 @@ const titleMap={15:"≥ 15 Minute",30:"≥ 30 Minute",60:"≥ 1 Hours",120:"≥ 
 const classMap={15:"h15",30:"h30",60:"h1h",120:"h2h",240:"h4h"};
 let html=`<div class="section"><h2 class="${classMap[bucket]}">${titleMap[bucket]} (${rows.length})</h2>
 <table><thead><tr>
-<th>Site ID</th><th>Site Name</th><th>Finding</th><th>Service Impact</th>
-<th>Escalate To</th><th>RCA Category</th><th>Open</th><th>Aging (H)</th><th>TT</th><th>WO</th>
+<th>Site ID</th>
+<th>Site Name</th>
+<th>Finding</th>
+<th>Service Impact</th>
+<th>Matrix</th>
+<th>Escalate To</th>
+<th>RCA Category</th>
+<th>Open</th>
+<th>Aging (H)</th>
+<th>TT</th>
+<th>WO</th>
 </tr></thead><tbody>`;
 rows.forEach(r=>{
 html+=`<tr class="${r.highlight?'highlight':''}">
@@ -107,6 +116,7 @@ html+=`<tr class="${r.highlight?'highlight':''}">
 <td>${r.site_name}</td>
 <td>${r.finding || '-'}</td>
 <td><span class="badge ${r.findingClass}">${r.serviceImpact}</span></td>
+<td>${r.matrix || '-'}</td>
 <td>${r.escalateTo || '-'}</td>
 <td>${r.rcaCategory || '-'}</td>
 <td>${r.openDate || '-'}</td>
@@ -120,122 +130,91 @@ return html+"</tbody></table></div>";
 
 async function loadData(){
 const url = CSV_URL + "&_ts=" + Date.now();
-const csv = await (await fetch(url, { cache: "no-store" })).text();
-const data=Papa.parse(csv,{header:true}).data;
+const csv = await (await fetch(url,{cache:"no-store"})).text();
+const data = Papa.parse(csv,{header:true}).data;
+
 let buckets={15:[],30:[],60:[],120:[],240:[]},
-    next={},
-    sf=0,   // Fully Down
-    sp=0,   // Partial Down
-    sld=0,  // Link Down
-    sdeg=0; // Link Degradation
+    next={}, sf=0, sp=0, sld=0, sdeg=0;
 
 data.forEach(r=>{
 const siteId=r["Site ID"]?.trim();
 const status=(r["Status NOC"]||"").toUpperCase();
 if(!siteId||status==="CLOSED"||status==="MONITORING"||!SUPER_VIP_SITES.has(siteId))return;
 
-const impactRaw = (r["Service Impact"] || "");
-
-// NORMALISASI DROPDOWN VALUE
-const impact = impactRaw
-  .toString()
-  .replace(/\u00A0/g, " ")   // non-breaking space
-  .replace(/\s+/g, " ")      // multiple space
-  .trim();
-
-const up = impact.toUpperCase();
+const impactRaw=(r["Service Impact"]||"");
+const impact=impactRaw.toString().replace(/\u00A0/g," ").replace(/\s+/g," ").trim();
+const up=impact.toUpperCase();
 
 let findingType=null;
-if (up.includes("LINK DOWN")) {
-  findingType = "Link Down";
-  sld++;
-}
-else if (up.includes("LINK DEGRADATION")) {
-  findingType = "Link Degraded";
-  sdeg++;
-}
-else if (up.includes("PARTIAL")) {
-  findingType = "Partial Down";
-  sp++;
-}
-else if (up.includes("FULL") || (up.includes("DOWN") && !up.includes("PARTIAL"))) {
-  findingType = "Fully Down";
-  sf++;
-}
-else {
-  return;
-}
+if(up.includes("LINK DOWN")){findingType="Link Down";sld++;}
+else if(up.includes("LINK DEGRADATION")){findingType="Link Degraded";sdeg++;}
+else if(up.includes("PARTIAL")){findingType="Partial Down";sp++;}
+else if(up.includes("FULL")||(up.includes("DOWN")&&!up.includes("PARTIAL"))){findingType="Fully Down";sf++;}
+else{return;}
 
+const agingH=parseFloat(r["Aging Hours"]);
+if(isNaN(agingH))return;
 
-
-const agingH = parseFloat(r["Aging Hours"]);
-if (isNaN(agingH)) return;
-
-const min = agingH * 60;
-
+const min=agingH*60;
 let bucket;
-if (min >= 240) {
-  bucket = 240;
-}
-else if (min >= 120) {
-  bucket = 120;
-}
-else if (min >= 60) {
-  bucket = 60;
-}
-else if (min >= 30) {
-  bucket = 30;
-}
-else if (min >= 15) {
-  bucket = 15;
-}
-else {
-  return; // < 15 menit, tidak ditampilkan
-}
+if(min>=240)bucket=240;
+else if(min>=120)bucket=120;
+else if(min>=60)bucket=60;
+else if(min>=30)bucket=30;
+else if(min>=15)bucket=15;
+else return;
 
 if(previousBucket[siteId]==="240")bucket=240;
 next[siteId]=bucket;
 
-const isNew = previousBucket[siteId] === undefined;
-const isMove = !isNew && previousBucket[siteId] !== bucket;
+const isNew=previousBucket[siteId]===undefined;
+const isMove=!isNew&&previousBucket[siteId]!==bucket;
 
-if (isNew) {
-  document.getElementById("soundNew").play().catch(()=>{});
-}
-else if (isMove && bucket === 240) {
-  document.getElementById("soundCritical").play().catch(()=>{});
-}
-else if (isMove) {
-  document.getElementById("soundMove").play().catch(()=>{});
-}
+if(isNew){soundNew.play().catch(()=>{});}
+else if(isMove&&bucket===240){soundCritical.play().catch(()=>{});}
+else if(isMove){soundMove.play().catch(()=>{});}
+
+/* ===== MATRIX (MINIMAL & SAFE) ===== */
+const matrixRaw = (r["Matrix"] || "").toString();
+const matrixClean = matrixRaw
+  .split(/[;,]/)
+  .map(v=>v.trim())
+  .filter(v=>v.length>0)
+  .join(", ");
 
 buckets[bucket].push({
-  site_id: siteId,
-  site_name: r["Site Name"],
-  finding: r["Founding"],
+  site_id:siteId,
+  site_name:r["Site Name"],
+  finding:r["Founding"],
   findingClass:
-    findingType === "Fully Down" ? "fully" :
-    findingType === "Partial Down" ? "partial" :
-    findingType === "Link Down" ? "fully" :
-    "deg",
-  serviceImpact: impact,
-  // 🔽 TAMBAHAN BARU
-  escalateTo: r["Escalate to"],
-  rcaCategory: r["RCA Category"],  
-  openDate: r["Open Date"],
-  agingHours: r["Aging Hours"],
-  tt: r["TT"],
-  wo: r["WO"],
-  highlight: isNew || isMove
+    findingType==="Fully Down"?"fully":
+    findingType==="Partial Down"?"partial":
+    findingType==="Link Down"?"fully":"deg",
+  serviceImpact:impact,
+  matrix:matrixClean,                 // ✅ MATRIX
+  escalateTo:r["Escalate to"],
+  rcaCategory:r["RCA Category"],
+  openDate:r["Open Date"],
+  agingHours:r["Aging Hours"],
+  tt:r["TT"],
+  wo:r["WO"],
+  highlight:isNew||isMove
 });
 });
 
 previousBucket=next;
-sumFully.innerText = sf;
-sumPartial.innerText = sp;
-sumLinkDown.innerText = sld;
-sumDeg.innerText = sdeg;
-dashboard.innerHTML=renderSection(15,buckets[15])+renderSection(30,buckets[30])+renderSection(60,buckets[60])+renderSection(120,buckets[120])+renderSection(240,buckets[240]);
+sumFully.innerText=sf;
+sumPartial.innerText=sp;
+sumLinkDown.innerText=sld;
+sumDeg.innerText=sdeg;
+
+dashboard.innerHTML =
+  renderSection(15,buckets[15]) +
+  renderSection(30,buckets[30]) +
+  renderSection(60,buckets[60]) +
+  renderSection(120,buckets[120]) +
+  renderSection(240,buckets[240]);
+
 updateTime.innerText="Last Update: "+new Date().toLocaleString();
 }
 
@@ -244,11 +223,3 @@ setInterval(loadData,REFRESH_INTERVAL);
 </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
