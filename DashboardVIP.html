@@ -8,7 +8,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <style>
-/* === TIDAK ADA PERUBAHAN STYLE === */
 body{margin:0;font-family:Inter,Arial,sans-serif;background:#f4f6f9;color:#1f2937}
 header{background:#fff;border-bottom:2px solid #e5e7eb;padding:16px 28px}
 header h1{margin:0;font-size:26px;font-weight:700}
@@ -52,10 +51,7 @@ td {max-width: 220px;word-break: break-word;vertical-align: top;}
   <div class="summary-box sum-fully"><span>Fully Down</span><strong id="sumFully">0</strong></div>
   <div class="summary-box sum-partial"><span>Partial Down</span><strong id="sumPartial">0</strong></div>
   <div class="summary-box sum-deg"><span>Link Degradation</span><strong id="sumDeg">0</strong></div>
-  <div class="summary-box sum-linkdown">
-    <span>Link Down</span>
-    <strong id="sumLinkDown">0</strong>
-  </div>
+  <div class="summary-box sum-linkdown"><span>Link Down</span><strong id="sumLinkDown">0</strong></div>
 </div>
 
 <div class="action-bar">
@@ -70,7 +66,6 @@ td {max-width: 220px;word-break: break-word;vertical-align: top;}
 <audio id="soundCritical" src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"></audio>
 
 <script>
-/* === CONFIG TIDAK BERUBAH === */
 const CSV_URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vSi4xqEKAlzVicODK3F0_1t1YudCAYC98g07b-0uuRz8szfZSHUR6IQB08ptgE2GRJEN69BTE0PiYi2/pub?gid=0&single=true&output=csv";
 const REFRESH_INTERVAL=120000;
 const SUPER_VIP_SITES=new Set([
@@ -84,103 +79,124 @@ const SUPER_VIP_SITES=new Set([
 let previousBucket={};
 
 function exportSnapshot(){
-  const target = document.body;
-  html2canvas(target,{scale:2,useCORS:true}).then(canvas=>{
+  html2canvas(document.body,{scale:2,useCORS:true}).then(canvas=>{
     const link=document.createElement("a");
-    link.download="Dashboard_Super_VIP_"+new Date().toISOString().slice(0,19).replace(/:/g,"-")+".png";
+    link.download="Dashboard_"+Date.now()+".png";
     link.href=canvas.toDataURL("image/png");
     link.click();
   });
 }
 
 function renderSection(bucket,rows){
-const titleMap={15:"≥ 15 Minute",30:"≥ 30 Minute",60:"≥ 1 Hours",120:"≥ 2 Hours",240:"≥ 4 Hours (CRITICAL)"};
-const classMap={15:"h15",30:"h30",60:"h1h",120:"h2h",240:"h4h"};
+const titleMap={
+  15:"≥ 15 Minute (Lvl.1 SITE & LINK ISSUE)",
+  30:"≥ 30 Minute (Lvl.2 SITE ISSUE)",
+  60:"≥ 1 Hour (Lvl.3 SITE ISSUE & Lvl.2 LINK ISSUE)",
+  120:"≥ 2 Hours (Lvl.4 SITE ISSUE & Lvl.3 LINK ISSUE)",
+  240:"≥ 4 Hours (Lvl.5 SITE ISSUE & Lvl.4 LINK ISSUE)",
+  480:"≥ 8 Hours (Lvl.5 LINK ISSUE)"
+};
+const classMap={15:"h15",30:"h30",60:"h1h",120:"h2h",240:"h4h",480:"h4h"};
+
 let html=`<div class="section"><h2 class="${classMap[bucket]}">${titleMap[bucket]} (${rows.length})</h2>
 <table><thead><tr>
-<th>Site ID</th>
-<th>Site Name</th>
-<th>Finding</th>
-<th>Service Impact</th>
-<th>Matrix</th>
-<th>Escalate To</th>
-<th>RCA Category</th>
-<th>Open</th>
-<th>Aging (H)</th>
-<th>TT</th>
-<th>WO</th>
+<th>Site ID</th><th>Site Name</th><th>Finding</th><th>Service Impact</th>
+<th>Matrix</th><th>Escalate To</th><th>RCA Category</th>
+<th>Open</th><th>Aging (H)</th><th>TT</th><th>WO</th>
 </tr></thead><tbody>`;
+
 rows.forEach(r=>{
 html+=`<tr class="${r.highlight?'highlight':''}">
 <td>${r.site_id}</td>
 <td>${r.site_name}</td>
-<td>${r.finding || '-'}</td>
+<td>${r.finding||'-'}</td>
 <td><span class="badge ${r.findingClass}">${r.serviceImpact}</span></td>
-<td>${r.matrix || '-'}</td>
-<td>${r.escalateTo || '-'}</td>
-<td>${r.rcaCategory || '-'}</td>
-<td>${r.openDate || '-'}</td>
-<td>${r.agingHours || '-'}</td>
-<td>${r.tt || '-'}</td>
-<td>${r.wo || '-'}</td>
+<td>${r.matrix||'-'}</td>
+<td>${r.escalateTo||'-'}</td>
+<td>${r.rcaCategory||'-'}</td>
+<td>${r.openDate||'-'}</td>
+<td>${r.agingHours||'-'}</td>
+<td>${r.tt||'-'}</td>
+<td>${r.wo||'-'}</td>
 </tr>`;
 });
 return html+"</tbody></table></div>";
 }
 
 async function loadData(){
-const url = CSV_URL + "&_ts=" + Date.now();
-const csv = await (await fetch(url,{cache:"no-store"})).text();
-const data = Papa.parse(csv,{header:true}).data;
+const csv=await (await fetch(CSV_URL+"&_ts="+Date.now(),{cache:"no-store"})).text();
+const data=Papa.parse(csv,{header:true}).data;
 
-let buckets={15:[],30:[],60:[],120:[],240:[]},
-    next={}, sf=0, sp=0, sld=0, sdeg=0;
+let buckets={15:[],30:[],60:[],120:[],240:[],480:[]};
+let next={}, sf=0, sp=0, sld=0, sdeg=0;
 
 data.forEach(r=>{
 const siteId=r["Site ID"]?.trim();
 const status=(r["Status NOC"]||"").toUpperCase();
 if(!siteId||status==="CLOSED"||status==="MONITORING"||!SUPER_VIP_SITES.has(siteId))return;
 
-const impactRaw=(r["Service Impact"]||"");
-const impact=impactRaw.toString().replace(/\u00A0/g," ").replace(/\s+/g," ").trim();
-const up=impact.toUpperCase();
-
+const impact=(r["Service Impact"]||"").toUpperCase();
 let findingType=null;
-if(up.includes("LINK DOWN")){findingType="Link Down";sld++;}
-else if(up.includes("LINK DEGRADATION")){findingType="Link Degraded";sdeg++;}
-else if(up.includes("PARTIAL")){findingType="Partial Down";sp++;}
-else if(up.includes("FULL")||(up.includes("DOWN")&&!up.includes("PARTIAL"))){findingType="Fully Down";sf++;}
-else{return;}
+
+if(impact.includes("LINK DOWN")){findingType="Link Down";sld++;}
+else if(impact.includes("LINK DEGRADATION")){findingType="Link Degraded";sdeg++;}
+else if(impact.includes("PARTIAL")){findingType="Partial Down";sp++;}
+else if(impact.includes("FULL")||impact.includes("DOWN")){findingType="Fully Down";sf++;}
+else return;
 
 const agingH=parseFloat(r["Aging Hours"]);
 if(isNaN(agingH))return;
-
 const min=agingH*60;
-let bucket;
-if(min>=240)bucket=240;
-else if(min>=120)bucket=120;
-else if(min>=60)bucket=60;
-else if(min>=30)bucket=30;
-else if(min>=15)bucket=15;
-else return;
 
-if(previousBucket[siteId]==="240")bucket=240;
+let bucket;
+
+// ================= CORE RULE ENGINE =================
+if(findingType==="Fully Down"||findingType==="Partial Down"){
+  if(min>=240) bucket=240;
+  else if(min>=120) bucket=120;
+  else if(min>=60) bucket=60;
+  else if(min>=30) bucket=30;
+  else if(min>=15) bucket=15;
+  else return;
+}
+else{ // Link Down / Degradation
+  if(min>=480) bucket=480;
+  else if(min>=240) bucket=240;
+  else if(min>=120) bucket=120;
+  else if(min>=60) bucket=60;
+  else if(min>=15) bucket=15;
+  else return;
+}
+
+// ================= BUCKET LOCK =================
+if(previousBucket[siteId]){
+  const prev = previousBucket[siteId];
+  if(prev===240 && (findingType==="Fully Down"||findingType==="Partial Down")) bucket=240;
+  if(prev===480) bucket=480;
+}
+
 next[siteId]=bucket;
 
 const isNew=previousBucket[siteId]===undefined;
-const isMove=!isNew&&previousBucket[siteId]!==bucket;
+const isMove=!isNew && previousBucket[siteId]!==bucket;
 
-if(isNew){soundNew.play().catch(()=>{});}
-else if(isMove&&bucket===240){soundCritical.play().catch(()=>{});}
-else if(isMove){soundMove.play().catch(()=>{});}
+// ================= ALERT RULE =================
+if(isNew){
+  soundNew.play().catch(()=>{});
+}
+else if(isMove){
+  if(bucket===240 && (findingType==="Fully Down"||findingType==="Partial Down")){
+    soundCritical.play().catch(()=>{});
+  }
+  else if(bucket===480){
+    soundCritical.play().catch(()=>{});
+  }
+  else{
+    soundMove.play().catch(()=>{});
+  }
+}
 
-/* ===== MATRIX (MINIMAL & SAFE) ===== */
-const matrixRaw = (r["Matrix"] || "").toString();
-const matrixClean = matrixRaw
-  .split(/[;,]/)
-  .map(v=>v.trim())
-  .filter(v=>v.length>0)
-  .join(", ");
+const matrixClean=(r["Matrix"]||"").split(/[;,]/).map(v=>v.trim()).filter(Boolean).join(", ");
 
 buckets[bucket].push({
   site_id:siteId,
@@ -190,8 +206,8 @@ buckets[bucket].push({
     findingType==="Fully Down"?"fully":
     findingType==="Partial Down"?"partial":
     findingType==="Link Down"?"fully":"deg",
-  serviceImpact:impact,
-  matrix:matrixClean,                 // ✅ MATRIX
+  serviceImpact:r["Service Impact"],
+  matrix:matrixClean,
   escalateTo:r["Escalate to"],
   rcaCategory:r["RCA Category"],
   openDate:r["Open Date"],
@@ -213,7 +229,8 @@ dashboard.innerHTML =
   renderSection(30,buckets[30]) +
   renderSection(60,buckets[60]) +
   renderSection(120,buckets[120]) +
-  renderSection(240,buckets[240]);
+  renderSection(240,buckets[240]) +
+  renderSection(480,buckets[480]);
 
 updateTime.innerText="Last Update: "+new Date().toLocaleString();
 }
