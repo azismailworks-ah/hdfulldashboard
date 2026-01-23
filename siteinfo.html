@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Information Dashboard</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- PapaParse untuk parsing CSV -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    
+    <style>
+        :root {
+            --font-plus-jakarta: 'Plus Jakarta Sans', sans-serif;
+            --font-inter: 'Inter', sans-serif;
+            --huawei-red: #ff0000;
+            --dark-blue: #1e293b;
+            --vip-gold: #ffc107;
+            --primary-color: #3b82f6;
+            --info-blue: #17a2b8;
+        }
+        
+        body {
+            background: #f8fafc;
+            font-family: var(--font-inter);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* HEADER - CONSISTENT WITH ALARM DASHBOARD */
+        .executive-header {
+            background: linear-gradient(135deg, #1a2980, #26d0ce);
+            color: white;
+            padding: 16px 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .executive-header h1 {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 700;
+            font-size: 1.5rem !important;
+            margin: 0;
+        }
+        
+        .executive-header p {
+            font-family: var(--font-inter);
+            font-weight: 400;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        /* LAST UPDATE */
+        #currentTime, #lastUpdatedTime {
+            font-family: var(--font-inter);
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        /* KPI CARDS - Updated Design (Consistent) */
+        .kpi-card {
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+            transition: all 0.3s ease;
+            border: none;
+            overflow: hidden;
+            height: 100%;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,.15);
+        }
+        
+        .kpi-value {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 800;
+            font-size: 1.75rem;
+            color: #1e293b;
+        }
+        
+        .card-title {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        
+        /* FILTER CARDS */
+        .filter-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            border: none;
+        }
+        
+        .filter-card .input-group-text {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .filter-card .form-control {
+            font-family: var(--font-inter);
+            font-weight: 400;
+            font-size: 14px;
+        }
+        
+        /* BUTTONS */
+        .btn {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            border: none;
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        
+        .btn-outline-success {
+            border-radius: 10px;
+            padding: 8px 16px;
+        }
+        
+        .btn-primary:hover, .btn-outline-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        /* SUMMARY CARDS */
+        .summary-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+            border: none;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .summary-card h6 {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 14px;
+        }
+        
+        /* TABLE HEADERS - CONSISTENT */
+        .table thead th {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            font-size: 13px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border: none;
+            padding: 10px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        /* TABLE CONTENT - CONSISTENT */
+        .table tbody td {
+            font-family: var(--font-inter);
+            font-weight: 400;
+            font-size: 12px;
+            padding: 8px 6px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+            text-align: center;
+        }
+        
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #f8fafc;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: #f1f5f9;
+        }
+        
+        /* BADGES - CONSISTENT */
+        .badge {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            padding: 5px 8px;
+            border-radius: 20px;
+            font-size: 11px;
+        }
+        
+        /* SPECIAL BADGES FOR SITE TYPES */
+        .badge-huawei { 
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            border: none;
+        }
+        
+        .badge-2g { 
+            background: linear-gradient(135deg, #6c757d, #495057);
+            color: white;
+            border: none;
+        }
+        
+        .badge-4g { 
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+            border: none;
+        }
+        
+        .badge-5g { 
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border: none;
+        }
+        
+        .badge-vip { 
+            background: linear-gradient(135deg, #ffc107, #ffaa00);
+            color: #212529;
+            border: none;
+        }
+        
+        .badge-macro { 
+            background: linear-gradient(135deg, #6610f2, #520dc2);
+            color: white;
+            border: none;
+        }
+        
+        .badge-micro { 
+            background: linear-gradient(135deg, #20c997, #17a589);
+            color: white;
+            border: none;
+        }
+        
+        /* VIP ROW */
+        .vip-row {
+            background-color: rgba(255, 193, 7, 0.1) !important;
+        }
+        
+        /* LOADING */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        /* MAP */
+        #map {
+            height: 400px;
+            width: 100%;
+            border-radius: 10px;
+            z-index: 1;
+        }
+        
+        .map-container {
+            position: relative;
+        }
+        
+        .map-instructions {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            color: #6c757d;
+            text-align: center;
+            font-family: var(--font-inter);
+        }
+        
+        .map-legend {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            font-size: 0.8rem;
+            font-family: var(--font-inter);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .legend-color-red { background-color: #ff0000; border: 2px solid white; }
+        .legend-color-blue { background-color: #007bff; border: 2px solid white; }
+        .legend-color-gray { background-color: #6c757d; border: 2px solid white; }
+        
+        /* SEARCH HIGHLIGHT */
+        .search-highlight {
+            background-color: #fff3cd;
+            font-weight: 600;
+        }
+        
+        .search-site-highlight {
+            background-color: rgba(255, 0, 0, 0.1);
+            font-weight: bold;
+        }
+        
+        .within-radius-highlight {
+            background-color: rgba(0, 123, 255, 0.05);
+        }
+        
+        /* SITE BREAKDOWN */
+        .site-breakdown {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        /* RESPONSIVE ADJUSTMENTS */
+        @media (max-width: 768px) {
+            .executive-header {
+                padding: 12px 16px;
+                text-align: center;
+            }
+            
+            .executive-header h1 {
+                font-size: 1.2rem !important;
+            }
+            
+            .kpi-value {
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* DASHBOARD STATUS BADGE */
+        #dashboardStatus {
+            font-family: var(--font-plus-jakarta);
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 20px;
+        }
+        
+        /* FOOTER */
+        footer .small {
+            font-family: var(--font-inter);
+            font-weight: 400;
+            font-size: 12px;
+        }
+        
+        /* DATA INFO */
+        #dataSourceInfo {
+            font-family: var(--font-inter);
+            font-weight: 500;
+            font-size: 12px;
+        }
+        
+        /* SEARCH RESULTS TEXT */
+        #searchResultsText {
+            font-family: var(--font-inter);
+            font-weight: 400;
+            font-size: 12px;
+        }
+        
+        /* MARKER LABELS */
+        .marker-label {
+            font-weight: bold;
+            font-size: 11px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+            text-align: center;
+            padding: 2px 4px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 3px;
+            white-space: nowrap;
+            font-family: var(--font-inter);
+        }
+        
+        .marker-label-red {
+            background-color: rgba(255, 0, 0, 0.7);
+        }
+        
+        .marker-label-blue {
+            background-color: rgba(0, 123, 255, 0.7);
+        }
+        
+        .marker-label-gray {
+            background-color: rgba(108, 117, 125, 0.7);
+        }
+        
+        /* NEAREST SITES STYLING */
+        .nearest-sites-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+        
+        .nearest-sites-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .nearest-sites-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .site-distance {
+            font-size: 11px;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-family: var(--font-inter);
+        }
+        
+        .nearest-site-id {
+            font-weight: 600;
+            font-size: 12px;
+            font-family: var(--font-plus-jakarta);
+        }
+        
+        .nearest-site-name {
+            font-size: 11px;
+            color: #495057;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+            font-family: var(--font-inter);
+        }
+        
+        .nearest-sites-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        /* RADIUS INFO */
+        .radius-info {
+            background-color: #e7f3ff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 11px;
+            color: #0066cc;
+            border-left: 3px solid #0066cc;
+            font-family: var(--font-inter);
+        }
+        
+        /* SEARCH INPUT */
+        .search-input-group {
+            margin-bottom: 10px;
+        }
+        
+        .search-info {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 5px;
+            font-family: var(--font-inter);
+        }
+        
+        /* NO DATA MESSAGE */
+        .no-data-message {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            font-family: var(--font-inter);
+        }
+        
+        /* INITIAL STATE */
+        .initial-state-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            padding: 2rem;
+            text-align: center;
+            border: none;
+        }
+        
+        /* CARD HEADER */
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 1.5rem;
+        }
+        
+        /* ACTION BUTTONS */
+        .action-buttons {
+            margin-bottom: 15px;
+        }
+        
+        /* SPINNER */
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header - CONSISTENT -->
+    <div class="executive-header">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="mb-1"><i class="fas fa-tower-cell me-2"></i>Site Information Dashboard</h1>
+                    <p class="small mb-0 opacity-75">Network Site Data Visualization & Management</p>
+                </div>
+                <div class="text-end">
+                    <div class="small mb-1"><i class="fas fa-clock me-1"></i> <span id="currentTime">Loading...</span></div>
+                    <span class="badge bg-danger" id="dashboardStatus">
+                        <i class="fas fa-circle me-1"></i> Loading Data...
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-4">
+        <!-- Data Control Row -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card filter-card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-6">
+                                <h6 class="card-title mb-0"><i class="fas fa-database me-2"></i>Data Source</h6>
+                                <small class="text-muted" id="dataSourceInfo">Loading data source information...</small>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="btn btn-primary" onclick="fetchCSVData()" id="btnRefresh">
+                                    <i class="fas fa-redo me-1"></i> Refresh Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter Row -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card filter-card">
+                    <div class="card-body">
+                        <h6 class="card-title mb-3"><i class="fas fa-search me-2"></i>Search Site Information</h6>
+                        <div class="row g-2">
+                            <div class="col-md-3">
+                                <div class="input-group search-input-group">
+                                    <span class="input-group-text"><i class="fas fa-id-badge"></i></span>
+                                    <input type="text" class="form-control" id="searchSiteId" placeholder="Search by Site ID">
+                                </div>
+                                <div class="search-info">Enter Site ID to search and show 5km radius</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group search-input-group">
+                                    <span class="input-group-text"><i class="fas fa-tower-cell"></i></span>
+                                    <input type="text" class="form-control" id="searchSiteName" placeholder="Search by Site Name">
+                                </div>
+                                <div class="search-info">Enter Site Name for general search</div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="input-group search-input-group">
+                                    <span class="input-group-text"><i class="fas fa-satellite-dish"></i></span>
+                                    <input type="text" class="form-control" id="searchEnodebId" placeholder="Search by Enodeb ID">
+                                </div>
+                                <div class="search-info">Enter Enodeb ID to search</div>
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-success w-100" onclick="applyFilters()">
+                                    <i class="fas fa-search me-1"></i> Search
+                                </button>
+                            </div>
+                            <div class="col-md-1">
+                                <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
+                                    <i class="fas fa-eraser me-1"></i> Clear
+                                </button>
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterNetworkType">
+                                    <option value="">All Network Types</option>
+                                    <option value="2G">2G</option>
+                                    <option value="4G">4G</option>
+                                    <option value="5G">5G</option>
+                                    <option value="2G_4G">2G_4G</option>
+                                    <option value="2G_4G_5G">2G_4G_5G</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterRegion">
+                                    <option value="">All Regions</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterCluster">
+                                    <option value="">All Clusters</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="filterSiteType">
+                                    <option value="">All Site Types</option>
+                                    <option value="VIP_Macro">VIP Macro</option>
+                                    <option value="Macro">Macro</option>
+                                    <option value="Micro">Micro</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted" id="searchResultsText">Enter search criteria to find sites</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Summary Row - CONSISTENT DESIGN -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+                <div class="card kpi-card p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">TOTAL SITES</h6>
+                            <div class="kpi-value text-danger" id="kpiTotalSites">0</div>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tower-cell fa-2x text-danger opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">Total sites in database</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+                <div class="card kpi-card p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">5G SITES</h6>
+                            <div class="kpi-value text-primary" id="kpi5GSites">0</div>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-bolt fa-2x text-primary opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">Sites with 5G capability</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+                <div class="card kpi-card p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">VIP SITES</h6>
+                            <div class="kpi-value text-warning" id="kpiVipSites">0</div>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-crown fa-2x text-warning opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">VIP & POI category sites</div>
+                </div>
+            </div>
+            <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+                <div class="card kpi-card p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">MICRO CLUSTERS</h6>
+                            <div class="kpi-value text-info" id="kpiClusters">0</div>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-sitemap fa-2x text-info opacity-50"></i>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-2">Unique micro clusters</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map and Nearest Sites Row -->
+        <div class="row mb-4" id="resultsContainer" style="display: none;">
+            <!-- Map -->
+            <div class="col-lg-8 mb-4">
+                <div class="summary-card map-container">
+                    <h6 class="mb-3"><i class="fas fa-map me-2 text-primary"></i>Site Locations</h6>
+                    <div class="map-instructions">
+                        <i class="fas fa-info-circle me-1"></i> Map shows site locations based on search results
+                    </div>
+                    <div id="map"></div>
+                    <div class="map-legend" id="mapLegend" style="display: none;">
+                        <div class="legend-item">
+                            <div class="legend-color legend-color-red"></div>
+                            <span>Searched Site</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color legend-color-blue"></div>
+                            <span>Sites within 5km radius</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Nearest Sites -->
+            <div class="col-lg-4 mb-4">
+                <div class="summary-card">
+                    <div class="nearest-sites-header">
+                        <h6 class="mb-0"><i class="fas fa-location-arrow me-2 text-info"></i>10 Nearest Sites</h6>
+                        <span class="badge bg-info" id="nearestSitesCount">0 sites</span>
+                    </div>
+                    <div class="site-breakdown">
+                        <ul class="nearest-sites-list" id="nearestSitesList">
+                            <li class="text-center py-4 text-muted">No nearest sites data</li>
+                        </ul>
+                    </div>
+                    <hr>
+                    <h6 class="mb-3 mt-3"><i class="fas fa-info-circle me-2 text-success"></i>Search Summary</h6>
+                    <div class="small">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Total Results:</span>
+                            <span class="fw-semibold" id="totalResultsCount">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Searched Site:</span>
+                            <span class="fw-semibold" id="searchedSiteInfo">Not found</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Sites in 5km Radius:</span>
+                            <span class="fw-semibold" id="radiusSitesCount">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>VIP Sites Found:</span>
+                            <span class="fw-semibold" id="vipSitesCount">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Results Table -->
+        <div class="row" id="searchResultsTable" style="display: none;">
+            <div class="col-12">
+                <div class="summary-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0" style="font-family: var(--font-plus-jakarta); font-weight: 700;">
+                            <i class="fas fa-table me-2"></i>Search Results
+                        </h6>
+                        <div>
+                            <button class="btn btn-outline-success" onclick="exportToCSV()">
+                                <i class="fas fa-download me-1"></i> Export Results
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="flex: 1; overflow: auto;">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Site ID</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Site Name</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Enodeb ID</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">TAC</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Network Type</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Site Type</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Category VIP POI</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Region</th>
+                                    <th style="font-family: var(--font-plus-jakarta); font-weight: 600;">Micro Cluster</th>
+                                </tr>
+                            </thead>
+                            <tbody id="detailedSiteTableBody">
+                                <!-- Data akan diisi setelah pencarian -->
+                            </tbody>
+                        </table>
+                        <div id="noResultsMessage" class="no-data-message" style="display: none;">
+                            <i class="fas fa-search fa-2x mb-3"></i>
+                            <h5>No sites found</h5>
+                            <p>Try adjusting your search criteria</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Initial State Message -->
+        <div class="row mt-4" id="initialStateMessage">
+            <div class="col-12">
+                <div class="initial-state-card">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted" style="font-family: var(--font-plus-jakarta);">Search Site Information</h4>
+                    <p class="text-muted" style="font-family: var(--font-inter);">Use the search filters above to find specific sites</p>
+                    <p class="small text-muted" style="font-family: var(--font-inter);">Total sites in database: <span id="totalSitesCount" class="fw-semibold">0</span></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="text-center small text-muted">
+                    <p class="mb-1" style="font-family: var(--font-inter);">
+                        <i class="fas fa-database me-1"></i> Site Information Dashboard | 
+                        <i class="fas fa-clock me-1 ms-3"></i> Last Updated: <span id="lastUpdatedTime">-</span>
+                    </p>
+                    <p class="mb-0" style="font-family: var(--font-inter);">Enter Site ID to view site location and other sites within 5km radius</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3" style="font-family: var(--font-inter);">Loading site data from CSV...</p>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // ==================== KONFIGURASI ====================
+        // URL CSV dari Google Sheets Anda
+        const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vReYyDGCMuGVv6quqOtRns55K-nHRF9Jc_9qmN9tNHACirvFr7YLPN3ZR3voorWD0opy7f1GflJ9eEC/pub?gid=1983955719&single=true&output=csv";
+
+        // ==================== VARIABEL GLOBAL ====================
+        let allSiteData = [];
+        let filteredSiteData = [];
+        let map = null;
+        let markers = [];
+        let circleLayer = null;
+        let searchedSite = null;
+        let sitesWithinRadius = [];
+        let nearestSites = [];
+        let hasSearched = false;
+        let labelLayers = [];
+
+        // ==================== FUNGSI INISIALISASI ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Site Info Dashboard initializing...');
+            updateCurrentTime();
+            setInterval(updateCurrentTime, 1000);
+            
+            // Fetch data from CSV
+            fetchCSVData();
+            
+            // Setup event listeners
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Enter key untuk search
+            document.getElementById('searchSiteId').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+            
+            document.getElementById('searchSiteName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+            
+            document.getElementById('searchEnodebId').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') applyFilters();
+            });
+        }
+
+        // ==================== FUNGSI DATA CSV ====================
+        function fetchCSVData() {
+            console.log('Fetching CSV data from:', CSV_URL);
+            showLoading(true);
+            updateDashboardStatus('loading', 'Fetching data...');
+            
+            Papa.parse(CSV_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log('CSV parsing complete. Rows:', results.data.length);
+                    
+                    if (results.data && results.data.length > 0) {
+                        processSiteData(results.data);
+                        updateDashboardStatus('success', 'Data loaded successfully');
+                        updateDataSourceInfo(`Loaded ${results.data.length} sites from CSV`);
+                    } else {
+                        console.warn('No data found in CSV');
+                        updateDashboardStatus('error', 'No data found');
+                        updateDataSourceInfo('No data found in CSV');
+                    }
+                    showLoading(false);
+                    updateLastUpdatedTime();
+                },
+                error: function(error) {
+                    console.error('Error fetching CSV:', error);
+                    updateDashboardStatus('error', 'Failed to load data');
+                    updateDataSourceInfo('Failed to load CSV data');
+                    showLoading(false);
+                }
+            });
+        }
+
+        function processSiteData(rawData) {
+            allSiteData = [];
+            
+            // Get all unique regions, clusters, and site types for filter dropdowns
+            const regions = new Set();
+            const clusters = new Set();
+            const siteTypes = new Set();
+            
+            rawData.forEach(site => {
+                // Clean and validate data
+                const cleanedSite = {};
+                
+                // Process each column
+                Object.keys(site).forEach(key => {
+                    const value = site[key] ? site[key].toString().trim() : '';
+                    const cleanKey = key.trim();
+                    cleanedSite[cleanKey] = value;
+                });
+                
+                // Ensure we have required fields
+                if (!cleanedSite["Site ID"] && !cleanedSite["Site Name"]) {
+                    return;
+                }
+                
+                // Parse coordinates
+                let latitude = null;
+                let longitude = null;
+                
+                if (cleanedSite["Y_LATITUDE"]) {
+                    const latStr = cleanedSite["Y_LATITUDE"].toString().replace(',', '.');
+                    latitude = parseFloat(latStr);
+                }
+                
+                if (cleanedSite["X_LONGITUDE"]) {
+                    const lngStr = cleanedSite["X_LONGITUDE"].toString().replace(',', '.');
+                    longitude = parseFloat(lngStr);
+                }
+                
+                // Add to filter sets
+                if (cleanedSite["Region"]) {
+                    regions.add(cleanedSite["Region"]);
+                }
+                
+                if (cleanedSite["Micro Cluster"]) {
+                    clusters.add(cleanedSite["Micro Cluster"]);
+                }
+                
+                if (cleanedSite["Site Type"]) {
+                    siteTypes.add(cleanedSite["Site Type"]);
+                }
+                
+                // Add processed site to data
+                const processedSite = {
+                    ...cleanedSite,
+                    "Y_LATITUDE": latitude,
+                    "X_LONGITUDE": longitude,
+                    isVIP: cleanedSite["Category VIP POI"] && 
+                          (cleanedSite["Category VIP POI"].includes("VIP") || 
+                           cleanedSite["Category VIP POI"].includes("Airport") ||
+                           cleanedSite["Category VIP POI"].includes("POI")),
+                    has5G: cleanedSite["Network Type"] && cleanedSite["Network Type"].includes("5G"),
+                    networkClass: getNetworkClass(cleanedSite["Network Type"])
+                };
+                
+                allSiteData.push(processedSite);
+            });
+            
+            console.log(`Processed ${allSiteData.length} site records`);
+            
+            // Update filter dropdowns
+            updateFilterDropdowns(Array.from(regions), Array.from(clusters), Array.from(siteTypes));
+            
+            // Update KPI with total data
+            updateKPIs();
+            
+            // Update total sites count in initial message
+            document.getElementById('totalSitesCount').textContent = allSiteData.length;
+        }
+
+        function updateFilterDropdowns(regions, clusters, siteTypes) {
+            // Update region filter
+            const regionSelect = document.getElementById('filterRegion');
+            regionSelect.innerHTML = '<option value="">All Regions</option>';
+            
+            const regionsArray = Array.from(regions).sort();
+            regionsArray.forEach(region => {
+                if (region && region.trim() !== '') {
+                    const option = document.createElement('option');
+                    option.value = region;
+                    option.textContent = region;
+                    regionSelect.appendChild(option);
+                }
+            });
+            
+            // Update cluster filter
+            const clusterSelect = document.getElementById('filterCluster');
+            clusterSelect.innerHTML = '<option value="">All Clusters</option>';
+            
+            const clustersArray = Array.from(clusters).sort();
+            clustersArray.forEach(cluster => {
+                if (cluster && cluster.trim() !== '') {
+                    const option = document.createElement('option');
+                    option.value = cluster;
+                    option.textContent = cluster;
+                    clusterSelect.appendChild(option);
+                }
+            });
+            
+            // Update site type filter
+            const siteTypeSelect = document.getElementById('filterSiteType');
+            siteTypeSelect.innerHTML = '<option value="">All Site Types</option>';
+            
+            const siteTypesArray = Array.from(siteTypes).sort();
+            siteTypesArray.forEach(siteType => {
+                if (siteType && siteType.trim() !== '') {
+                    const option = document.createElement('option');
+                    option.value = siteType;
+                    option.textContent = siteType;
+                    siteTypeSelect.appendChild(option);
+                }
+            });
+        }
+
+        function getNetworkClass(networkType) {
+            if (!networkType) return 'badge-2g';
+            if (networkType.includes("5G")) return 'badge-5g';
+            if (networkType.includes("4G")) return 'badge-4g';
+            if (networkType.includes("2G")) return 'badge-2g';
+            return 'badge-2g';
+        }
+
+        // ==================== FUNGSI FILTER & PENCARIAN ====================
+        function applyFilters() {
+            console.log("Applying filters...");
+            
+            const searchSiteId = document.getElementById('searchSiteId').value.trim();
+            const searchSiteName = document.getElementById('searchSiteName').value.trim();
+            const searchEnodebId = document.getElementById('searchEnodebId').value.trim();
+            const filterNetworkType = document.getElementById('filterNetworkType').value;
+            const filterRegion = document.getElementById('filterRegion').value;
+            const filterCluster = document.getElementById('filterCluster').value;
+            const filterSiteType = document.getElementById('filterSiteType').value;
+            
+            // Reset data
+            searchedSite = null;
+            sitesWithinRadius = [];
+            nearestSites = [];
+            filteredSiteData = [];
+            
+            // Apply filters
+            allSiteData.forEach(site => {
+                let match = true;
+                
+                // Site ID search
+                if (searchSiteId) {
+                    const siteId = site["Site ID"] || '';
+                    if (!siteId.toLowerCase().includes(searchSiteId.toLowerCase())) {
+                        match = false;
+                    } else {
+                        // Jika exact match, simpan sebagai searched site
+                        if (siteId.toLowerCase() === searchSiteId.toLowerCase()) {
+                            searchedSite = site;
+                        }
+                    }
+                }
+                
+                // Site Name search
+                if (searchSiteName && match) {
+                    const siteName = site["Site Name"] || '';
+                    if (!siteName.toLowerCase().includes(searchSiteName.toLowerCase())) {
+                        match = false;
+                    }
+                }
+                
+                // Enodeb ID search
+                if (searchEnodebId && match) {
+                    const enodebId = site["Enodeb ID"] || '';
+                    if (!enodebId.toLowerCase().includes(searchEnodebId.toLowerCase())) {
+                        match = false;
+                    }
+                }
+                
+                // Network Type filter
+                if (filterNetworkType && match) {
+                    const netType = site["Network Type"] || '';
+                    if (filterNetworkType === "5G" && !netType.includes("5G")) {
+                        match = false;
+                    } else if (filterNetworkType === "4G" && !netType.includes("4G")) {
+                        match = false;
+                    } else if (filterNetworkType === "2G" && !netType.includes("2G")) {
+                        match = false;
+                    } else if (filterNetworkType === "2G_4G" && !netType.includes("2G_4G")) {
+                        match = false;
+                    } else if (filterNetworkType === "2G_4G_5G" && !netType.includes("2G_4G_5G")) {
+                        match = false;
+                    }
+                }
+                
+                // Region filter
+                if (filterRegion && match) {
+                    const region = site["Region"] || '';
+                    if (region !== filterRegion) {
+                        match = false;
+                    }
+                }
+                
+                // Cluster filter
+                if (filterCluster && match) {
+                    const cluster = site["Micro Cluster"] || '';
+                    if (cluster !== filterCluster) {
+                        match = false;
+                    }
+                }
+                
+                // Site Type filter
+                if (filterSiteType && match) {
+                    const siteType = site["Site Type"] || '';
+                    if (siteType !== filterSiteType) {
+                        match = false;
+                    }
+                }
+                
+                if (match) {
+                    filteredSiteData.push(site);
+                }
+            });
+            
+            console.log(`Found ${filteredSiteData.length} matching sites`);
+            
+            // Jika ada searched site dengan koordinat valid, cari site dalam radius 5km dan 10 site terdekat
+            if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"]) {
+                findSitesWithinRadius(searchedSite, 5); // 5 km radius
+                findNearestSites(searchedSite, 10); // 10 site terdekat
+                console.log(`Found ${sitesWithinRadius.length} sites within 5km radius`);
+                console.log(`Found ${nearestSites.length} nearest sites`);
+            }
+            
+            // Tandai bahwa sudah ada pencarian
+            hasSearched = true;
+            
+            // Update UI dengan hasil pencarian
+            updateSearchResults();
+        }
+
+        function findSitesWithinRadius(centerSite, radiusKm) {
+            if (!centerSite["Y_LATITUDE"] || !centerSite["X_LONGITUDE"]) return;
+            
+            const centerLat = centerSite["Y_LATITUDE"];
+            const centerLng = centerSite["X_LONGITUDE"];
+            
+            sitesWithinRadius = allSiteData.filter(site => {
+                // Skip site yang sama dengan searched site
+                if (site["Site ID"] === centerSite["Site ID"]) return false;
+                
+                // Cek jika site memiliki koordinat
+                if (!site["Y_LATITUDE"] || !site["X_LONGITUDE"]) return false;
+                
+                // Hitung jarak menggunakan rumus Haversine
+                const distance = calculateDistance(
+                    centerLat, centerLng,
+                    site["Y_LATITUDE"], site["X_LONGITUDE"]
+                );
+                
+                return distance <= radiusKm;
+            });
+        }
+
+        function findNearestSites(centerSite, count) {
+            if (!centerSite["Y_LATITUDE"] || !centerSite["X_LONGITUDE"]) return;
+            
+            const centerLat = centerSite["Y_LATITUDE"];
+            const centerLng = centerSite["X_LONGITUDE"];
+            
+            // Hitung jarak untuk semua site
+            const sitesWithDistance = allSiteData.map(site => {
+                let distance = Infinity;
+                
+                if (site["Site ID"] !== centerSite["Site ID"] && 
+                    site["Y_LATITUDE"] && site["X_LONGITUDE"]) {
+                    distance = calculateDistance(
+                        centerLat, centerLng,
+                        site["Y_LATITUDE"], site["X_LONGITUDE"]
+                    );
+                }
+                
+                return {
+                    ...site,
+                    distance: distance
+                };
+            });
+            
+            // Urutkan berdasarkan jarak terdekat
+            sitesWithDistance.sort((a, b) => a.distance - b.distance);
+            
+            // Ambil 10 site terdekat
+            nearestSites = sitesWithDistance.slice(0, count).filter(site => site.distance < Infinity);
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            // Rumus Haversine untuk menghitung jarak antara dua titik koordinat
+            const R = 6371; // Radius bumi dalam km
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function toRad(degrees) {
+            return degrees * (Math.PI / 180);
+        }
+
+        function clearFilters() {
+            console.log("Clearing filters...");
+            
+            document.getElementById('searchSiteId').value = '';
+            document.getElementById('searchSiteName').value = '';
+            document.getElementById('searchEnodebId').value = '';
+            document.getElementById('filterNetworkType').value = '';
+            document.getElementById('filterRegion').value = '';
+            document.getElementById('filterCluster').value = '';
+            document.getElementById('filterSiteType').value = '';
+            
+            // Reset ke keadaan awal
+            hasSearched = false;
+            searchedSite = null;
+            sitesWithinRadius = [];
+            nearestSites = [];
+            filteredSiteData = [];
+            
+            // Sembunyikan hasil pencarian
+            document.getElementById('resultsContainer').style.display = 'none';
+            document.getElementById('searchResultsTable').style.display = 'none';
+            document.getElementById('initialStateMessage').style.display = 'block';
+            document.getElementById('noResultsMessage').style.display = 'none';
+            document.getElementById('mapLegend').style.display = 'none';
+            
+            // Update search results text
+            document.getElementById('searchResultsText').textContent = 'Enter search criteria to find sites';
+            document.getElementById('searchResultsText').className = 'text-muted';
+            
+            // Clear map jika ada
+            if (map) {
+                map.remove();
+                map = null;
+                markers = [];
+                circleLayer = null;
+                labelLayers = [];
+            }
+            
+            console.log("Filters cleared");
+        }
+
+        // ==================== FUNGSI UPDATE UI HASIL PENCARIAN ====================
+        function updateSearchResults() {
+            const filteredCount = filteredSiteData.length;
+            const totalCount = allSiteData.length;
+            
+            console.log(`Updating search results: ${filteredCount} of ${totalCount} sites`);
+            
+            // Tampilkan atau sembunyikan container hasil
+            if (filteredCount > 0) {
+                // Tampilkan hasil pencarian
+                document.getElementById('resultsContainer').style.display = 'flex';
+                document.getElementById('searchResultsTable').style.display = 'block';
+                document.getElementById('initialStateMessage').style.display = 'none';
+                document.getElementById('noResultsMessage').style.display = 'none';
+                
+                // Tampilkan legend jika ada searched site dengan koordinat
+                if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"]) {
+                    document.getElementById('mapLegend').style.display = 'block';
+                } else {
+                    document.getElementById('mapLegend').style.display = 'none';
+                }
+                
+                // Update search results text
+                let resultsText = `Found <span class="fw-semibold">${filteredCount}</span> of <span class="fw-semibold">${totalCount}</span> sites`;
+                if (searchedSite && sitesWithinRadius.length > 0) {
+                    resultsText += ` (<span class="fw-semibold">${sitesWithinRadius.length}</span> sites within 5km radius)`;
+                }
+                document.getElementById('searchResultsText').innerHTML = resultsText;
+                document.getElementById('searchResultsText').className = 'text-success fw-semibold';
+                
+                // Update map dengan hasil pencarian
+                updateMapWithSearchResults();
+                
+                // Update nearest sites list
+                updateNearestSitesList();
+                
+                // Update search summary
+                updateSearchSummary();
+                
+                // Update results table
+                updateResultsTable();
+                
+                console.log("Search results displayed successfully");
+            } else {
+                // Tampilkan pesan tidak ada hasil
+                document.getElementById('resultsContainer').style.display = 'none';
+                document.getElementById('searchResultsTable').style.display = 'block';
+                document.getElementById('initialStateMessage').style.display = 'none';
+                document.getElementById('noResultsMessage').style.display = 'block';
+                document.getElementById('mapLegend').style.display = 'none';
+                
+                // Update search results text
+                document.getElementById('searchResultsText').textContent = 'No sites found matching your criteria';
+                document.getElementById('searchResultsText').className = 'text-danger fw-semibold';
+                
+                // Clear map jika ada
+                if (map) {
+                    map.remove();
+                    map = null;
+                    markers = [];
+                    circleLayer = null;
+                    labelLayers = [];
+                }
+                
+                console.log("No search results found");
+            }
+        }
+
+        function updateMapWithSearchResults() {
+            console.log("Updating map with search results...");
+            
+            // Inisialisasi map jika belum ada
+            if (!map) {
+                map = L.map('map').setView([-6.12, 106.67], 10);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                console.log("Map initialized");
+            } else {
+                // Clear existing markers, labels, dan circle
+                markers.forEach(marker => marker.removeFrom(map));
+                markers = [];
+                
+                labelLayers.forEach(label => label.removeFrom(map));
+                labelLayers = [];
+                
+                if (circleLayer) {
+                    circleLayer.removeFrom(map);
+                    circleLayer = null;
+                }
+                console.log("Existing map cleared");
+            }
+            
+            const bounds = [];
+            let markerCount = 0;
+            
+            // 1. Tambahkan searched site (jika ada) dengan warna merah
+            if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"]) {
+                const lat = searchedSite["Y_LATITUDE"];
+                const lng = searchedSite["X_LONGITUDE"];
+                
+                console.log(`Adding searched site: ${searchedSite["Site ID"]} at ${lat}, ${lng}`);
+                
+                // Marker merah untuk searched site
+                const redIcon = L.divIcon({
+                    className: 'searched-site-marker',
+                    html: `<div style="background-color: #ff0000; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.7);"></div>`,
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                
+                const marker = L.marker([lat, lng], { icon: redIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <strong>${searchedSite["Site Name"] || searchedSite["Site ID"]}</strong><br>
+                        <small>${searchedSite["Site ID"]} (SEARCHED)</small><br>
+                        Network: ${searchedSite["Network Type"] || 'N/A'}<br>
+                        Type: ${searchedSite["Site Type"] || 'N/A'}<br>
+                        Cluster: ${searchedSite["Micro Cluster"] || 'N/A'}<br>
+                        <div class="radius-info">
+                            <i class="fas fa-circle me-1"></i> Showing 5km radius
+                        </div>
+                    `);
+                
+                markers.push(marker);
+                bounds.push([lat, lng]);
+                markerCount++;
+                
+                // Tambahkan label Site ID untuk searched site
+                const searchedLabel = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'site-label',
+                        html: `<div class="marker-label marker-label-red">${searchedSite["Site ID"]}</div>`,
+                        iconSize: [60, 20],
+                        iconAnchor: [30, 20]
+                    }),
+                    zIndexOffset: 1000
+                }).addTo(map);
+                
+                labelLayers.push(searchedLabel);
+                
+                // Tambahkan circle 5km radius
+                circleLayer = L.circle([lat, lng], {
+                    color: '#007bff',
+                    fillColor: '#007bff',
+                    fillOpacity: 0.1,
+                    radius: 5000 // 5km dalam meter
+                }).addTo(map);
+                console.log("5km radius circle added");
+                
+                // Tambahkan sites dalam radius 5km dengan warna biru
+                sitesWithinRadius.forEach(site => {
+                    if (site["Y_LATITUDE"] && site["X_LONGITUDE"]) {
+                        const siteLat = site["Y_LATITUDE"];
+                        const siteLng = site["X_LONGITUDE"];
+                        
+                        // Marker biru untuk site dalam radius
+                        const blueIcon = L.divIcon({
+                            className: 'radius-site-marker',
+                            html: `<div style="background-color: #007bff; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        const distance = calculateDistance(lat, lng, siteLat, siteLng);
+                        
+                        const siteMarker = L.marker([siteLat, siteLng], { icon: blueIcon })
+                            .addTo(map)
+                            .bindPopup(`
+                                <strong>${site["Site Name"] || site["Site ID"]}</strong><br>
+                                <small>${site["Site ID"]}</small><br>
+                                Network: ${site["Network Type"] || 'N/A'}<br>
+                                Type: ${site["Site Type"] || 'N/A'}<br>
+                                Cluster: ${site["Micro Cluster"] || 'N/A'}<br>
+                                <div class="radius-info">
+                                    <i class="fas fa-ruler me-1"></i> Distance: ${distance.toFixed(2)} km
+                                </div>
+                            `);
+                        
+                        markers.push(siteMarker);
+                        bounds.push([siteLat, siteLng]);
+                        markerCount++;
+                        
+                        // Tambahkan label Site ID untuk site dalam radius
+                        const radiusLabel = L.marker([siteLat, siteLng], {
+                            icon: L.divIcon({
+                                className: 'site-label',
+                                html: `<div class="marker-label marker-label-blue">${site["Site ID"]}</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 20]
+                            }),
+                            zIndexOffset: 900
+                        }).addTo(map);
+                        
+                        labelLayers.push(radiusLabel);
+                    }
+                });
+                
+                console.log(`Added ${sitesWithinRadius.length} sites within 5km radius`);
+                
+                // Tambahkan site lainnya dari filteredData (tidak dalam radius) dengan warna default
+                filteredSiteData.forEach(site => {
+                    // Skip jika site adalah searched site atau sudah dalam radius
+                    if (site["Site ID"] === searchedSite["Site ID"] || 
+                        sitesWithinRadius.some(s => s["Site ID"] === site["Site ID"])) {
+                        return;
+                    }
+                    
+                    if (site["Y_LATITUDE"] && site["X_LONGITUDE"]) {
+                        const siteLat = site["Y_LATITUDE"];
+                        const siteLng = site["X_LONGITUDE"];
+                        
+                        // Marker default untuk site lainnya
+                        const defaultIcon = L.divIcon({
+                            className: 'default-site-marker',
+                            html: `<div style="background-color: #6c757d; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>`,
+                            iconSize: [16, 16],
+                            iconAnchor: [8, 8]
+                        });
+                        
+                        const siteMarker = L.marker([siteLat, siteLng], { icon: defaultIcon })
+                            .addTo(map)
+                            .bindPopup(`
+                                <strong>${site["Site Name"] || site["Site ID"]}</strong><br>
+                                <small>${site["Site ID"]}</small><br>
+                                Network: ${site["Network Type"] || 'N/A'}<br>
+                                Type: ${site["Site Type"] || 'N/A'}<br>
+                                Cluster: ${site["Micro Cluster"] || 'N/A'}<br>
+                            `);
+                        
+                        markers.push(siteMarker);
+                        bounds.push([siteLat, siteLng]);
+                        markerCount++;
+                        
+                        // Tambahkan label Site ID untuk site lainnya
+                        const defaultLabel = L.marker([siteLat, siteLng], {
+                            icon: L.divIcon({
+                                className: 'site-label',
+                                html: `<div class="marker-label marker-label-gray">${site["Site ID"]}</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 20]
+                            }),
+                            zIndexOffset: 800
+                        }).addTo(map);
+                        
+                        labelLayers.push(defaultLabel);
+                    }
+                });
+            } else {
+                // Jika tidak ada searched site dengan koordinat, tampilkan semua filtered sites dengan warna default
+                console.log("No searched site with coordinates, showing all filtered sites");
+                
+                filteredSiteData.forEach(site => {
+                    if (site["Y_LATITUDE"] && site["X_LONGITUDE"]) {
+                        const siteLat = site["Y_LATITUDE"];
+                        const siteLng = site["X_LONGITUDE"];
+                        
+                        // Marker default untuk semua site
+                        const defaultIcon = L.divIcon({
+                            className: 'default-site-marker',
+                            html: `<div style="background-color: #ff0000; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.5);"></div>`,
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10]
+                        });
+                        
+                        const siteMarker = L.marker([siteLat, siteLng], { icon: defaultIcon })
+                            .addTo(map)
+                            .bindPopup(`
+                                <strong>${site["Site Name"] || site["Site ID"]}</strong><br>
+                                <small>${site["Site ID"]}</small><br>
+                                Network: ${site["Network Type"] || 'N/A'}<br>
+                                Type: ${site["Site Type"] || 'N/A'}<br>
+                                Cluster: ${site["Micro Cluster"] || 'N/A'}<br>
+                            `);
+                        
+                        markers.push(siteMarker);
+                        bounds.push([siteLat, siteLng]);
+                        markerCount++;
+                        
+                        // Tambahkan label Site ID untuk semua site
+                        const siteLabel = L.marker([siteLat, siteLng], {
+                            icon: L.divIcon({
+                                className: 'site-label',
+                                html: `<div class="marker-label marker-label-red">${site["Site ID"]}</div>`,
+                                iconSize: [60, 20],
+                                iconAnchor: [30, 20]
+                            }),
+                            zIndexOffset: 900
+                        }).addTo(map);
+                        
+                        labelLayers.push(siteLabel);
+                    }
+                });
+            }
+            
+            console.log(`Added total ${markerCount} markers to map`);
+            
+            // Fit map to show all markers if there are any
+            if (bounds.length > 0) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+                console.log("Map fitted to bounds");
+            }
+        }
+
+        function updateNearestSitesList() {
+            const nearestList = document.getElementById('nearestSitesList');
+            const nearestCount = document.getElementById('nearestSitesCount');
+            
+            if (nearestSites.length > 0) {
+                let html = '';
+                
+                nearestSites.forEach((site, index) => {
+                    html += `
+                        <li>
+                            <div>
+                                <div class="nearest-site-id">${site["Site ID"] || 'N/A'}</div>
+                                <div class="nearest-site-name">${site["Site Name"] || 'N/A'}</div>
+                            </div>
+                            <div class="site-distance">${site.distance.toFixed(2)} km</div>
+                        </li>
+                    `;
+                });
+                
+                nearestList.innerHTML = html;
+                nearestCount.textContent = `${nearestSites.length} sites`;
+            } else if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"]) {
+                nearestList.innerHTML = '<li class="text-center py-4 text-muted">No other sites found with coordinates</li>';
+                nearestCount.textContent = '0 sites';
+            } else {
+                nearestList.innerHTML = '<li class="text-center py-4 text-muted">Search a site with coordinates to see nearest sites</li>';
+                nearestCount.textContent = '0 sites';
+            }
+        }
+
+        function updateSearchSummary() {
+            document.getElementById('totalResultsCount').textContent = filteredSiteData.length;
+            
+            if (searchedSite) {
+                document.getElementById('searchedSiteInfo').textContent = searchedSite["Site ID"];
+            } else {
+                document.getElementById('searchedSiteInfo').textContent = 'Not found';
+            }
+            
+            document.getElementById('radiusSitesCount').textContent = sitesWithinRadius.length;
+            
+            const vipCount = filteredSiteData.filter(site => site.isVIP).length;
+            document.getElementById('vipSitesCount').textContent = vipCount;
+        }
+
+        function updateResultsTable() {
+            const tableBody = document.getElementById('detailedSiteTableBody');
+            
+            let tableHTML = '';
+            filteredSiteData.forEach(site => {
+                const networkType = site["Network Type"] || 'Unknown';
+                const siteType = site["Site Type"] || 'Unknown';
+                const region = site["Region"] || 'N/A';
+                const microCluster = site["Micro Cluster"] || 'N/A';
+                const enodebId = site["Enodeb ID"] || 'N/A';
+                const tac = site["TAC"] || 'N/A';
+                const vipCategory = site["Category VIP POI"] || 'N/A';
+                
+                const networkClass = getNetworkClass(networkType);
+                const siteTypeClass = siteType.includes("VIP") ? "badge-vip" : 
+                                    siteType.includes("Micro") ? "badge-micro" : "badge-macro";
+                
+                // Determine row class
+                let rowClass = '';
+                if (searchedSite && site["Site ID"] === searchedSite["Site ID"]) {
+                    rowClass = 'search-site-highlight';
+                } else if (sitesWithinRadius.some(s => s["Site ID"] === site["Site ID"])) {
+                    rowClass = 'within-radius-highlight';
+                } else if (site.isVIP) {
+                    rowClass = 'vip-row';
+                }
+                
+                // Add distance info if within radius
+                let distanceInfo = '';
+                if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"] &&
+                    site["Y_LATITUDE"] && site["X_LONGITUDE"] && site["Site ID"] !== searchedSite["Site ID"]) {
+                    const distance = calculateDistance(
+                        searchedSite["Y_LATITUDE"], searchedSite["X_LONGITUDE"],
+                        site["Y_LATITUDE"], site["X_LONGITUDE"]
+                    );
+                    if (distance <= 5) {
+                        distanceInfo = `<br><small class="text-muted">${distance.toFixed(2)} km</small>`;
+                    }
+                }
+                
+                tableHTML += `
+                    <tr class="${rowClass}">
+                        <td class="fw-semibold">${site["Site ID"] || 'N/A'}${distanceInfo}</td>
+                        <td>${site["Site Name"] || 'N/A'}</td>
+                        <td>${enodebId}</td>
+                        <td>${tac}</td>
+                        <td><span class="badge ${networkClass}">${networkType}</span></td>
+                        <td><span class="badge ${siteTypeClass}">${siteType}</span></td>
+                        <td>${vipCategory}</td>
+                        <td>${region}</td>
+                        <td>${microCluster}</td>
+                    </tr>
+                `;
+            });
+            
+            tableBody.innerHTML = tableHTML;
+            console.log(`Updated table with ${filteredSiteData.length} rows`);
+        }
+
+        function updateKPIs() {
+            const totalSites = allSiteData.length;
+            const sites5G = allSiteData.filter(site => site.has5G).length;
+            const vipSites = allSiteData.filter(site => site.isVIP).length;
+            const uniqueClusters = new Set(allSiteData.map(site => site["Micro Cluster"]).filter(Boolean)).size;
+            
+            document.getElementById('kpiTotalSites').textContent = totalSites.toLocaleString();
+            document.getElementById('kpi5GSites').textContent = sites5G.toLocaleString();
+            document.getElementById('kpiVipSites').textContent = vipSites.toLocaleString();
+            document.getElementById('kpiClusters').textContent = uniqueClusters.toLocaleString();
+            
+            console.log(`KPI updated: Total=${totalSites}, 5G=${sites5G}, VIP=${vipSites}, Clusters=${uniqueClusters}`);
+        }
+
+        // ==================== FUNGSI LOADING & STATUS ====================
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.style.display = 'flex';
+            } else {
+                overlay.style.display = 'none';
+            }
+        }
+
+        function updateDashboardStatus(status, message) {
+            const statusBadge = document.getElementById('dashboardStatus');
+            
+            switch(status) {
+                case 'loading':
+                    statusBadge.className = 'badge bg-warning';
+                    statusBadge.innerHTML = `<i class="fas fa-sync fa-spin me-1"></i> ${message}`;
+                    break;
+                case 'success':
+                    statusBadge.className = 'badge bg-success';
+                    statusBadge.innerHTML = `<i class="fas fa-check-circle me-1"></i> ${message}`;
+                    break;
+                case 'warning':
+                    statusBadge.className = 'badge bg-warning';
+                    statusBadge.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> ${message}`;
+                    break;
+                case 'error':
+                    statusBadge.className = 'badge bg-danger';
+                    statusBadge.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${message}`;
+                    break;
+                default:
+                    statusBadge.className = 'badge bg-secondary';
+                    statusBadge.innerHTML = `<i class="fas fa-circle me-1"></i> ${message}`;
+            }
+        }
+
+        function updateDataSourceInfo(message) {
+            document.getElementById('dataSourceInfo').textContent = message;
+        }
+
+        // ==================== FUNGSI WAKTU ====================
+        function updateCurrentTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'short', 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit',
+                hour12: false
+            };
+            document.getElementById('currentTime').textContent = 
+                now.toLocaleDateString('en-GB', options).replace(',', '');
+        }
+
+        function updateLastUpdatedTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('lastUpdatedTime').textContent = timeString;
+        }
+
+        // ==================== FUNGSI EKSPOR ====================
+        function exportToCSV() {
+            if (!hasSearched || filteredSiteData.length === 0) {
+                alert('No search results to export! Please search for sites first.');
+                return;
+            }
+            
+            // Urutan kolom sesuai permintaan
+            const headers = [
+                "Site ID", 
+                "Site Name", 
+                "Enodeb ID", 
+                "TAC", 
+                "Network Type", 
+                "Site Type", 
+                "Category VIP POI", 
+                "Region", 
+                "Micro Cluster"
+            ];
+            
+            // Add distance column if searched site exists
+            const exportData = filteredSiteData.map(site => {
+                const siteData = {};
+                
+                // Map data sesuai urutan headers
+                headers.forEach(header => {
+                    siteData[header] = site[header] || '';
+                });
+                
+                // Add distance info if applicable
+                if (searchedSite && searchedSite["Y_LATITUDE"] && searchedSite["X_LONGITUDE"] &&
+                    site["Y_LATITUDE"] && site["X_LONGITUDE"] && site["Site ID"] !== searchedSite["Site ID"]) {
+                    const distance = calculateDistance(
+                        searchedSite["Y_LATITUDE"], searchedSite["X_LONGITUDE"],
+                        site["Y_LATITUDE"], site["X_LONGITUDE"]
+                    );
+                    if (distance <= 5) {
+                        siteData["Distance_From_Searched_Site_km"] = distance.toFixed(2);
+                    }
+                }
+                
+                return siteData;
+            });
+            
+            // Prepare CSV content
+            let csvHeaders = headers;
+            if (searchedSite) {
+                csvHeaders = [...headers, "Distance_From_Searched_Site_km"];
+            }
+            
+            const csvRows = [
+                csvHeaders.join(','),
+                ...exportData.map(site => {
+                    return csvHeaders.map(header => {
+                        const value = site[header] || '';
+                        const escaped = value.toString().replace(/"/g, '""');
+                        return escaped.includes(',') ? `"${escaped}"` : escaped;
+                    }).join(',');
+                })
+            ];
+            
+            const csvString = csvRows.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `site_search_results_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            alert(`Exported ${filteredSiteData.length} sites to CSV`);
+        }
+
+        // ==================== FUNGSI BANTUAN ====================
+        window.debugData = function() {
+            console.log('All Site Data:', allSiteData);
+            console.log('Filtered Site Data:', filteredSiteData);
+            console.log('Searched Site:', searchedSite);
+            console.log('Sites within 5km:', sitesWithinRadius);
+            console.log('Nearest Sites:', nearestSites);
+            console.log('Has Searched:', hasSearched);
+            alert(`Total sites: ${allSiteData.length}, Search results: ${filteredSiteData.length}, Sites within 5km: ${sitesWithinRadius.length}, Nearest sites: ${nearestSites.length}`);
+        };
+
+        // Ekspos fungsi penting
+        window.fetchCSVData = fetchCSVData;
+        window.applyFilters = applyFilters;
+        window.clearFilters = clearFilters;
+        window.exportToCSV = exportToCSV;
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
