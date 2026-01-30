@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>REALTIME ALARM SIA JABO</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:'Inter', sans-serif;
+  background:#f4f6f9;
+  color:#1f2937;
+}
+
+/* HEADER */
+.header{
+  background:linear-gradient(135deg,#0f172a,#1e293b);
+  color:#fff;
+  padding:24px 32px;
+}
+.header h1{
+  margin:0;
+  font-size:26px;
+  font-weight:700;
+}
+.header .update{
+  margin-top:6px;
+  font-size:13px;
+  opacity:.85;
+}
+
+/* CONTENT */
+.container{ padding:20px 24px; }
+
+/* ACTION */
+.action-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+}
+.action-bar input{
+  width:320px;
+  padding:8px 12px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+  font-size:13px;
+}
+.action-bar button{
+  background:#0f172a;
+  color:#fff;
+  border:none;
+  padding:8px 14px;
+  border-radius:6px;
+  cursor:pointer;
+  font-size:12px;
+}
+.action-bar button:hover{
+  background:#1e293b;
+}
+
+/* SUMMARY LAYOUT */
+.summary-wrapper{
+  display:grid;
+  grid-template-columns:260px 1fr; /* FIXED + WIDE */
+  gap:12px;
+  margin-bottom:14px;
+}
+
+/* SUMMARY CARD */
+.summary-card{
+  background:#fff;
+  border-radius:10px;
+  padding:14px;
+  box-shadow:0 4px 14px rgba(0,0,0,.08);
+}
+
+/* TOTAL ALARM CARD */
+.summary-total{
+  height:auto; /* NOT following breakdown height */
+}
+.summary-total h3{
+  margin:0;
+  font-size:12px;
+  color:#6b7280;
+}
+.summary-total .value{
+  margin-top:8px;
+  font-size:28px;
+  font-weight:700;
+}
+
+/* BREAKDOWN CARD */
+.summary-breakdown{
+  height:160px;            /* FIX HEIGHT */
+  display:flex;
+  flex-direction:column;
+}
+.summary-breakdown h3{
+  margin:0;
+  font-size:12px;
+  color:#6b7280;
+}
+#alarmBreakdown{
+  margin-top:8px;
+  font-size:12px;
+  line-height:1.6;
+  overflow-y:auto;         /* SCROLL */
+  white-space:nowrap;      /* ONE LINE PER ALARM */
+}
+
+/* TABLE */
+.table-wrapper{
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+  overflow:auto;
+}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+thead{
+  background:#0f172a;
+  color:#fff;
+}
+th, td{
+  padding:10px 12px;
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+}
+tbody tr:hover{ background:#f9fafb; }
+
+/* NEW ALARM */
+tr.new-alarm{
+  background:#fff7cc !important;
+  animation: blink 1s ease-in-out 2;
+}
+@keyframes blink{
+  0%{background:#fff7cc;}
+  50%{background:#ffef99;}
+  100%{background:#fff7cc;}
+}
+
+.footer{
+  margin-top:10px;
+  font-size:11px;
+  color:#6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>HELPDESK REALTIME ALARM JABODETABEK V1</h1>
+  <div class="update" id="lastUpdate">UPDATE : -</div>
+  <div class="footer">AZH AUTO MONITORING SYSTEM</div>
+</div>
+
+<div class="container">
+
+  <!-- SEARCH & EXPORT -->
+  <div class="action-bar">
+    <input type="text" id="searchInput" placeholder="Search alarm, site, TT, WO, MAE...">
+    <button onclick="exportCSV()">Export CSV</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div class="summary-wrapper">
+    <div class="summary-card summary-total">
+      <h3>Total Alarm SIA</h3>
+      <div class="value" id="totalAlarm">0</div>
+    </div>
+
+    <div class="summary-card summary-breakdown">
+      <h3>Alarm Breakdown</h3>
+      <div id="alarmBreakdown"></div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrapper">
+    <table id="alarmTable">
+      <thead>
+        <tr>
+          <th>MAE</th>
+          <th>First Occurred</th>
+          <th>Site Name</th>
+          <th>Alarm Name</th>
+          <th>Escalate To</th>
+          <th>TT</th>
+          <th>WO</th>
+          <th>Updated At</th>
+          <th>MO Location</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    Data source: Google Sheets (Realtime CSV)
+  </div>
+</div>
+
+<audio id="alarmSound">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v=" + Date.now();
+
+let tableData = [];
+let previousKeys = new Set();
+let filteredData = [];
+
+function alarmKey(r){
+  return `${r["Source"]}|${r["First Occurred (NT)"]}|${r["Name"]}`;
+}
+
+function loadData(){
+  Papa.parse(CSV_URL,{
+    download:true,
+    header:true,
+    skipEmptyLines:true,
+    complete:(res)=>{
+      tableData = res.data.sort(
+        (a,b)=> new Date(b["First Occurred (NT)"]) - new Date(a["First Occurred (NT)"])
+      );
+
+      const newKeys = new Set();
+      let newAlarmFound = false;
+
+      tableData.forEach(r=>{
+        const key = alarmKey(r);
+        newKeys.add(key);
+        r.__new = !previousKeys.has(key);
+        if(r.__new) newAlarmFound = true;
+      });
+
+      if(newAlarmFound){
+        document.getElementById("alarmSound").play();
+      }
+
+      previousKeys = newKeys;
+      applyFilter();
+      setLastUpdate();
+    }
+  });
+}
+
+function applyFilter(){
+  const q = document.getElementById("searchInput").value.toLowerCase();
+  filteredData = tableData.filter(r =>
+    Object.values(r).join(" ").toLowerCase().includes(q)
+  );
+  renderTable(filteredData);
+  renderSummary(filteredData);
+}
+
+function renderTable(data){
+  const tbody = document.querySelector("#alarmTable tbody");
+  tbody.innerHTML="";
+  data.forEach(r=>{
+    const tr=document.createElement("tr");
+    if(r.__new) tr.classList.add("new-alarm");
+    tr.innerHTML=`
+      <td>${r["Source"]||"-"}</td>
+      <td>${r["First Occurred (NT)"]||"-"}</td>
+      <td>${r["Alarm Source"]||"-"}</td>
+      <td>${r["Name"]||"-"}</td>
+      <td>${r["Escalate to"]||"-"}</td>
+      <td>${r["TT"]||"-"}</td>
+      <td>${r["WO"]||"-"}</td>
+      <td>${r["Updated At"]||"-"}</td>
+      <td>${r["MO Name"]||"-"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSummary(data){
+  document.getElementById("totalAlarm").innerText = data.length;
+
+  const map = {};
+  data.forEach(r=>{
+    const name = r["Name"] || "Unknown";
+    map[name] = (map[name]||0)+1;
+  });
+
+  document.getElementById("alarmBreakdown").innerHTML =
+    Object.entries(map)
+      .sort((a,b)=>b[1]-a[1])
+      .map(([k,v])=>`${k} : <b>${v}</b>`)
+      .join("<br>");
+}
+
+function setLastUpdate(){
+  document.getElementById("lastUpdate").innerText =
+    "UPDATE : " + new Date().toLocaleString();
+}
+
+function exportCSV(){
+  const csv = Papa.unparse(filteredData);
+  const blob = new Blob([csv],{type:"text/csv"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`HELPDESK_ALARM_${new Date().toISOString().slice(0,19)}.csv`;
+  a.click();
+}
+
+document.getElementById("searchInput").addEventListener("input",applyFilter);
+
+loadData();
+setInterval(loadData, 4*60*1000);
+</script>
+
+</body>
+</html>
