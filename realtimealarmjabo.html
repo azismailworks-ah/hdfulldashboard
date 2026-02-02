@@ -192,6 +192,7 @@ tr.new-alarm{
           <th>First Occurred</th>
           <th>Site Name</th>
           <th>Alarm Name</th>
+          <th>Repetitive (3D)</th>
           <th>Escalate To</th>
           <th>TT</th>
           <th>WO</th>
@@ -274,6 +275,7 @@ function renderTable(data){
       <td>${r["First Occurred (NT)"]||"-"}</td>
       <td>${r["Alarm Source"]||"-"}</td>
       <td>${r["Name"]||"-"}</td>
+      <td>${r["Repetitive (3D)"]||"-"}</td>
       <td>${r["Escalate to"]||"-"}</td>
       <td>${r["TT"]||"-"}</td>
       <td>${r["WO"]||"-"}</td>
@@ -322,3 +324,4 @@ setInterval(loadData, 4*60*1000);
 
 </body>
 </html>
+
