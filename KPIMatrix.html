@@ -47,7 +47,8 @@ td.kpi{font-weight:600;background:#f8fafc}
 </div>
 
 <script>
-const API = "https://api.azhautomation.com/api/kpi/matrix/cache";
+const MATRIX_TYPE = "matrix1";
+const API = `https://api.azhautomation.com/api/kpi/matrix/cache?matrix_type=${MATRIX_TYPE}`;
 let lastMatrixData = null;
 
 /* ================= KPI RULES ================= */
@@ -168,3 +169,4 @@ loadMatrix();
 
 </body>
 </html>
+
