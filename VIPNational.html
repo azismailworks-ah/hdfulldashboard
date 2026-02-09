@@ -2,44 +2,112 @@
 <html>
 <head>
 <meta charset="utf-8"/>
-<title>VIP SITE MAP FINAL</title>
+<title>VIP NOC DASHBOARD</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-body{margin:0;background:#0b0f14;color:white;font-family:Segoe UI;}
-#map{height:100vh;}
+body{
+margin:0;
+background:#0b0f14;
+font-family:Segoe UI;
+color:white;
+}
 
+/* KPI AREA */
+.kpiArea{
+background:#0f172a;
+padding:10px;
+display:flex;
+justify-content:center;
+gap:40px;
+box-shadow:0 4px 20px rgba(0,0,0,0.6);
+}
+
+.kpiBox{text-align:center;}
+.kpiBox b{font-size:26px;color:#22c55e;}
+.kpiBox div{font-size:12px;color:#9ca3af;}
+
+/* CATEGORY GRID */
+.kpiCategory{
+background:#020617;
+padding:10px;
+display:grid;
+grid-template-columns:repeat(6,1fr);
+gap:15px;
+border-bottom:1px solid #1f2937;
+}
+
+.catItem{
+background:#0f172a;
+padding:10px;
+border-radius:8px;
+text-align:center;
+}
+.catItem b{font-size:18px;color:#38bdf8;}
+
+/* MAIN */
+.main{display:flex;height:calc(100vh - 190px);}
+
+/* FILTER */
 .panel{
-position:absolute;top:15px;left:15px;z-index:999;
-background:#111827;padding:18px;border-radius:12px;
-width:300px;box-shadow:0 0 25px rgba(0,0,0,0.6);
+width:220px;
+background:#111827;
+padding:10px;
 }
 
 select,input{
-width:100%;margin-bottom:8px;padding:8px;
-background:#1f2937;border:none;border-radius:6px;color:white;
+width:100%;
+margin-bottom:10px;
+padding:8px;
+background:#1f2937;
+border:none;
+border-radius:6px;
+color:white;
 }
+
+/* MAP */
+#map{flex:1;}
 </style>
 </head>
 
 <body>
 
+<!-- HEADER -->
+<div class="header">
+MAP SITE VIP NATIONAL
+</div>
+
+<!-- KPI AREA -->
+<div class="kpiArea">
+<div class="kpiBox"><b id="kpiTotal">0</b><div>TOTAL</div></div>
+<div class="kpiBox"><b id="kpiJAYA">0</b><div>JAYA</div></div>
+<div class="kpiBox"><b id="kpiJAVA">0</b><div>JAVA</div></div>
+<div class="kpiBox"><b id="kpiKSMP">0</b><div>KSMP</div></div>
+<div class="kpiBox"><b id="kpiSUM">0</b><div>SUMATERA</div></div>
+</div>
+
+<!-- CATEGORY KPI GRID -->
+<div class="kpiCategory" id="kpiCategory"></div>
+
+<div class="main">
+
+<!-- FILTER -->
 <div class="panel">
 <b>FILTER</b>
-
 <select id="areaFilter">
 <option value="">All Area</option>
 </select>
 
 <input id="siteFilter" placeholder="Site ID">
 <input id="catFilter" placeholder="Category POI">
-<input id="remarkFilter" placeholder="Remark">
-
 </div>
 
+<!-- MAP -->
 <div id="map"></div>
+
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -47,48 +115,44 @@ background:#1f2937;border:none;border-radius:6px;color:white;
 
 const csvUrl="https://docs.google.com/spreadsheets/d/e/2PACX-1vR2w0XocC2T_melMm6GF5ZhrwfoDU1VA5HkaxeZtamrpSjuHSBecCw83YoYSrroBElh9oOrm6sc8boU/pub?gid=0&single=true&output=csv";
 
-var map=L.map('map').setView([-2.5,118],5);
+const categoryList=[
+"BOD Residence","Golden","SVP Residence","Office Non IOH","Mall & IBC2M","Mall",
+"Office","Airport Route","Airport","BOC Residence","Circle Office","Big Important Mall",
+"HOC Residence","Harbour","Top Airport to City"
+];
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-maxZoom:18
-}).addTo(map);
+var map=L.map('map').setView([-2.5,118],5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 var markerLayer=L.layerGroup().addTo(map);
-
 let allData=[];
 
-// =========================
-// LOAD CSV
-// =========================
+// Build category KPI UI
+const catWrap=document.getElementById("kpiCategory");
+categoryList.forEach(c=>{
+catWrap.innerHTML+=`
+<div class="catItem">
+<b id="cat_${c.replace(/ /g,'_')}">0</b>
+<div style="font-size:11px">${c}</div>
+</div>`;
+});
+
 Papa.parse(csvUrl,{
 download:true,
 header:true,
 skipEmptyLines:true,
 complete:function(res){
-
 allData=res.data;
-
-console.log("TOTAL SITE:",allData.length);
-
 buildAreaFilter();
-drawMarkers();
+draw();
 }
 });
 
-// =========================
-// FILTER AREA
-// =========================
 function buildAreaFilter(){
-
 const set=new Set();
-
-allData.forEach(r=>{
-if(r["Area"] && r["Area"].trim()!="")
-set.add(r["Area"].trim());
-});
+allData.forEach(r=>{ if(r["Area"]) set.add(r["Area"]); });
 
 const areaSelect=document.getElementById("areaFilter");
-
 set.forEach(a=>{
 let op=document.createElement("option");
 op.value=a;
@@ -97,54 +161,75 @@ areaSelect.appendChild(op);
 });
 
 document.querySelectorAll("select,input").forEach(el=>{
-el.addEventListener("input",drawMarkers);
+el.addEventListener("input",draw);
 });
 }
 
-// =========================
-// DRAW MARKERS (NO CLUSTER)
-// =========================
-function drawMarkers(){
+function draw(){
 
 markerLayer.clearLayers();
 
 const fArea=document.getElementById("areaFilter").value.toLowerCase();
 const fSite=document.getElementById("siteFilter").value.toLowerCase();
 const fCat=document.getElementById("catFilter").value.toLowerCase();
-const fRem=document.getElementById("remarkFilter").value.toLowerCase();
 
-let shown=0;
+let total=0,jaya=0,java=0,ksmp=0,sum=0;
+
+let catCount={};
+categoryList.forEach(c=>catCount[c]=0);
 
 allData.forEach(d=>{
 
 const lat=parseFloat(d["Latitude"]);
 const lon=parseFloat(d["Longitude"]);
-
 if(isNaN(lat)||isNaN(lon)) return;
 
 if(fArea && !d["Area"].toLowerCase().includes(fArea)) return;
 if(fSite && !d["Site ID"].toLowerCase().includes(fSite)) return;
 if(fCat && !d["Category POI"].toLowerCase().includes(fCat)) return;
-if(fRem && !d["Remark"].toLowerCase().includes(fRem)) return;
 
+total++;
+
+if(d["Area"]=="JAYA") jaya++;
+if(d["Area"]=="JAVA") java++;
+if(d["Area"]=="KSMP") ksmp++;
+if(d["Area"]=="SUMATERA") sum++;
+
+categoryList.forEach(c=>{
+if(d["Category POI"] && d["Category POI"].toLowerCase().includes(c.toLowerCase())){
+catCount[c]++;
+}
+});
+
+// ===== MARKER =====
 var m=L.marker([lat,lon]).addTo(markerLayer);
 
+// Tooltip site ID always visible
 m.bindTooltip(d["Site ID"],{permanent:true,direction:"top"});
 
+// POPUP DETAIL (INI YANG DIMINTA)
 m.bindPopup(`
+<div style="color:black;font-size:13px">
 <b>${d["Site ID"]}</b><br>
-${d["Site Name"]}<br>
+Site Name : ${d["Site Name"]}<br>
 Category : ${d["Category POI"]}<br>
-POI : ${d["Name POI"]}<br>
-Remark : ${d["Remark"]}<br>
-Area : ${d["Area"]}
+Remarks : ${d["Remark"]}<br>
+Name POI : ${d["Name POI"]}
+</div>
 `);
-
-shown++;
 
 });
 
-console.log("SITE SHOWN:",shown);
+// KPI update
+document.getElementById("kpiTotal").innerText=total;
+document.getElementById("kpiJAYA").innerText=jaya;
+document.getElementById("kpiJAVA").innerText=java;
+document.getElementById("kpiKSMP").innerText=ksmp;
+document.getElementById("kpiSUM").innerText=sum;
+
+categoryList.forEach(c=>{
+document.getElementById("cat_"+c.replace(/ /g,'_')).innerText=catCount[c];
+});
 
 }
 
