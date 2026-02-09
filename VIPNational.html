@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8"/>
+<title>VIP SITE MAP FINAL</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body{margin:0;background:#0b0f14;color:white;font-family:Segoe UI;}
+#map{height:100vh;}
+
+.panel{
+position:absolute;top:15px;left:15px;z-index:999;
+background:#111827;padding:18px;border-radius:12px;
+width:300px;box-shadow:0 0 25px rgba(0,0,0,0.6);
+}
+
+select,input{
+width:100%;margin-bottom:8px;padding:8px;
+background:#1f2937;border:none;border-radius:6px;color:white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+<b>FILTER</b>
+
+<select id="areaFilter">
+<option value="">All Area</option>
+</select>
+
+<input id="siteFilter" placeholder="Site ID">
+<input id="catFilter" placeholder="Category POI">
+<input id="remarkFilter" placeholder="Remark">
+
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+const csvUrl="https://docs.google.com/spreadsheets/d/e/2PACX-1vR2w0XocC2T_melMm6GF5ZhrwfoDU1VA5HkaxeZtamrpSjuHSBecCw83YoYSrroBElh9oOrm6sc8boU/pub?gid=0&single=true&output=csv";
+
+var map=L.map('map').setView([-2.5,118],5);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+maxZoom:18
+}).addTo(map);
+
+var markerLayer=L.layerGroup().addTo(map);
+
+let allData=[];
+
+// =========================
+// LOAD CSV
+// =========================
+Papa.parse(csvUrl,{
+download:true,
+header:true,
+skipEmptyLines:true,
+complete:function(res){
+
+allData=res.data;
+
+console.log("TOTAL SITE:",allData.length);
+
+buildAreaFilter();
+drawMarkers();
+}
+});
+
+// =========================
+// FILTER AREA
+// =========================
+function buildAreaFilter(){
+
+const set=new Set();
+
+allData.forEach(r=>{
+if(r["Area"] && r["Area"].trim()!="")
+set.add(r["Area"].trim());
+});
+
+const areaSelect=document.getElementById("areaFilter");
+
+set.forEach(a=>{
+let op=document.createElement("option");
+op.value=a;
+op.text=a;
+areaSelect.appendChild(op);
+});
+
+document.querySelectorAll("select,input").forEach(el=>{
+el.addEventListener("input",drawMarkers);
+});
+}
+
+// =========================
+// DRAW MARKERS (NO CLUSTER)
+// =========================
+function drawMarkers(){
+
+markerLayer.clearLayers();
+
+const fArea=document.getElementById("areaFilter").value.toLowerCase();
+const fSite=document.getElementById("siteFilter").value.toLowerCase();
+const fCat=document.getElementById("catFilter").value.toLowerCase();
+const fRem=document.getElementById("remarkFilter").value.toLowerCase();
+
+let shown=0;
+
+allData.forEach(d=>{
+
+const lat=parseFloat(d["Latitude"]);
+const lon=parseFloat(d["Longitude"]);
+
+if(isNaN(lat)||isNaN(lon)) return;
+
+if(fArea && !d["Area"].toLowerCase().includes(fArea)) return;
+if(fSite && !d["Site ID"].toLowerCase().includes(fSite)) return;
+if(fCat && !d["Category POI"].toLowerCase().includes(fCat)) return;
+if(fRem && !d["Remark"].toLowerCase().includes(fRem)) return;
+
+var m=L.marker([lat,lon]).addTo(markerLayer);
+
+m.bindTooltip(d["Site ID"],{permanent:true,direction:"top"});
+
+m.bindPopup(`
+<b>${d["Site ID"]}</b><br>
+${d["Site Name"]}<br>
+Category : ${d["Category POI"]}<br>
+POI : ${d["Name POI"]}<br>
+Remark : ${d["Remark"]}<br>
+Area : ${d["Area"]}
+`);
+
+shown++;
+
+});
+
+console.log("SITE SHOWN:",shown);
+
+}
+
+</script>
+</body>
+</html>
