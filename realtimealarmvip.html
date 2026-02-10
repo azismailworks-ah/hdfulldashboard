@@ -131,6 +131,7 @@ tr.new-alarm{
           <th data-key="Escalate to">Escalate to</th>
           <th data-key="TT">TT</th>
           <th data-key="WO">WO</th>
+          <th data-key="Updated At">Updated At</th>
           <th data-key="MO Name">MO Location</th>
         </tr>
       </thead>
@@ -210,6 +211,7 @@ function renderTable(data){
       <td>${r["Escalate to"]||"-"}</td>
       <td>${r["TT"]||"-"}</td>
       <td>${r["WO"]||"-"}</td>
+      <td>${r["Updated At"]||"-"}</td>
       <td>${r["MO Name"]||"-"}</td>
     `;
     tbody.appendChild(tr);
@@ -237,3 +239,4 @@ setInterval(loadData, 4*60*1000);
 
 </body>
 </html>
+
