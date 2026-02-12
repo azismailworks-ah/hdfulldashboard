@@ -8,7 +8,6 @@
 <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
-/* ===== EXISTING STYLE TETAP ===== */
 body{
   margin:0;
   font-family:'Inter', sans-serif;
@@ -46,13 +45,24 @@ body.light .card{background:#fff;border:1px solid #ddd}
   gap:6px;
 }
 .kpi{padding:6px;border:1px solid #1f2937;text-align:center}
-.kpi.red{background:#dc2626}
+
+/* ===== COLOR BUCKET ===== */
+.kpi.yellow{background:#fde047;color:#000}
+.kpi.orange{background:#fb923c;color:#000}
+.kpi.red{background:#ef4444}
+.kpi.darkred{background:#7f1d1d;animation:blink 1s infinite}
 
 .table-wrapper{margin:0 20px;border:1px solid #1f2937}
 table{width:100%;border-collapse:collapse;font-size:12px}
 th,td{padding:8px;border-bottom:1px solid #1f2937}
+
 tr.vip{background:#1e293b}
-tr.aging7{animation:blink 1s infinite}
+
+/* ===== ROW COLOR ===== */
+tr.age3{background:#fde047;color:#000}
+tr.age7{background:#fb923c;color:#000}
+tr.age14{background:#ef4444}
+tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
 
 @keyframes blink{
   0%{background:#7f1d1d}
@@ -68,7 +78,7 @@ tr.aging7{animation:blink 1s infinite}
   <h1>HD JABODETABEK REALTIME ALARM</h1>
   <div>
     <span id="lastUpdate"></span>
-	<H5>AZH Automation</h5>
+    <h5>AZH Automation</h5>
   </div>
 </div>
 
@@ -99,20 +109,20 @@ tr.aging7{animation:blink 1s infinite}
 
 <div>Alarm Aging (ALL)</div>
 <div class="kpi-grid">
-<div class="kpi"><=1<br><b id="a1">0</b></div>
-<div class="kpi"><=3<br><b id="a3">0</b></div>
-<div class="kpi"><=7<br><b id="a7">0</b></div>
-<div class="kpi"><=14<br><b id="a14">0</b></div>
-<div class="kpi red">>14<br><b id="a14p">0</b></div>
+<div class="kpi" id="k1"><=1<br><b id="a1">0</b></div>
+<div class="kpi yellow" id="k3"><=3<br><b id="a3">0</b></div>
+<div class="kpi orange" id="k7"><=7<br><b id="a7">0</b></div>
+<div class="kpi red" id="k14"><=14<br><b id="a14">0</b></div>
+<div class="kpi darkred" id="k14p">>14<br><b id="a14p">0</b></div>
 </div>
 
 <div style="margin-top:10px">Alarm Aging (VIP)</div>
 <div class="kpi-grid">
-<div class="kpi"><=1<br><b id="v1">0</b></div>
-<div class="kpi"><=3<br><b id="v3">0</b></div>
-<div class="kpi"><=7<br><b id="v7">0</b></div>
-<div class="kpi"><=14<br><b id="v14">0</b></div>
-<div class="kpi red">>14<br><b id="v14p">0</b></div>
+<div class="kpi" id="vk1"><=1<br><b id="v1">0</b></div>
+<div class="kpi yellow" id="vk3"><=3<br><b id="v3">0</b></div>
+<div class="kpi orange" id="vk7"><=7<br><b id="v7">0</b></div>
+<div class="kpi red" id="vk14"><=14<br><b id="v14">0</b></div>
+<div class="kpi darkred" id="vk14p">>14<br><b id="v14p">0</b></div>
 </div>
 
 </div>
@@ -122,15 +132,15 @@ tr.aging7{animation:blink 1s infinite}
 <table id="alarmTable">
 <thead>
 <tr>
-          <th>MAE</th>
-          <th>First Occurred</th>
-          <th>Site Name</th>
-          <th>Alarm Name</th>
-          <th>Escalate To</th>
-          <th>TT</th>
-          <th>WO</th>
-          <th>Updated At</th>
-          <th>MO Location</th>
+<th>MAE</th>
+<th>First Occurred</th>
+<th>Site Name</th>
+<th>Alarm Name</th>
+<th>Escalate To</th>
+<th>TT</th>
+<th>WO</th>
+<th>Updated At</th>
+<th>MO Location</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -179,8 +189,13 @@ function renderTable(data){
  tbody.innerHTML="";
  data.forEach(r=>{
    const tr=document.createElement("tr");
+
    if(r.vip) tr.classList.add("vip");
-   if(r.aging>7) tr.classList.add("aging7");
+
+   if(r.aging>14) tr.classList.add("age14p");
+   else if(r.aging>7) tr.classList.add("age14");
+   else if(r.aging>3) tr.classList.add("age7");
+   else if(r.aging>1) tr.classList.add("age3");
 
    tr.innerHTML=`
       <td>${r["Source"]||"-"}</td>
@@ -225,8 +240,6 @@ function renderSummary(data){
  buildAging(data,true);
 }
 
-/* ================= FIXED LOGIC ================= */
-
 function buildAging(data,isVIP){
 
  let b1=0,b3=0,b7=0,b14=0,b14p=0;
@@ -267,10 +280,6 @@ function exportCSV(){
  a.href=URL.createObjectURL(blob);
  a.download="alarm.csv";
  a.click();
-}
-
-function toggleMode(){
- document.body.classList.toggle("light");
 }
 
 document.getElementById("searchInput").addEventListener("input",applyFilter);
