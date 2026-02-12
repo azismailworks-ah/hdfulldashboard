@@ -2,154 +2,62 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>REALTIME ALARM SIA JABO</title>
+<title>NOC REALTIME ALARM</title>
 
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
 
 <style>
+/* ===== EXISTING STYLE TETAP ===== */
 body{
   margin:0;
   font-family:'Inter', sans-serif;
-  background:#f4f6f9;
-  color:#1f2937;
+  background:#0b1220;
+  color:#e5e7eb;
 }
+body.light{background:#f4f6f9;color:#111827}
 
-/* HEADER */
 .header{
-  background:linear-gradient(135deg,#0f172a,#1e293b);
-  color:#fff;
-  padding:24px 32px;
-}
-.header h1{
-  margin:0;
-  font-size:26px;
-  font-weight:700;
-}
-.header .update{
-  margin-top:6px;
-  font-size:13px;
-  opacity:.85;
-}
-
-/* CONTENT */
-.container{ padding:20px 24px; }
-
-/* ACTION */
-.action-bar{
+  background:#020617;
+  padding:18px 28px;
+  border-bottom:1px solid #1f2937;
   display:flex;
   justify-content:space-between;
-  align-items:center;
-  margin-bottom:14px;
 }
-.action-bar input{
-  width:320px;
-  padding:8px 12px;
-  border-radius:6px;
-  border:1px solid #d1d5db;
-  font-size:13px;
-}
-.action-bar button{
-  background:#0f172a;
-  color:#fff;
-  border:none;
-  padding:8px 14px;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:12px;
-}
-.action-bar button:hover{
-  background:#1e293b;
-}
+.toggle{cursor:pointer}
 
-/* SUMMARY LAYOUT */
 .summary-wrapper{
   display:grid;
-  grid-template-columns:260px 1fr; /* FIXED + WIDE */
-  gap:12px;
-  margin-bottom:14px;
+  grid-template-columns:260px 1fr 420px;
+  gap:10px;
+  padding:0 20px 12px 20px;
 }
+.card{
+  background:#020617;
+  border:1px solid #1f2937;
+  border-radius:8px;
+  padding:12px;
+}
+body.light .card{background:#fff;border:1px solid #ddd}
 
-/* SUMMARY CARD */
-.summary-card{
-  background:#fff;
-  border-radius:10px;
-  padding:14px;
-  box-shadow:0 4px 14px rgba(0,0,0,.08);
+.kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:6px;
 }
+.kpi{padding:6px;border:1px solid #1f2937;text-align:center}
+.kpi.red{background:#dc2626}
 
-/* TOTAL ALARM CARD */
-.summary-total{
-  height:auto; /* NOT following breakdown height */
-}
-.summary-total h3{
-  margin:0;
-  font-size:12px;
-  color:#6b7280;
-}
-.summary-total .value{
-  margin-top:8px;
-  font-size:28px;
-  font-weight:700;
-}
+.table-wrapper{margin:0 20px;border:1px solid #1f2937}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px;border-bottom:1px solid #1f2937}
+tr.vip{background:#1e293b}
+tr.aging7{animation:blink 1s infinite}
 
-/* BREAKDOWN CARD */
-.summary-breakdown{
-  height:160px;            /* FIX HEIGHT */
-  display:flex;
-  flex-direction:column;
-}
-.summary-breakdown h3{
-  margin:0;
-  font-size:12px;
-  color:#6b7280;
-}
-#alarmBreakdown{
-  margin-top:8px;
-  font-size:12px;
-  line-height:1.6;
-  overflow-y:auto;         /* SCROLL */
-  white-space:nowrap;      /* ONE LINE PER ALARM */
-}
-
-/* TABLE */
-.table-wrapper{
-  background:#fff;
-  border-radius:10px;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
-  overflow:auto;
-}
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-thead{
-  background:#0f172a;
-  color:#fff;
-}
-th, td{
-  padding:10px 12px;
-  border-bottom:1px solid #e5e7eb;
-  white-space:nowrap;
-}
-tbody tr:hover{ background:#f9fafb; }
-
-/* NEW ALARM */
-tr.new-alarm{
-  background:#fff7cc !important;
-  animation: blink 1s ease-in-out 2;
-}
 @keyframes blink{
-  0%{background:#fff7cc;}
-  50%{background:#ffef99;}
-  100%{background:#fff7cc;}
-}
-
-.footer{
-  margin-top:10px;
-  font-size:11px;
-  color:#6b7280;
+  0%{background:#7f1d1d}
+  50%{background:#dc2626}
+  100%{background:#7f1d1d}
 }
 </style>
 </head>
@@ -157,172 +65,219 @@ tr.new-alarm{
 <body>
 
 <div class="header">
-  <h1>HELPDESK REALTIME ALARM JABODETABEK V1</h1>
-  <div class="update" id="lastUpdate">UPDATE : -</div>
-  <div class="footer">AZH AUTO MONITORING SYSTEM</div>
+  <h1>HD JABODETABEK REALTIME ALARM</h1>
+  <div>
+    <span id="lastUpdate"></span>
+	<H5>AZH Automation</h5>
+  </div>
 </div>
 
-<div class="container">
+<div class="action-bar" style="padding:12px 20px">
+<input type="text" id="searchInput" placeholder="Search...">
+<button onclick="exportCSV()">Export</button>
+</div>
 
-  <!-- SEARCH & EXPORT -->
-  <div class="action-bar">
-    <input type="text" id="searchInput" placeholder="Search alarm, site, TT, WO, MAE...">
-    <button onclick="exportCSV()">Export CSV</button>
-  </div>
+<div class="summary-wrapper">
 
-  <!-- SUMMARY -->
-  <div class="summary-wrapper">
-    <div class="summary-card summary-total">
-      <h3>Total Alarm SIA</h3>
-      <div class="value" id="totalAlarm">0</div>
-    </div>
+<div class="card">
+<div>Total Alarm</div>
+<div id="totalAlarm" style="font-size:24px">0</div>
 
-    <div class="summary-card summary-breakdown">
-      <h3>Alarm Breakdown</h3>
-      <div id="alarmBreakdown"></div>
-    </div>
-  </div>
+<div>Total Site</div>
+<div id="totalSite" style="font-size:24px">0</div>
 
-  <!-- TABLE -->
-  <div class="table-wrapper">
-    <table id="alarmTable">
-      <thead>
-        <tr>
+<div>Total VIP Site</div>
+<div id="totalVIP" style="font-size:24px">0</div>
+</div>
+
+<div class="card">
+<div>Alarm Breakdown</div>
+<div id="alarmBreakdown" style="font-size:12px;max-height:160px;overflow:auto"></div>
+</div>
+
+<div class="card">
+
+<div>Alarm Aging (ALL)</div>
+<div class="kpi-grid">
+<div class="kpi"><=1<br><b id="a1">0</b></div>
+<div class="kpi"><=3<br><b id="a3">0</b></div>
+<div class="kpi"><=7<br><b id="a7">0</b></div>
+<div class="kpi"><=14<br><b id="a14">0</b></div>
+<div class="kpi red">>14<br><b id="a14p">0</b></div>
+</div>
+
+<div style="margin-top:10px">Alarm Aging (VIP)</div>
+<div class="kpi-grid">
+<div class="kpi"><=1<br><b id="v1">0</b></div>
+<div class="kpi"><=3<br><b id="v3">0</b></div>
+<div class="kpi"><=7<br><b id="v7">0</b></div>
+<div class="kpi"><=14<br><b id="v14">0</b></div>
+<div class="kpi red">>14<br><b id="v14p">0</b></div>
+</div>
+
+</div>
+</div>
+
+<div class="table-wrapper">
+<table id="alarmTable">
+<thead>
+<tr>
           <th>MAE</th>
           <th>First Occurred</th>
           <th>Site Name</th>
           <th>Alarm Name</th>
-          <th>Repetitive (3D)</th>
           <th>Escalate To</th>
           <th>TT</th>
           <th>WO</th>
           <th>Updated At</th>
           <th>MO Location</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div class="footer">
-    Data source: Google Sheets (Realtime CSV)
-  </div>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
 </div>
 
-<audio id="alarmSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-</audio>
-
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v=" + Date.now();
+let tableData=[];
+let filteredData=[];
 
-let tableData = [];
-let previousKeys = new Set();
-let filteredData = [];
-
-function alarmKey(r){
-  return `${r["Source"]}|${r["First Occurred (NT)"]}|${r["Name"]}`;
+function csvUrl(){
+ return "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v="+Date.now();
 }
 
 function loadData(){
-  Papa.parse(CSV_URL,{
-    download:true,
-    header:true,
-    skipEmptyLines:true,
-    complete:(res)=>{
-      tableData = res.data.sort(
-        (a,b)=> new Date(b["First Occurred (NT)"]) - new Date(a["First Occurred (NT)"])
-      );
+ Papa.parse(csvUrl(),{
+  download:true,
+  header:true,
+  complete:(res)=>{
+   tableData=res.data.filter(r=>r["Name"]);
+   const now=new Date();
 
-      const newKeys = new Set();
-      let newAlarmFound = false;
+   tableData.forEach(r=>{
+     const t=new Date(r["First Occurred (NT)"]);
+     r.aging=(now-t)/86400000;
+     r.vip=r["Alarm Source"]?.includes("VIP");
+   });
 
-      tableData.forEach(r=>{
-        const key = alarmKey(r);
-        newKeys.add(key);
-        r.__new = !previousKeys.has(key);
-        if(r.__new) newAlarmFound = true;
-      });
-
-      if(newAlarmFound){
-        document.getElementById("alarmSound").play();
-      }
-
-      previousKeys = newKeys;
-      applyFilter();
-      setLastUpdate();
-    }
-  });
+   applyFilter();
+   setLastUpdate();
+  }
+ });
 }
 
 function applyFilter(){
-  const q = document.getElementById("searchInput").value.toLowerCase();
-  filteredData = tableData.filter(r =>
-    Object.values(r).join(" ").toLowerCase().includes(q)
-  );
-  renderTable(filteredData);
-  renderSummary(filteredData);
+ const q=document.getElementById("searchInput").value.toLowerCase();
+ filteredData=tableData.filter(r=>
+   Object.values(r).join(" ").toLowerCase().includes(q)
+ );
+ renderTable(filteredData);
+ renderSummary(filteredData);
 }
 
 function renderTable(data){
-  const tbody = document.querySelector("#alarmTable tbody");
-  tbody.innerHTML="";
-  data.forEach(r=>{
-    const tr=document.createElement("tr");
-    if(r.__new) tr.classList.add("new-alarm");
-    tr.innerHTML=`
+ const tbody=document.querySelector("#alarmTable tbody");
+ tbody.innerHTML="";
+ data.forEach(r=>{
+   const tr=document.createElement("tr");
+   if(r.vip) tr.classList.add("vip");
+   if(r.aging>7) tr.classList.add("aging7");
+
+   tr.innerHTML=`
       <td>${r["Source"]||"-"}</td>
       <td>${r["First Occurred (NT)"]||"-"}</td>
       <td>${r["Alarm Source"]||"-"}</td>
       <td>${r["Name"]||"-"}</td>
-      <td>${r["Repetitive (3D)"]||"-"}</td>
       <td>${r["Escalate to"]||"-"}</td>
       <td>${r["TT"]||"-"}</td>
       <td>${r["WO"]||"-"}</td>
       <td>${r["Updated At"]||"-"}</td>
       <td>${r["MO Name"]||"-"}</td>
     `;
-    tbody.appendChild(tr);
-  });
+   tbody.appendChild(tr);
+ });
 }
 
 function renderSummary(data){
-  document.getElementById("totalAlarm").innerText = data.length;
 
-  const map = {};
-  data.forEach(r=>{
-    const name = r["Name"] || "Unknown";
-    map[name] = (map[name]||0)+1;
-  });
+ document.getElementById("totalAlarm").innerText=data.length;
 
-  document.getElementById("alarmBreakdown").innerHTML =
-    Object.entries(map)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([k,v])=>`${k} : <b>${v}</b>`)
-      .join("<br>");
+ const siteSet=new Set();
+ const vipSet=new Set();
+
+ data.forEach(r=>{
+   siteSet.add(r["Alarm Source"]);
+   if(r.vip) vipSet.add(r["Alarm Source"]);
+ });
+
+ document.getElementById("totalSite").innerText=siteSet.size;
+ document.getElementById("totalVIP").innerText=vipSet.size;
+
+ const map={};
+ data.forEach(r=>{
+   map[r["Name"]]=(map[r["Name"]]||0)+1;
+ });
+
+ document.getElementById("alarmBreakdown").innerHTML=
+ Object.entries(map).sort((a,b)=>b[1]-a[1])
+ .map(([k,v])=>`${k}: <b>${v}</b>`).join("<br>");
+
+ buildAging(data,false);
+ buildAging(data,true);
+}
+
+/* ================= FIXED LOGIC ================= */
+
+function buildAging(data,isVIP){
+
+ let b1=0,b3=0,b7=0,b14=0,b14p=0;
+ const siteAging={};
+
+ data.forEach(r=>{
+   if(isVIP && !r.vip) return;
+
+   const s=r["Alarm Source"];
+   if(!siteAging[s]||r.aging>siteAging[s]) siteAging[s]=r.aging;
+ });
+
+ Object.values(siteAging).forEach(d=>{
+   if(d<=1) b1++;
+   else if(d<=3) b3++;
+   else if(d<=7) b7++;
+   else if(d<=14) b14++;
+   else b14p++;
+ });
+
+ if(!isVIP){
+   a1.innerText=b1; a3.innerText=b3; a7.innerText=b7;
+   a14.innerText=b14; a14p.innerText=b14p;
+ }else{
+   v1.innerText=b1; v3.innerText=b3; v7.innerText=b7;
+   v14.innerText=b14; v14p.innerText=b14p;
+ }
 }
 
 function setLastUpdate(){
-  document.getElementById("lastUpdate").innerText =
-    "UPDATE : " + new Date().toLocaleString();
+ document.getElementById("lastUpdate").innerText=new Date().toLocaleString();
 }
 
 function exportCSV(){
-  const csv = Papa.unparse(filteredData);
-  const blob = new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`HELPDESK_ALARM_${new Date().toISOString().slice(0,19)}.csv`;
-  a.click();
+ const csv=Papa.unparse(filteredData);
+ const blob=new Blob([csv]);
+ const a=document.createElement("a");
+ a.href=URL.createObjectURL(blob);
+ a.download="alarm.csv";
+ a.click();
+}
+
+function toggleMode(){
+ document.body.classList.toggle("light");
 }
 
 document.getElementById("searchInput").addEventListener("input",applyFilter);
 
 loadData();
-setInterval(loadData, 1*60*1000);
+setInterval(loadData,60000);
 </script>
 
 </body>
 </html>
-
-
