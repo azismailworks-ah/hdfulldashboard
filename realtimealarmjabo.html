@@ -13,9 +13,20 @@ body{
   font-family:'Inter', sans-serif;
   background:#0b1220;
   color:#e5e7eb;
+  overflow:hidden;
 }
 body.light{background:#f4f6f9;color:#111827}
 
+/* ================= STICKY TOP AREA ================= */
+.top-fixed{
+  position:sticky;
+  top:0;
+  z-index:9999;
+  background:#0b1220;
+}
+body.light .top-fixed{background:#f4f6f9}
+
+/* HEADER */
 .header{
   background:#020617;
   padding:18px 28px;
@@ -23,14 +34,21 @@ body.light{background:#f4f6f9;color:#111827}
   display:flex;
   justify-content:space-between;
 }
-.toggle{cursor:pointer}
+body.light .header{background:#fff}
 
+/* SEARCH */
+.action-bar{
+  padding:12px 20px;
+}
+
+/* KPI */
 .summary-wrapper{
   display:grid;
   grid-template-columns:260px 1fr 420px;
   gap:10px;
   padding:0 20px 12px 20px;
 }
+
 .card{
   background:#020617;
   border:1px solid #1f2937;
@@ -46,19 +64,41 @@ body.light .card{background:#fff;border:1px solid #ddd}
 }
 .kpi{padding:6px;border:1px solid #1f2937;text-align:center}
 
-/* ===== COLOR BUCKET ===== */
 .kpi.yellow{background:#fde047;color:#000}
 .kpi.orange{background:#fb923c;color:#000}
 .kpi.red{background:#ef4444}
 .kpi.darkred{background:#7f1d1d;animation:blink 1s infinite}
 
-.table-wrapper{margin:0 20px;border:1px solid #1f2937}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{padding:8px;border-bottom:1px solid #1f2937}
+/* ================= TABLE ================= */
+
+.table-wrapper{
+  height:calc(100vh - 320px);
+  overflow:auto;
+  margin:0 20px;
+  border:1px solid #1f2937;
+}
+
+/* sticky table header */
+thead th{
+  position:sticky;
+  top:0;
+  background:#020617;
+  z-index:5;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:12px;
+}
+
+th,td{
+  padding:8px;
+  border-bottom:1px solid #1f2937;
+}
 
 tr.vip{background:#1e293b}
 
-/* ===== ROW COLOR ===== */
 tr.age3{background:#fde047;color:#000}
 tr.age7{background:#fb923c;color:#000}
 tr.age14{background:#ef4444}
@@ -74,6 +114,8 @@ tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
 
 <body>
 
+<div class="top-fixed">
+
 <div class="header">
   <h1>HD JABODETABEK REALTIME ALARM</h1>
   <div>
@@ -82,7 +124,7 @@ tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
   </div>
 </div>
 
-<div class="action-bar" style="padding:12px 20px">
+<div class="action-bar">
 <input type="text" id="searchInput" placeholder="Search...">
 <button onclick="exportCSV()">Export</button>
 </div>
@@ -128,6 +170,9 @@ tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
 </div>
 </div>
 
+</div>
+
+<!-- TABLE -->
 <div class="table-wrapper">
 <table id="alarmTable">
 <thead>
