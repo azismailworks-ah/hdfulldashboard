@@ -2,233 +2,291 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Helpdesk KPI Analysis</title>
+<title>HD – Customer Complaint KPI Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
 <style>
+*{box-sizing:border-box}
 body{
-  margin:0;
-  font-family:Inter;
-  background:#f4f6f9;
+margin:0;
+font-family:Inter;
+background:#020617;
+color:#e2e8f0;
+overflow-x:hidden;
 }
+
+/* ===== Animated Background ===== */
+body:before{
+content:"";
+position:fixed;
+top:-50%;
+left:-50%;
+width:200%;
+height:200%;
+background:conic-gradient(
+from 180deg,
+#0ea5e9,
+#8b5cf6,
+#ec4899,
+#0ea5e9
+);
+animation:spin 18s linear infinite;
+opacity:.08;
+z-index:-1;
+}
+@keyframes spin{
+100%{transform:rotate(360deg)}
+}
+
+/* HEADER */
 .header{
-  background:linear-gradient(135deg,#0f172a,#1e293b);
-  color:#fff;
-  padding:22px 32px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:25px 60px;
+border-bottom:1px solid #0ea5e9;
 }
+
+.header-left{
+display:flex;
+align-items:center;
+gap:25px;
+}
+
+.header-left img{height:110px}
+.header-right img{height:50px}
+
+.header-title{
+font-size:28px;
+font-weight:700;
+background:linear-gradient(90deg,#22d3ee,#a855f7);
+-webkit-background-clip:text;
+-webkit-text-fill-color:transparent;
+}
+
+/* CONTROLS */
 .controls{
-  background:#fff;
-  padding:16px 32px;
-  display:flex;
-  gap:16px;
-  align-items:center;
-  box-shadow:0 1px 3px rgba(0,0,0,.08);
+padding:20px 60px;
+display:flex;
+gap:12px;
+align-items:center;
 }
-.controls input{
-  padding:6px 10px;
-  font-size:13px;
+
+input{
+background:#0f172a;
+border:1px solid #334155;
+padding:8px 12px;
+border-radius:8px;
+color:#fff;
 }
+
 button{
-  padding:8px 16px;
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  border-radius:6px;
-  font-weight:600;
-  cursor:pointer;
-}
-button:hover{background:#1d4ed8}
-
-/* ===== GRID 2 COLUMN (FINAL) ===== */
-.grid{
-  padding:24px;
-  display:grid;
-  grid-template-columns:repeat(2, 1fr);
-  gap:24px;
+padding:8px 18px;
+border-radius:8px;
+border:none;
+font-weight:600;
+cursor:pointer;
+background:linear-gradient(90deg,#06b6d4,#22c55e);
+color:white;
+transition:.3s;
 }
 
-/* ===== CARD ===== */
-.card{
-  background:#fff;
-  padding:16px;
-  border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,.06);
-}
-.card h3{
-  margin:0 0 12px 0;
-  font-size:15px;
-  font-weight:700;
-  color:#0f172a;
+button:hover{
+box-shadow:0 0 20px #22d3ee;
+transform:translateY(-2px);
 }
 
-.placeholder{
-  height:300px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#94a3b8;
-  font-size:14px;
-  border:2px dashed #e5e7eb;
-  border-radius:8px;
+/* TITLE */
+.kpi-title{
+text-align:center;
+font-size:22px;
+margin:10px 0 25px;
+color:#22d3ee;
 }
 
-canvas{height:300px!important}
-
-/* ===== RESPONSIVE ===== */
-@media(max-width:1100px){
-  .grid{grid-template-columns:1fr}
-}
-
-/* ===== KPI SUMMARY ===== */
+/* SUMMARY */
 .summary{
-  padding:24px;
-  display:grid;
-  grid-template-columns:repeat(4, 1fr);
-  gap:16px;
-}
-.summary-card{
-  background:#fff;
-  padding:16px;
-  border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,.06);
-  text-align:center;
-}
-.summary-title{
-  font-size:12px;
-  font-weight:600;
-  color:#64748b;
-}
-.summary-value{
-  font-size:24px;
-  font-weight:700;
-  margin-top:6px;
-}
-.summary-status{
-  margin-top:4px;
-  font-size:12px;
-  font-weight:600;
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:22px;
+padding:0 60px 25px;
 }
 
-.good{color:#16a34a}
+.summary-card{
+background:#0f172a;
+border-radius:18px;
+padding:22px;
+text-align:center;
+border:1px solid rgba(168,85,247,.4);
+box-shadow:0 0 35px rgba(168,85,247,.25);
+transition:.3s;
+}
+
+.summary-card:hover{
+transform:translateY(-5px);
+box-shadow:0 0 45px rgba(168,85,247,.6);
+}
+
+.summary-value{
+font-size:34px;
+font-weight:700;
+}
+
+.summary-title{color:#94a3b8}
+.summary-status{margin-top:8px;font-weight:700}
+
+.good{color:#22c55e}
 .warn{color:#f59e0b}
-.bad{color:#dc2626}
+.bad{color:#ef4444}
 .na{color:#94a3b8}
 
-@media(max-width:1100px){
-  .summary{grid-template-columns:1fr 1fr}
+/* GRID */
+.grid{
+display:grid;
+grid-template-columns:repeat(3,1fr);
+gap:25px;
+padding:0 60px 60px;
 }
 
-/* ===== KPI TREND TITLE ===== */
-.kpi-title{
-  margin:20px 0 6px 0;
-  text-align:center;
-  font-size:18px;
-  font-weight:700;
-  color:#0f172a;
-  letter-spacing:.3px;
+.card{
+background:#0f172a;
+border-radius:20px;
+padding:20px;
+border:1px solid rgba(34,211,238,.4);
+box-shadow:0 0 35px rgba(34,211,238,.2);
+position:relative;
+overflow:hidden;
 }
 
+.card:before{
+content:"";
+position:absolute;
+top:0;
+left:-100%;
+width:100%;
+height:3px;
+background:linear-gradient(90deg,#06b6d4,#22c55e,#e879f9);
+animation:slide 4s infinite;
+}
+@keyframes slide{
+0%{left:-100%}
+100%{left:100%}
+}
+
+.card h3{color:#22d3ee;font-size:14px}
+canvas{height:260px!important}
+
+/* Responsive */
+@media(max-width:1200px){
+.grid{grid-template-columns:1fr}
+.summary{grid-template-columns:1fr 1fr}
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <h2>Helpdesk KPI Analysis</h2>
+<div class="header-left">
+<img src="./hd_logo.png">
+<div class="header-title">HD – Customer Complaint KPI Dashboard</div>
+</div>
+<div class="header-right">
+<img src="./indosat.png">
+</div>
 </div>
 
 <div class="controls">
-  <input id="siteId" value="12JKP0255" placeholder="Site ID">
-  <input id="days" type="number" value="7">
-  <button onclick="loadData()">Analyze</button>
-  <button onclick="exportDashboard()">Export Dashboard (PNG)</button>
+<input id="siteId" value="21TML0001">
+<input id="days" type="number" value="30">
+<button onclick="loadData()">Analyze</button>
+<button onclick="exportDashboard()">Export PNG</button>
+<button onclick="toggleFullscreen()">Fullscreen</button>
+<button onclick="toggleAutoRefresh()">Auto Refresh</button>
 </div>
 
-<div id="kpiTitle" class="kpi-title">
-  KPI Trend
-</div>
+<div id="kpiTitle" class="kpi-title"></div>
 
 <div class="summary">
-  <div class="summary-card">
-    <div class="summary-title">Availability (Last 6H)</div>
-    <div id="sumAvail" class="summary-value">-</div>
-    <div id="statAvail" class="summary-status na">-</div>
-  </div>
+<div class="summary-card">
+<div class="summary-title">Availability</div>
+<div id="sumAvail" class="summary-value">-</div>
+<div id="statAvail" class="summary-status na">-</div>
+</div>
 
-  <div class="summary-card">
-    <div class="summary-title">Delay (Last 6H)</div>
-    <div id="sumDelay" class="summary-value">-</div>
-    <div id="statDelay" class="summary-status na">-</div>
-  </div>
+<div class="summary-card">
+<div class="summary-title">Delay</div>
+<div id="sumDelay" class="summary-value">-</div>
+<div id="statDelay" class="summary-status na">-</div>
+</div>
 
-  <div class="summary-card">
-    <div class="summary-title">PLR (Last 6H)</div>
-    <div id="sumPLR" class="summary-value">-</div>
-    <div id="statPLR" class="summary-status na">-</div>
-  </div>
+<div class="summary-card">
+<div class="summary-title">PLR</div>
+<div id="sumPLR" class="summary-value">-</div>
+<div id="statPLR" class="summary-status na">-</div>
+</div>
 
-  <div class="summary-card">
-    <div class="summary-title">PRB Peak (Last 3D)</div>
-    <div id="sumPRB" class="summary-value">-</div>
-    <div id="statPRB" class="summary-status na">-</div>
-  </div>
+<div class="summary-card">
+<div class="summary-title">PRB Peak</div>
+<div id="sumPRB" class="summary-value">-</div>
+<div id="statPRB" class="summary-status na">-</div>
+</div>
 </div>
 
 <div class="grid">
-  <!-- BOX 1 -->
-  <div class="card">
-    <h3>KPI Availability & Traffic</h3>
-    <canvas id="chart1"></canvas>
-  </div>
-
-  <!-- BOX 2 -->
-  <div class="card">
-    <h3>KPI Delay & PLR</h3>
-    <canvas id="chart2"></canvas>
-  </div>
-
-  <!-- BOX 3 -->
-  <div class="card">
-    <h3>PRB Utilization (Sector 1 / 2 / 3)</h3>
-    <canvas id="chart3"></canvas>
-  </div>
-
-  <!-- BOX 4 -->
-  <div class="card">
-	<h3>4G Data Traffic (Sector 1 / 2 / 3)</h3>
-	<canvas id="chart4"></canvas>
-  </div>
-
-
-  <!-- BOX 5 -->
-  <div class="card">
-    <h3>Average TA 4G (Sector 1 / 2 / 3)</h3>
-    <canvas id="chart5"></canvas>
-  </div>
-
-  <!-- BOX 6 -->
-  <div class="card">
-    <h3>UL RSSI 4G (Sector 1 / 2 / 3)</h3>
-    <canvas id="chart6"></canvas>
-  </div>
-  
-  <!-- BOX 7 -->
-  <div class="card">
-    <h3>Connected User 4G (Sector 1 / 2 / 3)</h3>
-    <canvas id="chart7"></canvas>
-  </div>
-  
-  <!-- BOX 8 -->
-  <div class="card">
-    <h3>LTE User Throughput (Sector 1 / 2 / 3)</h3>
-    <canvas id="chart8"></canvas>
-  </div>
+<div class="card"><h3>KPI Availability & Traffic</h3><canvas id="chart1"></canvas></div>
+<div class="card"><h3>KPI Delay & PLR</h3><canvas id="chart2"></canvas></div>
+<div class="card"><h3>PRB Utilization</h3><canvas id="chart3"></canvas></div>
+<div class="card"><h3>4G Data Traffic</h3><canvas id="chart4"></canvas></div>
+<div class="card"><h3>Average TA</h3><canvas id="chart5"></canvas></div>
+<div class="card"><h3>UL RSSI</h3><canvas id="chart6"></canvas></div>
+<div class="card"><h3>Connected User</h3><canvas id="chart7"></canvas></div>
+<div class="card"><h3>Throughput</h3><canvas id="chart8"></canvas></div>
 </div>
 
 <script>
+Chart.defaults.color="#cbd5e1";
+Chart.defaults.borderColor="rgba(148,163,184,.2)";
+Chart.defaults.font.family="Inter";
+
+/* Fullscreen */
+function toggleFullscreen(){
+if(!document.fullscreenElement){
+document.documentElement.requestFullscreen();
+}else{
+document.exitFullscreen();
+}
+}
+
+/* Auto Refresh */
+function toggleAutoRefresh(){
+if(autoRefresh){
+clearInterval(autoRefresh);
+autoRefresh=null;
+alert("Auto refresh OFF");
+}else{
+autoRefresh=setInterval(loadData,300000);
+alert("Auto refresh ON (5 min)");
+}
+}
+
+/* Dark Export */
+async function exportDashboard(){
+const target=document.body;
+await html2canvas(target,{
+scale:2,
+backgroundColor:"#020617"
+}).then(canvas=>{
+const link=document.createElement("a");
+link.href=canvas.toDataURL("image/png");
+link.download="HD_KPI_Dashboard.png";
+link.click();
+});
+}
+
 const API = "https://api.azhautomation.com/api/kpi";
 let c1,c2,c3,c4, c5, c6, c7, c8;
 
