@@ -234,9 +234,18 @@ function loadData(){
 
 function applyFilter(){
  const q=document.getElementById("searchInput").value.toLowerCase();
+ 
  filteredData=tableData.filter(r=>
    Object.values(r).join(" ").toLowerCase().includes(q)
  );
+
+ // ===== SORT FIRST OCCURRED DESC (TERBARU DI ATAS) =====
+ filteredData.sort((a,b)=>{
+   const dateA = new Date(a["First Occurred (NT)"]);
+   const dateB = new Date(b["First Occurred (NT)"]);
+   return dateB - dateA; // newest first
+ });
+
  renderTable(filteredData);
  renderSummary(filteredData);
 }
