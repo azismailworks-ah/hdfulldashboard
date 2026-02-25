@@ -212,12 +212,23 @@ function csvUrl(){
  return "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=0&single=true&output=csv&v="+Date.now();
 }
 
+function sortByFirstOccurredDesc(data){
+  data.sort((a,b)=>{
+    const dateA = new Date(a["First Occurred (NT)"] || 0);
+    const dateB = new Date(b["First Occurred (NT)"] || 0);
+    return dateB - dateA;
+  });
+}
+
 function loadData(){
- Papa.parse(csvUrl(),{
+Papa.parse(csvUrl(),{
   download:true,
   header:true,
+  skipEmptyLines:true,
   complete:(res)=>{
-   tableData=res.data.filter(r=>r["Name"]);
+   tableData=res.data
+      .filter(r=>r["Name"] && r["First Occurred (NT)"]);
+   sortByFirstOccurredDesc(tableData);
    const now=new Date();
 
    tableData.forEach(r=>{
@@ -347,3 +358,4 @@ setInterval(loadData,60000);
 
 </body>
 </html>
+
