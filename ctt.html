@@ -8,14 +8,169 @@
 <link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
 
 <style>
-body{background:#f4f6f9;font-family:Segoe UI,Roboto}
-.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
-table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
+
+body{
+background:#f4f6f9;
+font-family:Segoe UI,Roboto
+}
+
+.card{
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1)
+}
+
+table.dataTable thead th{
+background:#0b1c2d;
+color:#fff;
+font-size:13px
+}
+
+.kpiBox{
+background:#fff;
+padding:12px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+font-size:13px
+}
+
+.kpiTitle{
+font-weight:600;
+margin-bottom:5px
+}
+
+.kpiNumber{
+font-size:26px;
+font-weight:700;
+color:#0b1c2d
+}
+
+.smallAging{
+font-size:12px;
+color:#555
+}
+
+.kpiBox{
+background:#fff;
+padding:14px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+font-size:13px;
+height:100%;
+}
+
+.kpiNumber{
+font-size:28px;
+font-weight:700;
+color:#0b1c2d;
+margin-bottom:4px
+}
+
+.smallAging{
+font-size:11px;
+color:#666;
+line-height:1.5
+}
+
+#kpi_escalate{
+font-size:12px;
+line-height:1.5
+}
+
+#regionSummary td,
+#regionSummary th{
+font-size:12px;
+padding:4px 6px;
+}
+
+#regionSummary tr td{
+line-height:1.2;
+}
+
 </style>
 </head>
 <body>
 
 <div class="container mt-4">
+
+<!-- ================= KPI DASHBOARD ================= -->
+
+<div class="row g-3 mb-3">
+
+<!-- KPI ROW -->
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox h-100">
+<div class="kpiTitle">TOTAL OPEN</div>
+<div class="kpiNumber" id="kpi_total">0</div>
+<div class="smallAging" id="kpi_total_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox h-100">
+<div class="kpiTitle">CTT OPEN</div>
+<div class="kpiNumber" id="kpi_ctt">0</div>
+<div class="smallAging" id="kpi_ctt_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox h-100">
+<div class="kpiTitle">CTT 3ID OPEN</div>
+<div class="kpiNumber" id="kpi_ctt3">0</div>
+<div class="smallAging" id="kpi_ctt3_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox h-100">
+<div class="kpiTitle">MyExperience OPEN</div>
+<div class="kpiNumber" id="kpi_myexp">0</div>
+<div class="smallAging" id="kpi_myexp_age"></div>
+</div>
+</div>
+
+<!-- ESCALATION -->
+<div class="col-12">
+<div class="kpiBox">
+<div class="kpiTitle">ESCALATION</div>
+<div id="kpi_escalate" style="columns:3"></div>
+</div>
+</div>
+
+</div>
+
+<!-- REGION SUMMARY -->
+
+<div class="row mb-3">
+<div class="col-md-12">
+<div class="card">
+<div class="card-body">
+
+<div class="kpiTitle">Region Summary</div>
+
+<table class="table table-sm table-bordered">
+<thead class="table-dark">
+<tr>
+<th>Region</th>
+<th>Total</th>
+<th>≤1</th>
+<th>≤3</th>
+<th>≤7</th>
+<th>≤14</th>
+<th>≤30</th>
+<th>>30</th>
+</tr>
+</thead>
+<tbody id="regionSummary"></tbody>
+
+</table>
+
+</div>
+</div>
+</div>
+</div>
+
+<!-- ================= TABLE ================= -->
 
 <div class="card mb-3">
 <div class="card-body">
@@ -38,15 +193,19 @@ table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
 </thead>
 <tbody></tbody>
 </table>
+
 </div>
 </div>
 
-<!-- DETAIL -->
+<!-- ================= DETAIL ================= -->
+
 <div class="card" id="cttDetail" style="display:none">
 <div class="card-body">
+
 <h6>CTT Detail</h6>
 
 <div class="row g-3 mb-2">
+
 <div class="col-md-3"><b>TT</b><br><span id="d_tt"></span></div>
 <div class="col-md-3"><b>Type</b><br><span id="d_type"></span></div>
 <div class="col-md-3"><b>Site ID</b><br><span id="d_siteid"></span></div>
@@ -58,10 +217,13 @@ table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
 <div class="col-md-3"><b>WO</b><br><span id="d_wo"></span></div>
 
 <div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+
 </div>
 
 <hr>
+
 <h6>Time Periode</h6>
+
 <div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
 
 </div>
@@ -74,8 +236,10 @@ table.dataTable thead th{background:#0b1c2d;color:#fff;font-size:13px}
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
+
 const CTT_CSV =
 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRrBXr2c-4I1eVgrbtT2X8m2zp69NS6sl4Sa7GwUyq8cUWDZ5CckFDXcUEA05QbjhygBDcLskubaOFV/pub?gid=0&single=true&output=csv';
+
 
 function agingDays(openDate){
   if(!openDate) return '';
@@ -85,13 +249,56 @@ function agingDays(openDate){
   return diff + ' Day';
 }
 
+function agingNumber(openDate){
+  const d = new Date(openDate);
+  const now = new Date();
+  return Math.floor((now-d)/86400000);
+}
+
+function agingBucket(a){
+
+return{
+d1:(a>=0 && a<=1),
+d3:(a>1 && a<=3),
+d7:(a>3 && a<=7),
+d14:(a>7 && a<=14),
+d30:(a>14 && a<=30),
+d31:(a>30)
+}
+
+}
+
+/* KPI STORAGE */
+
+let KPI={
+total:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+ctt:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+ctt3:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+myexp:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+escalate:{},
+region:{}
+}
+
+function addBucket(obj,b){
+
+obj.c++
+
+if(b.d1)obj.d1++
+if(b.d3)obj.d3++
+if(b.d7)obj.d7++
+if(b.d14)obj.d14++
+if(b.d30)obj.d30++
+if(b.d31)obj.d31++
+
+}
+
 $(function(){
 
 const table = $('#cttTable').DataTable({
  order:[[5,'desc']],
  columnDefs:[
   { targets:5, render:(d,t)=>t==='sort'?new Date(d):d },
-  { targets:10, visible:false, searchable:false } // Time Periode hidden
+  { targets:10, visible:false, searchable:false }
  ]
 });
 
@@ -99,6 +306,7 @@ Papa.parse(CTT_CSV,{
  download:true,
  header:true,
  skipEmptyLines:true,
+
  complete:function(res){
 
   const openOnly = res.data.filter(r =>
@@ -106,9 +314,41 @@ Papa.parse(CTT_CSV,{
   );
 
   openOnly.forEach(r=>{
+
+    const aging = agingNumber(r['Open Date MM/DD/YYYY']);
+    const bucket = agingBucket(aging);
+    const type=(r['Type']||'').toLowerCase();
+    const esc=r['Escalate To']||'Unknown';
+    const region=r['Region']||'Unknown';
+
+   addBucket(KPI.total,bucket);
+
+    if(type.includes('3id')){
+      addBucket(KPI.ctt3,bucket);
+    }
+    else if(type.includes('myexperience')){
+      addBucket(KPI.myexp,bucket);
+    }
+    else{
+      addBucket(KPI.ctt,bucket);
+    }
+
+    if(!KPI.escalate[esc]){
+      KPI.escalate[esc]={c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0}
+    }
+
+    addBucket(KPI.escalate[esc],bucket);
+
+    if(!KPI.region[region]){
+      KPI.region[region]={c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0}
+    }
+
+    addBucket(KPI.region[region],bucket);
+
+
     table.row.add([
       r['TT'],
-      r['TT FSO'],          // WO
+      r['TT FSO'],
       r['Region'],
       r['Site ID'],
       r['Site Name'],
@@ -117,17 +357,86 @@ Papa.parse(CTT_CSV,{
       r['Founding'],
       agingDays(r['Open Date MM/DD/YYYY']),
       r['Type'],
-      r['Time Periode']     // hidden
+      r['Time Periode']
     ]);
+
   });
 
   table.draw();
+
+renderDashboard()
+
  }
 });
 
+
+function renderDashboard(){
+
+function agingText(o){
+return `≤1:${o.d1} | ≤3:${o.d3} | ≤7:${o.d7} | ≤14:${o.d14} | ≤30:${o.d30} | >30:${o.d31}`
+}
+
+$('#kpi_total').text(KPI.total.c)
+$('#kpi_total_age').text(agingText(KPI.total))
+
+$('#kpi_ctt').text(KPI.ctt.c)
+$('#kpi_ctt_age').text(agingText(KPI.ctt))
+
+$('#kpi_ctt3').text(KPI.ctt3.c)
+$('#kpi_ctt3_age').text(agingText(KPI.ctt3))
+
+$('#kpi_myexp').text(KPI.myexp.c)
+$('#kpi_myexp_age').text(agingText(KPI.myexp))
+
+let escHTML=''
+
+Object.keys(KPI.escalate).forEach(e=>{
+let v=KPI.escalate[e]
+
+escHTML+=`
+<div>
+<b>${e}</b> : ${v.c}<br>
+<span style="font-size:11px">${agingText(v)}</span>
+</div>
+`
+})
+
+$('#kpi_escalate').html(escHTML)
+
+
+
+let regionHTML=''
+
+Object.keys(KPI.region).forEach(r=>{
+
+let v=KPI.region[r]
+
+regionHTML+=`
+<tr>
+<td>${r}</td>
+<td>${v.c}</td>
+<td>${v.d1}</td>
+<td>${v.d3}</td>
+<td>${v.d7}</td>
+<td>${v.d14}</td>
+<td>${v.d30}</td>
+<td>${v.d31}</td>
+</tr>
+`
+
+})
+
+$('#regionSummary').html(regionHTML)
+
+}
+
+
 /* CLICK ROW */
+
 $('#cttTable tbody').on('click','tr',function(){
- const d = table.row(this).data(); if(!d) return;
+
+ const d = table.row(this).data(); 
+ if(!d) return;
 
  $('#d_tt').text(d[0]);
  $('#d_wo').text(d[1]);
@@ -140,12 +449,17 @@ $('#cttTable tbody').on('click','tr',function(){
  $('#d_type').text(d[9]);
 
  const logs = (d[10]||'').split('\n');
- $('#d_time').html(logs.map(l=>`<div>${l}</div>`).join(''));
+
+ $('#d_time').html(
+ logs.map(l=>`<div>${l}</div>`).join('')
+ );
 
  $('#cttDetail').slideDown();
+
 });
 
 });
+
 </script>
 
 </body>
