@@ -169,19 +169,16 @@ padding:4px 6px
 </thead>
 <tbody></tbody>
 </table>
+</div>
+</div>
 
-</div>
-</div>
 
 <!-- DETAIL -->
-
 <div class="card" id="trafficDetail" style="display:none">
 <div class="card-body">
-
 <h6>Traffic Degradation Detail</h6>
 
 <div class="row g-3 mb-2">
-
 <div class="col-md-2"><b>SN</b><br><span id="d_sn"></span></div>
 <div class="col-md-2"><b>WO</b><br><span id="d_wo"></span></div>
 <div class="col-md-2"><b>Region</b><br><span id="d_region"></span></div>
@@ -194,7 +191,6 @@ padding:4px 6px
 
 <div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
 <div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
-
 </div>
 
 <hr>
@@ -310,18 +306,18 @@ KPI.region[region]={c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0}
 
 addBucket(KPI.region[region],bucket);
 
-const rowNode = table.row.add([
-r['SN'],
-r['TT/WO'],
-r['Site ID'],
-r['Site Name'],
-r['First Create'],
-aging+' Day',
-r['Escalated to'],
-r['Remaks']
-]).draw(false).node();
+    const rowNode = table.row.add([
+      r['SN'],
+      r['TT/WO'],
+      r['Site ID'],
+      r['Site Name'],
+      r['First Create'],
+	  aging+' Day',
+	  r['Escalated to'],
+	  r['Remaks']
+	]).draw(false).node();
 
-rowNode._raw=r;
+	  rowNode._raw=r;
 
 });
 
@@ -390,13 +386,13 @@ $('#trafficTable tbody').on('click','tr',function(){
 const raw=this._raw;
 if(!raw) return;
 
-$('#d_sn').text(raw['SN']);
-$('#d_wo').text(raw['TT/WO']);
-$('#d_region').text(raw['Region']);
-$('#d_type').text(raw['Type']);
-$('#d_siteid').text(raw['Site ID']);
-$('#d_sitename').text(raw['Site Name']);
-$('#d_opendate').text(raw['First Create']);
+ $('#d_sn').text(raw['SN']);
+ $('#d_wo').text(raw['TT/WO']);
+ $('#d_region').text(raw['Region']);
+ $('#d_type').text(raw['Type']);
+ $('#d_siteid').text(raw['Site ID']);
+ $('#d_sitename').text(raw['Site Name']);
+ $('#d_opendate').text(raw['First Create']);
 $('#d_aging').text(agingNumber(raw['First Create']) + ' Day');
 $('#d_escalate').text(raw['Escalated to']);
 $('#d_finding').text(raw['Remaks']);
