@@ -8,23 +8,147 @@
 <link href="https://cdn.datatables.net/1.13.8/css/jquery.dataTables.min.css" rel="stylesheet">
 
 <style>
-body{background:#f4f6f9;font-family:Segoe UI,Roboto}
-.card{border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.1)}
+
+body{
+background:#f4f6f9;
+font-family:Segoe UI,Roboto
+}
+
+.card{
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1)
+}
+
 table.dataTable thead th{
-  background:#0b1c2d;
-  color:#fff;
-  font-size:13px;
-  white-space:nowrap;
+background:#0b1c2d;
+color:#fff;
+font-size:13px;
+white-space:nowrap
 }
+
 table.dataTable tbody td{
-  font-size:13px;
-  vertical-align:top;
+font-size:13px;
+vertical-align:top
 }
+
+/* KPI */
+
+.kpiBox{
+background:#fff;
+padding:14px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.1);
+font-size:13px;
+height:100%
+}
+
+.kpiTitle{
+font-weight:600;
+margin-bottom:5px
+}
+
+.kpiNumber{
+font-size:28px;
+font-weight:700;
+color:#0b1c2d;
+margin-bottom:4px
+}
+
+.smallAging{
+font-size:11px;
+color:#666;
+line-height:1.5
+}
+
+#regionSummary td,
+#regionSummary th{
+font-size:12px;
+padding:4px 6px
+}
+
 </style>
 </head>
+
 <body>
 
 <div class="container mt-4">
+
+<!-- KPI DASHBOARD -->
+
+<div class="row g-3 mb-3">
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox">
+<div class="kpiTitle">TOTAL OPEN</div>
+<div class="kpiNumber" id="kpi_total">0</div>
+<div class="smallAging" id="kpi_total_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox">
+<div class="kpiTitle">HIGH</div>
+<div class="kpiNumber" id="kpi_high">0</div>
+<div class="smallAging" id="kpi_high_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox">
+<div class="kpiTitle">MEDIUM</div>
+<div class="kpiNumber" id="kpi_medium">0</div>
+<div class="smallAging" id="kpi_medium_age"></div>
+</div>
+</div>
+
+<div class="col-lg-3 col-md-6">
+<div class="kpiBox">
+<div class="kpiTitle">LOW</div>
+<div class="kpiNumber" id="kpi_low">0</div>
+<div class="smallAging" id="kpi_low_age"></div>
+</div>
+</div>
+
+<div class="col-12">
+<div class="kpiBox">
+<div class="kpiTitle">ESCALATION</div>
+<div id="kpi_escalate" style="columns:3"></div>
+</div>
+</div>
+
+</div>
+
+<!-- REGION SUMMARY -->
+
+<div class="row mb-3">
+<div class="col-md-12">
+<div class="card">
+<div class="card-body">
+
+<div class="kpiTitle">Region Summary</div>
+
+<table class="table table-sm table-bordered">
+<thead class="table-dark">
+<tr>
+<th>Region</th>
+<th>Total</th>
+<th>≤1</th>
+<th>≤3</th>
+<th>≤7</th>
+<th>≤14</th>
+<th>≤30</th>
+<th>>30</th>
+</tr>
+</thead>
+<tbody id="regionSummary"></tbody>
+</table>
+
+</div>
+</div>
+</div>
+</div>
+
+<!-- MAIN TABLE -->
 
 <div class="card mb-3">
 <div class="card-body">
@@ -45,15 +169,19 @@ table.dataTable tbody td{
 </thead>
 <tbody></tbody>
 </table>
+
 </div>
 </div>
 
 <!-- DETAIL -->
+
 <div class="card" id="trafficDetail" style="display:none">
 <div class="card-body">
+
 <h6>Traffic Degradation Detail</h6>
 
 <div class="row g-3 mb-2">
+
 <div class="col-md-2"><b>SN</b><br><span id="d_sn"></span></div>
 <div class="col-md-2"><b>WO</b><br><span id="d_wo"></span></div>
 <div class="col-md-2"><b>Region</b><br><span id="d_region"></span></div>
@@ -66,9 +194,11 @@ table.dataTable tbody td{
 
 <div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
 <div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+
 </div>
 
 <hr>
+
 <h6>Time Periode</h6>
 <div class="border rounded p-2" style="max-height:200px;overflow:auto" id="d_time"></div>
 
@@ -82,67 +212,208 @@ table.dataTable tbody td{
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
 <script>
+
 const TRAFFIC_CSV =
 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkS8y6M9EJuT3o9lF-udlQJOZMZpTXT7KfR1IZnJnUTZJACKXak82rgJRbDHXpuujdjHBzvITR3Wh1/pub?gid=0&single=true&output=csv';
+
+
+function agingNumber(d){
+
+ if(!d) return 0;
+
+ const p = d.split('/');
+
+ const date = new Date(
+  parseInt(p[2]),
+  parseInt(p[1]) - 1,
+  parseInt(p[0])
+ );
+
+ const now = new Date();
+
+ return Math.floor((now - date) / 86400000);
+}
+
+function agingText(o){
+return `≤1:${o.d1} | ≤3:${o.d3} | ≤7:${o.d7} | ≤14:${o.d14} | ≤30:${o.d30} | >30:${o.d31}`
+}
+
+function agingBucket(a){
+return{
+d1:(a>=0 && a<=1),
+d3:(a>1 && a<=3),
+d7:(a>3 && a<=7),
+d14:(a>7 && a<=14),
+d30:(a>14 && a<=30),
+d31:(a>30)
+}
+}
+
+function addBucket(obj,b){
+obj.c++
+if(b.d1)obj.d1++
+if(b.d3)obj.d3++
+if(b.d7)obj.d7++
+if(b.d14)obj.d14++
+if(b.d30)obj.d30++
+if(b.d31)obj.d31++
+}
+
+let KPI={
+total:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+high:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+medium:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+low:{c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0},
+escalate:{},
+region:{}
+}
 
 $(function(){
 
 const table = $('#trafficTable').DataTable({
-  order:[[4,'desc']]
+order:[[4,'desc']]
 });
 
 Papa.parse(TRAFFIC_CSV,{
- download:true,
- header:true,
- skipEmptyLines:true,
- complete:function(res){
+download:true,
+header:true,
+skipEmptyLines:true,
 
-  res.data
-   .filter(r => (r['STATUS NOC']||'').trim().toLowerCase()==='open')
-   .forEach(r => {
+complete:function(res){
 
-    const rowNode = table.row.add([
-      r['SN'],
-      r['TT/WO'],
-      r['Site ID'],
-      r['Site Name'],
-      r['First Create'],
-      r['Aging'],
-      r['Escalated to'],
-      r['Remaks']
-    ]).draw(false).node();
+const openOnly=res.data.filter(r=>
+(r['STATUS NOC']||'').trim().toLowerCase()==='open'
+);
 
-    rowNode._raw = r;
-   });
- }
+openOnly.forEach(r=>{
+
+const aging=agingNumber(r['First Create']);
+const bucket=agingBucket(aging);
+
+const type=(r['Type']||'').toLowerCase();
+const esc=r['Escalated to']||'Unknown';
+const region=r['Region']||'Unknown';
+
+addBucket(KPI.total,bucket);
+
+if(type.includes('high')) addBucket(KPI.high,bucket);
+else if(type.includes('medium')) addBucket(KPI.medium,bucket);
+else addBucket(KPI.low,bucket);
+
+if(!KPI.escalate[esc])
+KPI.escalate[esc]={c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0}
+
+addBucket(KPI.escalate[esc],bucket);
+
+if(!KPI.region[region])
+KPI.region[region]={c:0,d1:0,d3:0,d7:0,d14:0,d30:0,d31:0}
+
+addBucket(KPI.region[region],bucket);
+
+const rowNode = table.row.add([
+r['SN'],
+r['TT/WO'],
+r['Site ID'],
+r['Site Name'],
+r['First Create'],
+aging+' Day',
+r['Escalated to'],
+r['Remaks']
+]).draw(false).node();
+
+rowNode._raw=r;
+
 });
+
+renderDashboard();
+
+}
+
+});
+
+function renderDashboard(){
+
+$('#kpi_total').text(KPI.total.c)
+$('#kpi_total_age').text(agingText(KPI.total))
+
+$('#kpi_high').text(KPI.high.c)
+$('#kpi_high_age').text(agingText(KPI.high))
+
+$('#kpi_medium').text(KPI.medium.c)
+$('#kpi_medium_age').text(agingText(KPI.medium))
+
+$('#kpi_low').text(KPI.low.c)
+$('#kpi_low_age').text(agingText(KPI.low))
+
+let escHTML=''
+
+Object.keys(KPI.escalate).forEach(e=>{
+let v=KPI.escalate[e]
+
+escHTML+=`
+<div>
+<b>${e}</b> : ${v.c}<br>
+<span style="font-size:11px">${agingText(v)}</span>
+</div>
+`
+})
+
+$('#kpi_escalate').html(escHTML)
+
+let regionHTML=''
+
+Object.keys(KPI.region).forEach(r=>{
+
+let v=KPI.region[r]
+
+regionHTML+=`
+<tr>
+<td>${r}</td>
+<td>${v.c}</td>
+<td>${v.d1}</td>
+<td>${v.d3}</td>
+<td>${v.d7}</td>
+<td>${v.d14}</td>
+<td>${v.d30}</td>
+<td>${v.d31}</td>
+</tr>
+`
+
+})
+
+$('#regionSummary').html(regionHTML)
+
+}
 
 $('#trafficTable tbody').on('click','tr',function(){
- const raw = this._raw;
- if(!raw) return;
 
- $('#d_sn').text(raw['SN']);
- $('#d_wo').text(raw['TT/WO']);
- $('#d_region').text(raw['Region']);
- $('#d_type').text(raw['Type']);
- $('#d_siteid').text(raw['Site ID']);
- $('#d_sitename').text(raw['Site Name']);
- $('#d_opendate').text(raw['First Create']);
- $('#d_aging').text(raw['Aging']);
- $('#d_escalate').text(raw['Escalated to']);
- $('#d_finding').text(raw['Remaks']);
+const raw=this._raw;
+if(!raw) return;
 
- $('#d_time').html(
-   (raw['Time Periode']||'')
-     .split('\n')
-     .map(l=>`<div>${l}</div>`)
-     .join('')
- );
+$('#d_sn').text(raw['SN']);
+$('#d_wo').text(raw['TT/WO']);
+$('#d_region').text(raw['Region']);
+$('#d_type').text(raw['Type']);
+$('#d_siteid').text(raw['Site ID']);
+$('#d_sitename').text(raw['Site Name']);
+$('#d_opendate').text(raw['First Create']);
+$('#d_aging').text(agingNumber(raw['First Create']) + ' Day');
+$('#d_escalate').text(raw['Escalated to']);
+$('#d_finding').text(raw['Remaks']);
 
- $('#trafficDetail').slideDown();
+$('#d_time').html(
+(raw['Time Periode']||'')
+.split('\n')
+.map(l=>`<div>${l}</div>`)
+.join('')
+);
+
+$('#trafficDetail').slideDown();
+
 });
 
 });
+
 </script>
 
 </body>
