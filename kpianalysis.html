@@ -244,6 +244,7 @@ height:420px!important;
 <div class="card"><h3>UL RSSI</h3><canvas id="chart6"></canvas></div>
 <div class="card"><h3>Connected User</h3><canvas id="chart7"></canvas></div>
 <div class="card"><h3>Throughput</h3><canvas id="chart8"></canvas></div>
+<div class="card"><h3>S1 Signaling Success Rate</h3><canvas id="chart9"></canvas></div>
 </div>
 
 <script>
@@ -287,7 +288,7 @@ link.click();
 }
 
 const API = "https://api.azhautomation.com/api/kpi";
-let c1,c2,c3,c4, c5, c6, c7, c8;
+let c1,c2,c3,c4, c5, c6, c7, c8, c9;
 
 function num(v){
   const n = Number(v);
@@ -309,7 +310,7 @@ function pctLine(v){
 }
 
 function destroy(){
-  [c1,c2,c3,c4,c5,c6,c7,c8].forEach(c=>{if(c) c.destroy()});
+  [c1,c2,c3,c4,c5,c6,c7,c8,c9].forEach(c=>{if(c) c.destroy()});
 }
 
 function avg(arr){
@@ -542,6 +543,32 @@ async function loadData(){
       }
     }
   });
+  
+  /* ===== BOX 9 ===== */
+  c9 = new Chart(chart9,{
+    type:"line",
+    data:{
+      labels:L,
+      datasets:[
+        {
+          label:"S1SR (%)",
+          data:j.data.map(d=>pctLine(d.s1_sr)),
+          borderColor:"#22c55e",
+          spanGaps:false
+        }
+      ]
+    },
+    options:{
+      scales:{
+        y:{
+          min:0,
+          max:100,
+          ticks:{callback:v=>v+"%"},
+          title:{display:true,text:"S1 Signaling Success Rate (%)"}
+        }
+      }
+    }
+});
 
 }
 
