@@ -12,6 +12,63 @@ body{margin:0;font-family:Inter;background:#f4f6f9}
 .controls{background:#fff;padding:16px 32px;display:flex;gap:12px;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .controls button{padding:8px 18px;background:#2563eb;color:#fff;border:none;border-radius:6px;font-weight:600;cursor:pointer}
 .controls button:hover{background:#1d4ed8}
+
+/* ================= HIGHLIGHT DASHBOARD ================= */
+
+.highlight-wrap{
+display:flex;
+gap:16px;
+padding:16px 24px;
+overflow-x:auto
+}
+
+.highlight-box{
+min-width:340px;
+max-height:320px;
+background:#fff;
+border-radius:10px;
+padding:12px;
+box-shadow:0 2px 6px rgba(0,0,0,.08);
+display:flex;
+flex-direction:column;
+}
+
+.highlight-box div{
+overflow-y:auto;
+max-height:260px;
+}
+
+.highlight-box th{
+position:sticky;
+top:0;
+background:#0f172a;
+color:#fff;
+z-index:1;
+}
+
+.highlight-box h3{
+margin:0 0 8px 0;
+font-size:14px;
+color:#dc2626
+}
+
+.highlight-box table{
+font-size:11px;
+border-collapse:collapse;
+width:100%
+}
+
+.highlight-box th,
+.highlight-box td{
+border:1px solid #e5e7eb;
+padding:4px 6px
+}
+
+.ok{color:#16a34a;font-weight:600}
+.nok{color:#dc2626;font-weight:700}
+
+/* ================= MATRIX TABLE ================= */
+
 .table-wrap{padding:24px;overflow:auto}
 table{border-collapse:collapse;width:100%;background:#fff;font-size:12px}
 th,td{border:1px solid #e5e7eb;padding:6px 8px;text-align:center;white-space:nowrap}
@@ -22,6 +79,7 @@ td.kpi{font-weight:600;background:#f8fafc}
 .good{color:#16a34a;font-weight:600}
 .bad{color:#dc2626;font-weight:700}
 .na{color:#94a3b8}
+
 .footer{padding:10px 24px;font-size:11px;color:#64748b}
 </style>
 </head>
@@ -29,7 +87,7 @@ td.kpi{font-weight:600;background:#f8fafc}
 <body>
 
 <div class="header">
-  <h2>Helpdesk KPI Matrix VIP SITE – Last 24 Hours</h2>
+  <h2>Helpdesk KPI Matrix VIP SITE KSMP SMTR JAVA – Last 48 Hours</h2>
   <h5>Auto updated hourly (AZH Automation)</h5>
 </div>
 
@@ -37,6 +95,29 @@ td.kpi{font-weight:600;background:#f8fafc}
   <button onclick="loadMatrix()">Refresh Data</button>
   <button onclick="exportCSV()">Export CSV</button>
 </div>
+
+<!-- ================= DASHBOARD HIGHLIGHT ================= -->
+
+<div class="highlight-wrap">
+
+<div class="highlight-box">
+<h3>BAD AVAIL</h3>
+<div id="badAvail">Loading...</div>
+</div>
+
+<div class="highlight-box">
+<h3>BAD PLR</h3>
+<div id="badPLR">Loading...</div>
+</div>
+
+<div class="highlight-box">
+<h3>BAD DELAY</h3>
+<div id="badDelay">Loading...</div>
+</div>
+
+</div>
+
+<!-- ================= MATRIX TABLE ================= -->
 
 <div class="table-wrap">
   <table id="matrixTable"></table>
@@ -47,6 +128,7 @@ td.kpi{font-weight:600;background:#f8fafc}
 </div>
 
 <script>
+
 const MATRIX_TYPE = "matrix2";
 const API = `https://api.azhautomation.com/api/kpi/matrix/cache?matrix_type=${MATRIX_TYPE}`;
 let lastMatrixData = null;
@@ -98,6 +180,132 @@ function buildHeader(hours){
   return h1 + "</tr>" + h2 + "</tr>";
 }
 
+/* ================= BUILD HIGHLIGHT ================= */
+
+function buildHighlight(json){
+
+const hours = json.hours;
+const data = json.data;
+
+let days = [];
+
+hours.forEach(ts=>{
+  const d = new Date(ts.replace(" ","T"));
+  const day = d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+  if(!days.includes(day)) days.push(day);
+});
+
+let hourDayIndex = hours.map(ts=>{
+  const d = new Date(ts.replace(" ","T"));
+  const day = d.toLocaleDateString("en-GB",{day:"2-digit",month:"short"});
+  return days.indexOf(day);
+});
+
+let badAvail=[];
+let badPLR=[];
+let badDelay=[];
+
+for(const site in data){
+
+const row=data[site];
+
+let availDay = new Array(days.length).fill("OK");
+let plrDay   = new Array(days.length).fill("OK");
+let delayDay = new Array(days.length).fill("OK");
+
+row.AVAIL.forEach((v,i)=>{
+ if(v!==100){
+  availDay[hourDayIndex[i]]="NOK";
+ }
+});
+
+row.PLR.forEach((v,i)=>{
+ if(v>2){
+  plrDay[hourDayIndex[i]]="NOK";
+ }
+});
+
+row.DELAY.forEach((v,i)=>{
+ if(v>11){
+  delayDay[hourDayIndex[i]]="NOK";
+ }
+});
+
+if(availDay.includes("NOK")){
+badAvail.push({site,status:availDay});
+}
+
+if(plrDay.includes("NOK")){
+badPLR.push({site,status:plrDay});
+}
+
+if(delayDay.includes("NOK")){
+badDelay.push({site,status:delayDay});
+}
+
+}
+
+badAvail = sortByRecentSeverity(badAvail);
+badPLR   = sortByRecentSeverity(badPLR);
+badDelay = sortByRecentSeverity(badDelay);
+
+renderHighlight("badAvail",days,badAvail);
+renderHighlight("badPLR",days,badPLR);
+renderHighlight("badDelay",days,badDelay);
+
+}
+
+function sortByRecentSeverity(list){
+
+return list.sort((a,b)=>{
+
+for(let i=a.status.length-1;i>=0;i--){
+
+const av = a.status[i]==="NOK"?1:0;
+const bv = b.status[i]==="NOK"?1:0;
+
+if(av!==bv){
+return bv-av;
+}
+
+}
+
+return 0;
+
+});
+
+}
+
+/* ================= RENDER HIGHLIGHT ================= */
+
+function renderHighlight(container,days,list){
+
+let html="<table>";
+
+html+="<tr><th>Site ID</th>";
+
+days.forEach(d=>{
+html+=`<th>${d}</th>`;
+});
+
+html+="</tr>";
+
+list.forEach(r=>{
+html+=`<tr><td>${r.site}</td>`;
+
+r.status.forEach(s=>{
+html+=`<td class="${s==="OK"?"ok":"nok"}">${s}</td>`;
+});
+
+html+="</tr>";
+});
+
+html+="</table>";
+
+document.getElementById(container).innerHTML = list.length ? html : "No issue";
+
+}
+
 /* ================= LOAD MATRIX ================= */
 async function loadMatrix(){
   const table = document.getElementById("matrixTable");
@@ -113,6 +321,9 @@ async function loadMatrix(){
     }
 
     lastMatrixData = json;
+
+    buildHighlight(json);
+
     const hours = json.hours;
     let html = buildHeader(hours);
 
@@ -165,6 +376,7 @@ function exportCSV(){
 
 /* AUTO LOAD */
 loadMatrix();
+
 </script>
 
 </body>
