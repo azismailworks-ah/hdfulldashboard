@@ -165,6 +165,7 @@ padding:4px 6px
 <th>Aging</th>
 <th>Escalate To</th>
 <th>Finding</th>
+<th>Type</th>
 </tr>
 </thead>
 <tbody></tbody>
@@ -191,6 +192,7 @@ padding:4px 6px
 
 <div class="col-md-3"><b>Escalate To</b><br><span id="d_escalate"></span></div>
 <div class="col-12"><b>Finding</b><br><span id="d_finding"></span></div>
+<div class="col-12"><b>Type</b><br><span id="d_type"></span></div>
 </div>
 
 <hr>
@@ -314,7 +316,8 @@ addBucket(KPI.region[region],bucket);
       r['First Create'],
 	  aging+' Day',
 	  r['Escalated to'],
-	  r['Remaks']
+	  r['Remarks'],
+	  r['Type']
 	]).draw(false).node();
 
 	  rowNode._raw=r;
@@ -395,7 +398,8 @@ if(!raw) return;
  $('#d_opendate').text(raw['First Create']);
 $('#d_aging').text(agingNumber(raw['First Create']) + ' Day');
 $('#d_escalate').text(raw['Escalated to']);
-$('#d_finding').text(raw['Remaks']);
+$('#d_finding').text(raw['Remarks']);
+$('#d_type').text(raw['Type']);
 
 $('#d_time').html(
 (raw['Time Periode']||'')
