@@ -57,37 +57,30 @@ border-bottom:1px solid #1e293b
 }
 
 .card{
-
 flex:1;
 text-align:center;
 padding:14px;
 border-radius:10px;
 font-weight:600;
 box-shadow:0 0 6px rgba(0,0,0,0.4)
-
 }
 
 .card-title{
-
 font-size:12px;
 letter-spacing:1px;
 opacity:.8;
 margin-bottom:6px
-
 }
 
 .card-value{
-
 font-size:26px;
 font-weight:700
-
 }
 
 .green{background:#16a34a}
 .red{background:#dc2626}
 .orange{background:#f97316}
 .yellow{background:#eab308}
-
 
 #map{
 height:82vh
@@ -112,10 +105,109 @@ animation: blink 1s infinite
 }
 
 @keyframes blink{
-
 0%{opacity:1}
 50%{opacity:.3}
 100%{opacity:1}
+}
+
+/* TOAST ALERT */
+
+#toast{
+position:absolute;
+top:90px;
+left:50%;
+transform:translateX(-50%);
+background:#dc2626;
+padding:12px 20px;
+border-radius:6px;
+display:none;
+font-size:13px;
+font-weight:600;
+box-shadow:0 0 10px rgba(0,0,0,0.6)
+}
+
+/* FAULT PANEL */
+
+.faultPanel{
+
+position:absolute;
+top:200px;
+right:20px;
+
+width:300px;
+
+background:#020617;
+border:1px solid #1e293b;
+border-radius:10px;
+
+padding:14px;
+
+font-size:14px;
+
+max-height:460px;
+overflow:auto;
+
+box-shadow:0 0 12px rgba(0,0,0,0.7);
+
+z-index:1000;
+
+}
+
+.faultTitle{
+
+font-weight:700;
+
+font-size:15px;
+
+color:#ff4d4d;
+
+margin-bottom:12px;
+
+border-bottom:1px solid #1e293b;
+
+padding-bottom:6px;
+
+letter-spacing:.5px;
+
+}
+
+.faultItem{
+
+padding:10px 0;
+
+border-bottom:1px solid #1e293b
+
+}
+
+.faultSite{
+
+font-weight:700;
+
+font-size:14px;
+
+color:#ffffff;
+
+}
+
+.faultNode{
+
+font-size:13px;
+
+color:#cbd5f5;
+
+margin-top:2px;
+
+}
+
+.faultAlarm{
+
+color:#ff5c5c;
+
+font-size:13px;
+
+margin-top:4px;
+
+font-weight:600;
 
 }
 
@@ -141,8 +233,6 @@ NETDRONE VIP JAYA HD DIOC
 
 <div class="dashboard">
 
-<div class="dashboard">
-
 <div class="card green">
 <div class="card-title">CLEAR</div>
 <div class="card-value" id="clear">0</div>
@@ -165,9 +255,19 @@ NETDRONE VIP JAYA HD DIOC
 
 </div>
 
+<div id="map"></div>
+
+<div id="toast"></div>
+
+<div class="faultPanel">
+
+<div class="faultTitle">
+ACTIVE NETWORK FAULT
 </div>
 
-<div id="map"></div>
+<div id="faultList"></div>
+
+</div>
 
 <div class="legend">
 
@@ -193,6 +293,10 @@ TWAMP
 
 </div>
 
+<audio id="alarmSound">
+<source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
+</audio>
+
 <script>
 
 const API="https://api.azhautomation.com/api/map"
@@ -206,6 +310,66 @@ L.tileLayer(
 
 var allSites=[]
 var markers=[]
+
+/* NEW VARIABLES */
+
+var previousStatus={}
+var activeFaults={}
+
+function showToast(msg){
+
+let t=document.getElementById("toast")
+
+t.innerHTML=msg
+t.style.display="block"
+
+setTimeout(()=>{
+t.style.display="none"
+},4000)
+
+}
+
+function playAlarm(){
+
+let audio = document.getElementById("alarmSound")
+
+audio.volume = 0.2   // volume 20%
+
+audio.currentTime = 0
+audio.play()
+
+setTimeout(()=>{
+audio.currentTime = 0
+audio.play()
+},350)
+
+}
+
+function updateFaultPanel(){
+
+let panel=document.getElementById("faultList")
+
+panel.innerHTML=""
+
+Object.values(activeFaults).forEach(f=>{
+
+panel.innerHTML+=`
+
+<div class="faultItem">
+
+<div class="faultSite">${f.site}</div>
+
+<div>${f.node}</div>
+
+<div class="faultAlarm">${f.alarm}</div>
+
+</div>
+
+`
+
+})
+
+}
 
 function color(status){
 
@@ -330,6 +494,62 @@ let r=await fetch(API)
 let data=await r.json()
 
 allSites=data.sites
+
+/* INITIAL FAULT LOAD */
+
+if(Object.keys(activeFaults).length==0){
+
+allSites.forEach(s=>{
+
+if(s.status!="GREEN"){
+
+activeFaults[s.site_id]={
+site:s.site_id,
+node:s.node_name,
+alarm:(s.alarms && s.alarms.length>0)?s.alarms[0]:"KPI DEGRADED"
+}
+
+}
+
+})
+
+updateFaultPanel()
+
+}
+
+/* DETECT STATUS CHANGE */
+
+allSites.forEach(s=>{
+
+let prev=previousStatus[s.site_id]
+
+if(prev=="GREEN" && s.status!="GREEN"){
+
+showToast("⚠ SITE ISSUE : "+s.site_id)
+
+playAlarm()
+
+activeFaults[s.site_id]={
+site:s.site_id,
+node:s.node_name,
+alarm:(s.alarms && s.alarms.length>0)?s.alarms[0]:"KPI DEGRADED"
+}
+
+updateFaultPanel()
+
+}
+
+if(prev && prev!="GREEN" && s.status=="GREEN"){
+
+delete activeFaults[s.site_id]
+
+updateFaultPanel()
+
+}
+
+previousStatus[s.site_id]=s.status
+
+})
 
 document.getElementById("clear").innerHTML=data.summary.green
 document.getElementById("fault").innerHTML=data.summary.red
