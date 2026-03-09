@@ -1,242 +1,363 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>HELPDESK VIP & HOTSPOT REALTIME ALARM</title>
+<html>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+<head>
+
+<title>NETDRONE VIP JAYA</title>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
+
+<link rel="stylesheet"
+href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
 <style>
+
 body{
-  margin:0;
-  font-family:'Inter', sans-serif;
-  background:#f4f6f9;
-  color:#1f2937;
+margin:0;
+font-family:Segoe UI;
+background:#0b1220;
+color:white
 }
 
-/* HEADER */
 .header{
-  background:linear-gradient(135deg,#0f172a,#1e293b);
-  color:#fff;
-  padding:24px 32px;
-}
-.header h1{
-  margin:0;
-  font-size:26px;
-  font-weight:700;
-}
-.header .update{
-  margin-top:6px;
-  font-size:13px;
-  opacity:.85;
+background:#020617;
+padding:12px 20px;
+font-size:20px;
+font-weight:700
 }
 
-/* CONTENT */
-.container{ padding:20px 24px; }
-
-.action-bar{
-  display:flex;
-  justify-content:flex-end;
-  margin-bottom:10px;
-}
-.action-bar button{
-  background:#0f172a;
-  color:#fff;
-  border:none;
-  padding:8px 14px;
-  border-radius:6px;
-  cursor:pointer;
-  font-size:12px;
-}
-.action-bar button:hover{
-  background:#1e293b;
+.controls{
+display:flex;
+gap:10px;
+padding:10px;
+background:#020617
 }
 
-/* TABLE */
-.table-wrapper{
-  background:#fff;
-  border-radius:10px;
-  box-shadow:0 6px 18px rgba(0,0,0,.08);
-  overflow:auto;
+.controls input,.controls select{
+padding:6px 10px;
+background:#0f172a;
+border:1px solid #1e293b;
+color:white;
+border-radius:4px
 }
-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-thead{
-  background:#0f172a;
-  color:#fff;
-}
-th, td{
-  padding:10px 12px;
-  border-bottom:1px solid #e5e7eb;
-  white-space:nowrap;
-}
-th{
-  cursor:pointer;
-  position:relative;
-}
-th::after{
-  content:"⇅";
-  font-size:10px;
-  position:absolute;
-  right:8px;
-  opacity:.6;
-}
-tbody tr:hover{ background:#f9fafb; }
 
-/* NEW ALARM HIGHLIGHT */
-tr.new-alarm{
-  background:#fff7cc !important;
-  animation: blink 1s ease-in-out 2;
+.dashboard{
+display:flex;
+gap:16px;
+padding:14px 20px;
+background:#020617;
+border-bottom:1px solid #1e293b
 }
+
+.card{
+
+flex:1;
+text-align:center;
+padding:14px;
+border-radius:10px;
+font-weight:600;
+box-shadow:0 0 6px rgba(0,0,0,0.4)
+
+}
+
+.card-title{
+
+font-size:12px;
+letter-spacing:1px;
+opacity:.8;
+margin-bottom:6px
+
+}
+
+.card-value{
+
+font-size:26px;
+font-weight:700
+
+}
+
+.green{background:#16a34a}
+.red{background:#dc2626}
+.orange{background:#f97316}
+.yellow{background:#eab308}
+
+
+#map{
+height:82vh
+}
+
+.legend{
+position:absolute;
+bottom:20px;
+right:20px;
+background:#020617;
+padding:10px 16px;
+border-radius:8px;
+font-size:14px;
+display:flex;
+gap:18px;
+align-items:center;
+box-shadow:0 0 8px rgba(0,0,0,0.4);
+}
+
+.blink{
+animation: blink 1s infinite
+}
+
 @keyframes blink{
-  0%{background:#fff7cc;}
-  50%{background:#ffef99;}
-  100%{background:#fff7cc;}
+
+0%{opacity:1}
+50%{opacity:.3}
+100%{opacity:1}
+
 }
 
-.footer{
-  margin-top:10px;
-  font-size:11px;
-  color:#6b7280;
-}
 </style>
+
 </head>
 
 <body>
 
 <div class="header">
-  <h1>HELPDESK VIP & HOTSPOT REALTIME ALARM V2</h1>
-  <div class="update" id="lastUpdate">UPDATE : -</div>
-  <div class="footer">AZH AUTO MONITORING SYSTEM</div>
+NETDRONE VIP JAYA HD DIOC
 </div>
 
-<div class="container">
+<div class="controls">
 
-  <div class="action-bar">
-    <button onclick="exportCSV()">Export CSV</button>
-  </div>
+<input id="search" placeholder="Search Site / Node">
 
-  <div class="table-wrapper">
-    <table id="alarmTable">
-      <thead>
-        <tr>
-          <th data-key="Source">MAE</th>
-          <th data-key="First Occurred (NT)">First Occurred</th>
-          <th data-key="Alarm Source">Site Name</th>
-          <th data-key="Name">Alarm Name</th>
-          <th data-key="Escalate to">Escalate to</th>
-          <th data-key="TT">TT</th>
-          <th data-key="WO">WO</th>
-          <th data-key="Updated At">Updated At</th>
-          <th data-key="MO Name">MO Location</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
+<select id="categoryFilter">
+<option value="ALL">All Category</option>
+</select>
 
-  <div class="footer">
-    Data source: Google Sheets (Realtime CSV)
-  </div>
 </div>
 
-<audio id="alarmSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-</audio>
+<div class="dashboard">
+
+<div class="dashboard">
+
+<div class="card green">
+<div class="card-title">CLEAR</div>
+<div class="card-value" id="clear">0</div>
+</div>
+
+<div class="card red">
+<div class="card-title">FAULT</div>
+<div class="card-value" id="fault">0</div>
+</div>
+
+<div class="card orange">
+<div class="card-title">DEGRADED</div>
+<div class="card-value" id="degrade">0</div>
+</div>
+
+<div class="card yellow">
+<div class="card-title">TWAMP</div>
+<div class="card-value" id="twamp">0</div>
+</div>
+
+</div>
+
+</div>
+
+<div id="map"></div>
+
+<div class="legend">
+
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:14px;height:14px;background:#16a34a;border-radius:50%"></div>
+Clear
+</div>
+
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:14px;height:14px;background:#dc2626;border-radius:50%"></div>
+Fault
+</div>
+
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:14px;height:14px;background:#f97316;border-radius:50%"></div>
+Degraded
+</div>
+
+<div style="display:flex;align-items:center;gap:6px">
+<div style="width:14px;height:14px;background:#eab308;border-radius:50%"></div>
+TWAMP
+</div>
+
+</div>
 
 <script>
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=420674249&single=true&output=csv&v=" + Date.now();
 
-let tableData = [];
-let sortState = {};
-let previousKeys = new Set();
+const API="https://api.azhautomation.com/api/map"
 
-function alarmKey(r){
-  return `${r["Source"]}|${r["First Occurred (NT)"]}|${r["Name"]}`;
+var map=L.map('map',{zoomControl:true}).setView([-6.2,106.8],11)
+
+L.tileLayer(
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+{maxZoom:19}
+).addTo(map)
+
+var allSites=[]
+var markers=[]
+
+function color(status){
+
+if(status=="GREEN") return "#16a34a"
+if(status=="RED") return "#dc2626"
+if(status=="ORANGE") return "#f97316"
+if(status=="YELLOW") return "#eab308"
+
 }
 
-function sortByFirstOccurredDesc(data){
-  data.sort((a,b)=> new Date(b["First Occurred (NT)"]) - new Date(a["First Occurred (NT)"]));
+function statusText(s){
+
+if(s=="GREEN") return "CLEAR"
+if(s=="RED") return "FAULT"
+if(s=="ORANGE") return "SERVICE DEGRADED"
+if(s=="YELLOW") return "TWAMP ISSUE"
+
 }
 
-function loadData(){
-  Papa.parse(CSV_URL,{
-    download:true,
-    header:true,
-    skipEmptyLines:true,
-    complete:(res)=>{
-      tableData = res.data;
-      sortByFirstOccurredDesc(tableData);
+function drawSites(list){
 
-      const newKeys = new Set();
-      let newAlarmFound = false;
+markers.forEach(m=>map.removeLayer(m))
+markers=[]
 
-      tableData.forEach(r=>{
-        const key = alarmKey(r);
-        newKeys.add(key);
-        if(!previousKeys.has(key)){
-          r.__new = true;
-          newAlarmFound = true;
-        }else{
-          r.__new = false;
-        }
-      });
+list.forEach(s=>{
 
-      if(newAlarmFound){
-        document.getElementById("alarmSound").play();
-      }
+let lat=Number(s.lat)
+let lon=Number(s.lon)
 
-      previousKeys = newKeys;
-      renderTable(tableData);
-      setLastUpdate(tableData);
-    }
-  });
+if(isNaN(lat)||isNaN(lon))return
+
+let blink = s.status=="RED" ? "blink" : ""
+
+var icon=L.divIcon({
+
+className:"",
+
+html:`<div class="${blink}" style="
+width:13px;
+height:13px;
+background:${color(s.status)};
+border-radius:50%;
+border:2px solid white;
+box-shadow:0 0 4px rgba(0,0,0,0.6);
+"></div>`
+
+})
+
+var marker=L.marker([lat,lon],{icon:icon})
+
+let alarms="None"
+
+if(s.alarms && s.alarms.length>0){
+alarms=s.alarms.join("<br>")
 }
 
-function renderTable(data){
-  const tbody = document.querySelector("#alarmTable tbody");
-  tbody.innerHTML="";
-  data.forEach(r=>{
-    const tr=document.createElement("tr");
-    if(r.__new) tr.classList.add("new-alarm");
-    tr.innerHTML=`
-      <td>${r["Source"]||"-"}</td>
-      <td>${r["First Occurred (NT)"]||"-"}</td>
-      <td>${r["Alarm Source"]||"-"}</td>
-      <td>${r["Name"]||"-"}</td>
-      <td>${r["Escalate to"]||"-"}</td>
-      <td>${r["TT"]||"-"}</td>
-      <td>${r["WO"]||"-"}</td>
-      <td>${r["Updated At"]||"-"}</td>
-      <td>${r["MO Name"]||"-"}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+let popup=`
+
+<div style="font-size:12px">
+
+<b>SITE INFORMATION</b><br>
+${s.site_id}<br>
+${s.node_name}<br>
+${s.category ?? "-"}<br><br>
+
+<b>STATUS</b><br>
+<span style="color:${color(s.status)}">
+${statusText(s.status)}
+</span><br><br>
+
+<b>ACTIVE ALARMS</b><br>
+${alarms}<br><br>
+
+<b>KPI</b><br>
+PLR : ${s.kpi?.plr ?? "-"}<br>
+Delay : ${s.kpi?.delay ?? "-"}
+
+</div>
+
+`
+
+marker.bindPopup(popup)
+
+marker.addTo(map)
+
+markers.push(marker)
+
+})
+
 }
 
-function setLastUpdate(data){
-  const last = new Date();
-  document.getElementById("lastUpdate").innerText = "UPDATE : " + last.toLocaleString();
+function applyFilter(){
+
+let text=document.getElementById("search").value.toLowerCase()
+let cat=document.getElementById("categoryFilter").value
+
+let filtered=allSites.filter(s=>{
+
+let a=s.site_id.toLowerCase().includes(text)
+let b=s.node_name.toLowerCase().includes(text)
+
+let search=(a||b)
+let category=(cat=="ALL"||s.category==cat)
+
+return search && category
+
+})
+
+drawSites(filtered)
+
+if(filtered.length==1){
+
+map.setView([filtered[0].lat,filtered[0].lon],15)
+
 }
 
-/* EXPORT CSV */
-function exportCSV(){
-  const csv = Papa.unparse(tableData);
-  const blob = new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=`HELPDESK_ALARM_${new Date().toISOString().replace(/[:T]/g,"-").slice(0,19)}.csv`;
-  a.click();
 }
 
-loadData();
-setInterval(loadData, 4*60*1000);
+async function load(){
+
+let r=await fetch(API)
+let data=await r.json()
+
+allSites=data.sites
+
+document.getElementById("clear").innerHTML=data.summary.green
+document.getElementById("fault").innerHTML=data.summary.red
+document.getElementById("degrade").innerHTML=data.summary.orange
+document.getElementById("twamp").innerHTML=data.summary.yellow
+
+let cats=[...new Set(allSites.map(s=>s.category))]
+
+let sel=document.getElementById("categoryFilter")
+
+sel.innerHTML='<option value="ALL">All Category</option>'
+
+cats.forEach(c=>{
+sel.innerHTML+=`<option value="${c}">${c}</option>`
+})
+
+drawSites(allSites)
+
+}
+
+document.getElementById("search").addEventListener("keyup",applyFilter)
+document.getElementById("categoryFilter").addEventListener("change",applyFilter)
+
+load()
+
+setInterval(load,30000)
+
 </script>
 
 </body>
 </html>
-
