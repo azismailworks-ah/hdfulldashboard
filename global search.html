@@ -121,7 +121,7 @@ $('#btnSearch').on('click',function(){
     if(type==='vip') row=[r['TT'],r['WO'],r['Site ID'],r['Site Name'],r['Open Date'],r['Escalate to'],r['Aging Hours'],r['Status NOC'],r['End Escalate']];
     if(type==='ctt') row=[r['TT'],r['TT FSO'],r['Region'],r['Site ID'],r['Site Name'],r['Open Date MM/DD/YYYY'],r['Aging'],r['Type'],r['Status NOC'],r['Closed Date MM/DD/YYYY']];
     if(type==='sqdt') row=[r['TT'],r['Region'],r['Priority'],r['Issue Title'],r['TT Submit Date MM/DD/YYYY HH:MM'],r['MTTR /Hours'],r['Status NOC'],r['End Time M/D/YYYY HH:MM']];
-    if(type==='traffic') row=[r['SN'],r['TT/WO'],r['Site ID'],r['Site Name'],r['First Create'],r['Aging'],r['Type'],r['Status NOC'],r['Closed Date NOC']];
+    if(type==='traffic') row=[r['SN'],r['TT/WO'],r['Site ID'],r['Site Name'],r['First Create'],r['Aging'],r['Type'],r['STATUS NOC'],r['Closed Date NOC']];
 
     const node=table.row.add(row).draw(false).node();
     node._raw=r;
@@ -203,7 +203,7 @@ $('#searchTable tbody').on('click','tr',function(){
   <b>Closed Date:</b> ${r['Closed Date NOC']}<br>
   <b>Aging:</b> ${r['Aging']}<br>
   <b>Escalate To:</b> ${r['Escalated to']}<br>
-  <b>Status:</b> ${r['Status NOC']}<br>
+  <b>Status:</b> ${r['STATUS NOC']}<br>
   <b>Finding:</b> ${r['Remarks']}
   `;
   time=r['Time Periode'];
@@ -219,4 +219,5 @@ $('#searchTable tbody').on('click','tr',function(){
 
 </body>
 </html>
+
 
