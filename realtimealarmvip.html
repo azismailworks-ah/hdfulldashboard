@@ -8,14 +8,7 @@
 <link rel="stylesheet"
 href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css"/>
-
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css"/>
-
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
 <style>
 
@@ -35,9 +28,10 @@ font-weight:700
 
 .controls{
 display:flex;
-gap:10px;
+gap:12px;
 padding:10px;
-background:#020617
+background:#020617;
+align-items:center
 }
 
 .controls input,.controls select{
@@ -110,8 +104,6 @@ animation: blink 1s infinite
 100%{opacity:1}
 }
 
-/* TOAST ALERT */
-
 #toast{
 position:absolute;
 top:90px;
@@ -126,89 +118,63 @@ font-weight:600;
 box-shadow:0 0 10px rgba(0,0,0,0.6)
 }
 
-/* FAULT PANEL */
-
 .faultPanel{
-
 position:absolute;
-top:200px;
+top:250px;
 right:20px;
-
-width:300px;
-
+width:320px;
 background:#020617;
 border:1px solid #1e293b;
 border-radius:10px;
-
 padding:14px;
-
 font-size:14px;
-
-max-height:460px;
+max-height:420px;
 overflow:auto;
-
 box-shadow:0 0 12px rgba(0,0,0,0.7);
-
 z-index:1000;
-
 }
 
 .faultTitle{
-
 font-weight:700;
-
 font-size:15px;
-
 color:#ff4d4d;
-
 margin-bottom:12px;
-
 border-bottom:1px solid #1e293b;
-
 padding-bottom:6px;
-
-letter-spacing:.5px;
-
 }
 
 .faultItem{
-
 padding:10px 0;
-
 border-bottom:1px solid #1e293b
+}
 
+.faultTime{
+font-size:13px;
+font-weight:600;
+color:#94a3b8;
+margin-bottom:3px;
 }
 
 .faultSite{
-
 font-weight:700;
-
 font-size:14px;
-
-color:#ffffff;
-
 }
 
 .faultNode{
-
-font-size:13px;
-
+font-size:12px;
 color:#cbd5f5;
-
-margin-top:2px;
-
 }
 
 .faultAlarm{
-
 color:#ff5c5c;
-
 font-size:13px;
-
-margin-top:4px;
-
 font-weight:600;
+}
 
+#categoryFilter{
+display:flex;
+gap:10px;
+flex-wrap:wrap
 }
 
 </style>
@@ -225,9 +191,12 @@ NETDRONE VIP JAYA HD DIOC
 
 <input id="search" placeholder="Search Site / Node">
 
-<select id="categoryFilter">
-<option value="ALL">All Category</option>
+<select id="flagFilter">
+<option value="ALL">ALL JABO</option>
+<option value="VIP">VIP</option>
 </select>
+
+<div id="categoryFilter"></div>
 
 </div>
 
@@ -301,17 +270,14 @@ TWAMP
 
 const API="https://api.azhautomation.com/api/map"
 
-var map=L.map('map',{zoomControl:true}).setView([-6.2,106.8],11)
+var map=L.map('map').setView([-6.2,106.8],11)
 
 L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-{maxZoom:19}
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 ).addTo(map)
 
 var allSites=[]
 var markers=[]
-
-/* NEW VARIABLES */
 
 var previousStatus={}
 var activeFaults={}
@@ -331,15 +297,15 @@ t.style.display="none"
 
 function playAlarm(){
 
-let audio = document.getElementById("alarmSound")
+let audio=document.getElementById("alarmSound")
 
-audio.volume = 0.2   // volume 20%
+audio.volume=0.15
 
-audio.currentTime = 0
+audio.currentTime=0
 audio.play()
 
 setTimeout(()=>{
-audio.currentTime = 0
+audio.currentTime=0
 audio.play()
 },350)
 
@@ -351,15 +317,21 @@ let panel=document.getElementById("faultList")
 
 panel.innerHTML=""
 
-Object.values(activeFaults).forEach(f=>{
+let faults=Object.values(activeFaults)
+
+faults.sort((a,b)=> new Date(b.time)-new Date(a.time))
+
+faults.forEach(f=>{
 
 panel.innerHTML+=`
 
 <div class="faultItem">
 
+<div class="faultTime">${f.time || ""}</div>
+
 <div class="faultSite">${f.site}</div>
 
-<div>${f.node}</div>
+<div class="faultNode">${f.node}</div>
 
 <div class="faultAlarm">${f.alarm}</div>
 
@@ -401,7 +373,7 @@ let lon=Number(s.lon)
 
 if(isNaN(lat)||isNaN(lon))return
 
-let blink = s.status=="RED" ? "blink" : ""
+let blink=s.status=="RED"?"blink":""
 
 var icon=L.divIcon({
 
@@ -412,9 +384,7 @@ width:13px;
 height:13px;
 background:${color(s.status)};
 border-radius:50%;
-border:2px solid white;
-box-shadow:0 0 4px rgba(0,0,0,0.6);
-"></div>`
+border:2px solid white;"></div>`
 
 })
 
@@ -423,17 +393,18 @@ var marker=L.marker([lat,lon],{icon:icon})
 let alarms="None"
 
 if(s.alarms && s.alarms.length>0){
-alarms=s.alarms.join("<br>")
+alarms=s.alarms.map(a=>a.alarm_name).join("<br>")
 }
 
 let popup=`
 
-<div style="font-size:12px">
+<div style="font-size:13px">
 
 <b>SITE INFORMATION</b><br>
 ${s.site_id}<br>
 ${s.node_name}<br>
-${s.category ?? "-"}<br><br>
+${s.category ?? "-"}<br>
+FLAG : ${s.flag ?? "-"}<br><br>
 
 <b>STATUS</b><br>
 <span style="color:${color(s.status)}">
@@ -464,38 +435,37 @@ markers.push(marker)
 function applyFilter(){
 
 let text=document.getElementById("search").value.toLowerCase()
-let cat=document.getElementById("categoryFilter").value
+
+let flag=document.getElementById("flagFilter").value
+
+let selectedCats=[...document.querySelectorAll('#categoryFilter input:checked')]
+.map(e=>e.value)
 
 let filtered=allSites.filter(s=>{
 
-let a=s.site_id.toLowerCase().includes(text)
-let b=s.node_name.toLowerCase().includes(text)
+let search=
+s.site_id.toLowerCase().includes(text)||
+s.node_name.toLowerCase().includes(text)
 
-let search=(a||b)
-let category=(cat=="ALL"||s.category==cat)
+let category=selectedCats.includes(s.category)
 
-return search && category
+let flagMatch=(flag=="ALL"||s.flag==flag)
+
+return search && category && flagMatch
 
 })
 
 drawSites(filtered)
-
-if(filtered.length==1){
-
-map.setView([filtered[0].lat,filtered[0].lon],15)
-
-}
 
 }
 
 async function load(){
 
 let r=await fetch(API)
+
 let data=await r.json()
 
 allSites=data.sites
-
-/* INITIAL FAULT LOAD */
 
 if(Object.keys(activeFaults).length==0){
 
@@ -504,9 +474,15 @@ allSites.forEach(s=>{
 if(s.status!="GREEN"){
 
 activeFaults[s.site_id]={
+
 site:s.site_id,
+
 node:s.node_name,
-alarm:(s.alarms && s.alarms.length>0)?s.alarms[0]:"KPI DEGRADED"
+
+alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
+
+time:(s.alarms?.length)?s.alarms[0].start_time:""
+
 }
 
 }
@@ -516,8 +492,6 @@ alarm:(s.alarms && s.alarms.length>0)?s.alarms[0]:"KPI DEGRADED"
 updateFaultPanel()
 
 }
-
-/* DETECT STATUS CHANGE */
 
 allSites.forEach(s=>{
 
@@ -530,9 +504,12 @@ showToast("⚠ SITE ISSUE : "+s.site_id)
 playAlarm()
 
 activeFaults[s.site_id]={
+
 site:s.site_id,
 node:s.node_name,
-alarm:(s.alarms && s.alarms.length>0)?s.alarms[0]:"KPI DEGRADED"
+alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
+time:(s.alarms?.length)?s.alarms[0].start_time:""
+
 }
 
 updateFaultPanel()
@@ -558,20 +535,35 @@ document.getElementById("twamp").innerHTML=data.summary.yellow
 
 let cats=[...new Set(allSites.map(s=>s.category))]
 
-let sel=document.getElementById("categoryFilter")
+let box=document.getElementById("categoryFilter")
 
-sel.innerHTML='<option value="ALL">All Category</option>'
+if(box.innerHTML==""){
 
 cats.forEach(c=>{
-sel.innerHTML+=`<option value="${c}">${c}</option>`
+
+box.innerHTML+=`
+
+<label>
+
+<input type="checkbox" value="${c}" checked>
+
+${c}
+
+</label>
+
+`
+
 })
 
-drawSites(allSites)
+}
+
+applyFilter()
 
 }
 
 document.getElementById("search").addEventListener("keyup",applyFilter)
-document.getElementById("categoryFilter").addEventListener("change",applyFilter)
+
+document.getElementById("flagFilter").addEventListener("change",applyFilter)
 
 load()
 
