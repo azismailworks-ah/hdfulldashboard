@@ -189,6 +189,7 @@ tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
 <tr>
 <th>MAE</th>
 <th>First Occurred</th>
+<th>Site ID</th>
 <th>Site Name</th>
 <th>Alarm Name</th>
 <th>Escalate To</th>
@@ -268,6 +269,7 @@ function renderTable(data){
    tr.innerHTML=`
       <td>${r["Source"]||"-"}</td>
       <td>${r["First Occurred (NT)"]||"-"}</td>
+      <td>${r["Site ID"]||"-"}</td>
       <td>${r["Alarm Source"]||"-"}</td>
       <td>${r["Name"]||"-"}</td>
       <td>${r["Escalate to"]||"-"}</td>
