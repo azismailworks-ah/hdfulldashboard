@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>NOC Health Check PRO</title>
+
+<style>
+
+body{
+font-family:Arial;
+background:#f4f6f9;
+padding:40px;
+}
+
+.container{
+max-width:900px;
+margin:auto;
+background:white;
+padding:30px;
+border-radius:10px;
+}
+
+textarea{
+width:100%;
+height:120px;
+padding:10px;
+}
+
+.result{
+background:#111;
+color:#00ff90;
+padding:20px;
+white-space:pre-wrap;
+margin-top:20px;
+font-family:Consolas;
+}
+
+button{
+padding:10px 20px;
+margin-top:10px;
+}
+
+.brand{
+font-size:13px;
+color:#888;
+margin-top:4px;
+margin-bottom:20px;
+font-weight:500;
+letter-spacing:2px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>NOC HEALTH CHECK PRO</h2>
+<div class="brand">AZH Automation</div>
+
+<textarea id="sites"></textarea>
+
+<br>
+
+<button onclick="run()">ANALYSIS</button>
+<button onclick="copy()">COPY</button>
+
+<div id="result" class="result"></div>
+
+</div>
+
+<script>
+
+async function run(){
+
+let sites=document.getElementById("sites").value
+.split("\n")
+.filter(x=>x!="")
+
+let url="https://api.azhautomation.com/api/noc/healthcheck?sites="+sites.join(",")
+
+let r=await fetch(url)
+
+let j=await r.json()
+
+let text=""
+
+j.result.forEach(s=>{
+
+let siaText=""
+
+if(s.sia.startsWith("❌")){
+
+let alarm=s.sia.replace("❌ ","")
+
+siaText=`❌ SIA Status (${alarm})`
+
+}else{
+
+siaText=`✅ SIA Status`
+
+}
+
+text+=
+`━━━━━━━━━━━━━━━━━━━━
+SITE : ${s.site_id}
+SITE NAME : ${s.site_name}
+
+${siaText}
+`
+
+if(s.suspect && s.suspect.trim()!=""){
+text+=`
+Suspect Cause :
+${s.suspect}
+`
+}
+
+if(s.action && s.action.trim()!=""){
+text+=`
+Action Needed :
+${s.action}
+`
+}
+
+text+=`
+
+KPI HEALTHCHECK
+${s.availability} Availability Status
+${s.plr} PLR Status
+${s.delay} DELAY Status
+${s.traffic} Traffic Status
+${s.s1sr} S1SR Status
+
+`
+
+})
+
+document.getElementById("result").innerText=text
+
+}
+
+function copy(){
+
+navigator.clipboard.writeText(
+document.getElementById("result").innerText
+)
+
+alert("Copied")
+
+}
+
+</script>
+
+</body>
+</html>
