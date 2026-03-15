@@ -114,6 +114,22 @@ SITE NAME : ${s.site_name}
 ${siaText}
 `
 
+/* ===== NEW MULTI ALARM SECTION ===== */
+
+if(s.alarms && s.alarms.length>0){
+
+text+=`
+Detected Alarms :
+`
+
+s.alarms.forEach(a=>{
+text+=`• ${a}\n`
+})
+
+}
+
+/* ===== EXISTING RCA SECTION ===== */
+
 if(s.suspect && s.suspect.trim()!=""){
 text+=`
 Suspect Cause :
