@@ -278,87 +278,62 @@ L.tileLayer(
 
 var allSites=[]
 var markers=[]
-
 var previousStatus={}
 var activeFaults={}
 
+// helper
+function getNodeText(s){
+return s.nodes ? s.nodes.join(", ") : (s.node_name || "-")
+}
+
 function showToast(msg){
-
 let t=document.getElementById("toast")
-
 t.innerHTML=msg
 t.style.display="block"
-
-setTimeout(()=>{
-t.style.display="none"
-},4000)
-
+setTimeout(()=>{t.style.display="none"},4000)
 }
 
 function playAlarm(){
-
 let audio=document.getElementById("alarmSound")
-
 audio.volume=0.15
-
 audio.currentTime=0
 audio.play()
-
 setTimeout(()=>{
 audio.currentTime=0
 audio.play()
 },350)
-
 }
 
 function updateFaultPanel(){
-
 let panel=document.getElementById("faultList")
-
 panel.innerHTML=""
-
 let faults=Object.values(activeFaults)
 
 faults.sort((a,b)=> new Date(b.time)-new Date(a.time))
 
 faults.forEach(f=>{
-
 panel.innerHTML+=`
-
 <div class="faultItem">
-
 <div class="faultTime">${f.time || ""}</div>
-
 <div class="faultSite">${f.site}</div>
-
 <div class="faultNode">${f.node}</div>
-
 <div class="faultAlarm">${f.alarm}</div>
-
-</div>
-
-`
-
+</div>`
 })
-
 }
 
 function color(status){
-
 if(status=="GREEN") return "#16a34a"
 if(status=="RED") return "#dc2626"
 if(status=="ORANGE") return "#f97316"
 if(status=="YELLOW") return "#eab308"
-
 }
 
 function statusText(s){
-
 if(s=="GREEN") return "CLEAR"
 if(s=="RED") return "FAULT"
 if(s=="ORANGE") return "SERVICE DEGRADED"
 if(s=="YELLOW") return "TWAMP ISSUE"
-
 }
 
 function drawSites(list){
@@ -370,41 +345,34 @@ list.forEach(s=>{
 
 let lat=Number(s.lat)
 let lon=Number(s.lon)
-
 if(isNaN(lat)||isNaN(lon))return
 
 let blink=s.status=="RED"?"blink":""
 
 var icon=L.divIcon({
-
 className:"",
-
 html:`<div class="${blink}" style="
 width:13px;
 height:13px;
 background:${color(s.status)};
 border-radius:50%;
 border:2px solid white;"></div>`
-
 })
 
 var marker=L.marker([lat,lon],{icon:icon})
 
 let alarms="None"
-
 if(s.alarms && s.alarms.length>0){
 alarms=s.alarms.map(a=>a.alarm_name).join("<br>")
 }
 
 let popup=`
-
 <div style="font-size:13px">
-
 <b>SITE INFORMATION</b><br>
 ${s.site_id}<br>
 
 <b>NODES</b><br>
-${s.nodes ? s.nodes.join("<br>") : s.node_name}<br>
+${s.nodes ? s.nodes.join("<br>") : (s.node_name || "-")}<br>
 
 ${s.category ?? "-"}<br>
 FLAG : ${s.flag ?? "-"}<br><br>
@@ -420,25 +388,19 @@ ${alarms}<br><br>
 <b>KPI</b><br>
 PLR : ${s.kpi?.plr ?? "-"}<br>
 Delay : ${s.kpi?.delay ?? "-"}
-
 </div>
-
 `
 
 marker.bindPopup(popup)
-
 marker.addTo(map)
-
 markers.push(marker)
 
 })
-
 }
 
 function applyFilter(){
 
 let text=document.getElementById("search").value.toLowerCase()
-
 let flag=document.getElementById("flagFilter").value
 
 let selectedCats=[...document.querySelectorAll('#categoryFilter input:checked')]
@@ -446,54 +408,43 @@ let selectedCats=[...document.querySelectorAll('#categoryFilter input:checked')]
 
 let filtered=allSites.filter(s=>{
 
+let nodesText = s.nodes ? s.nodes.join(" ").toLowerCase() : (s.node_name || "").toLowerCase()
+
 let search=
 s.site_id.toLowerCase().includes(text)||
-s.node_name.toLowerCase().includes(text)
+nodesText.includes(text)
 
 let category=selectedCats.includes(s.category)
-
 let flagMatch=(flag=="ALL"||s.flag==flag)
 
 return search && category && flagMatch
-
 })
 
 drawSites(filtered)
-
 }
 
 async function load(){
 
 let r=await fetch(API)
-
 let data=await r.json()
-
 allSites=data.sites
 
 if(Object.keys(activeFaults).length==0){
 
 allSites.forEach(s=>{
-
 if(s.status!="GREEN"){
 
-node: s.nodes ? s.nodes.join(", ") : s.node_name
-
+activeFaults[s.site_id]={
 site:s.site_id,
-
-node:s.node_name,
-
+node:getNodeText(s),
 alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
-
 time:(s.alarms?.length)?s.alarms[0].start_time:""
-
 }
 
 }
-
 })
 
 updateFaultPanel()
-
 }
 
 allSites.forEach(s=>{
@@ -503,28 +454,21 @@ let prev=previousStatus[s.site_id]
 if(prev=="GREEN" && s.status!="GREEN"){
 
 showToast("⚠ SITE ISSUE : "+s.site_id)
-
 playAlarm()
 
 activeFaults[s.site_id]={
-
 site:s.site_id,
-node:s.node_name,
+node:getNodeText(s),
 alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
 time:(s.alarms?.length)?s.alarms[0].start_time:""
-
 }
 
 updateFaultPanel()
-
 }
 
 if(prev && prev!="GREEN" && s.status=="GREEN"){
-
 delete activeFaults[s.site_id]
-
 updateFaultPanel()
-
 }
 
 previousStatus[s.site_id]=s.status
@@ -537,39 +481,25 @@ document.getElementById("degrade").innerHTML=data.summary.orange
 document.getElementById("twamp").innerHTML=data.summary.yellow
 
 let cats=[...new Set(allSites.map(s=>s.category))]
-
 let box=document.getElementById("categoryFilter")
 
 if(box.innerHTML==""){
-
 cats.forEach(c=>{
-
 box.innerHTML+=`
-
 <label>
-
 <input type="checkbox" value="${c}" checked>
-
 ${c}
-
-</label>
-
-`
-
+</label>`
 })
-
 }
 
 applyFilter()
-
 }
 
 document.getElementById("search").addEventListener("keyup",applyFilter)
-
 document.getElementById("flagFilter").addEventListener("change",applyFilter)
 
 load()
-
 setInterval(load,30000)
 
 </script>
