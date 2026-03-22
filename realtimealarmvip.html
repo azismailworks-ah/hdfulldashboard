@@ -229,37 +229,15 @@ NETDRONE VIP JAYA HD DIOC
 <div id="toast"></div>
 
 <div class="faultPanel">
-
-<div class="faultTitle">
-ACTIVE NETWORK FAULT
-</div>
-
+<div class="faultTitle">ACTIVE NETWORK FAULT</div>
 <div id="faultList"></div>
-
 </div>
 
 <div class="legend">
-
-<div style="display:flex;align-items:center;gap:6px">
-<div style="width:14px;height:14px;background:#16a34a;border-radius:50%"></div>
-Clear
-</div>
-
-<div style="display:flex;align-items:center;gap:6px">
-<div style="width:14px;height:14px;background:#dc2626;border-radius:50%"></div>
-Fault
-</div>
-
-<div style="display:flex;align-items:center;gap:6px">
-<div style="width:14px;height:14px;background:#f97316;border-radius:50%"></div>
-Degraded
-</div>
-
-<div style="display:flex;align-items:center;gap:6px">
-<div style="width:14px;height:14px;background:#eab308;border-radius:50%"></div>
-TWAMP
-</div>
-
+<div><div style="width:14px;height:14px;background:#16a34a;border-radius:50%"></div>Clear</div>
+<div><div style="width:14px;height:14px;background:#dc2626;border-radius:50%"></div>Fault</div>
+<div><div style="width:14px;height:14px;background:#f97316;border-radius:50%"></div>Degraded</div>
+<div><div style="width:14px;height:14px;background:#eab308;border-radius:50%"></div>TWAMP</div>
 </div>
 
 <audio id="alarmSound">
@@ -272,16 +250,48 @@ const API="https://api.azhautomation.com/api/map"
 
 var map=L.map('map').setView([-6.2,106.8],11)
 
-L.tileLayer(
-'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
-).addTo(map)
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map)
 
 var allSites=[]
 var markers=[]
 var previousStatus={}
 var activeFaults={}
 
-// helper
+// ================= NEW NODE LOGIC =================
+
+function renderNodes(s){
+
+if(!s.nodes) return "-"
+
+return s.nodes.map(n=>{
+
+let nodeAlarms = (s.alarms || []).filter(a =>
+(a.node_name || "").toLowerCase() === n.toLowerCase()
+)
+
+if(nodeAlarms.length > 0){
+return `❌ ${n}<br>
+<span style="color:#ff4d4d;font-size:11px">
+${nodeAlarms.map(a=>a.alarm_name).join(", ")}
+</span>`
+}
+
+return `✔ ${n}`
+
+}).join("<br>")
+}
+
+function getFaultNode(s){
+
+if(s.alarm_nodes && s.alarm_nodes.length){
+return "❌ " + s.alarm_nodes.join(", ")
+}
+
+return s.nodes ? s.nodes.join(", ") : "-"
+}
+
+// ================= EXISTING =================
+
 function getNodeText(s){
 return s.nodes ? s.nodes.join(", ") : (s.node_name || "-")
 }
@@ -372,7 +382,7 @@ let popup=`
 ${s.site_id}<br>
 
 <b>NODES</b><br>
-${s.nodes ? s.nodes.join("<br>") : (s.node_name || "-")}<br>
+${renderNodes(s)}<br>
 
 ${s.category ?? "-"}<br>
 FLAG : ${s.flag ?? "-"}<br><br>
@@ -436,7 +446,7 @@ if(s.status!="GREEN"){
 
 activeFaults[s.site_id]={
 site:s.site_id,
-node:getNodeText(s),
+node:getFaultNode(s),
 alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
 time:(s.alarms?.length)?s.alarms[0].start_time:""
 }
@@ -458,7 +468,7 @@ playAlarm()
 
 activeFaults[s.site_id]={
 site:s.site_id,
-node:getNodeText(s),
+node:getFaultNode(s),
 alarm:(s.alarms?.length)?s.alarms[0].alarm_name:"KPI DEGRADED",
 time:(s.alarms?.length)?s.alarms[0].start_time:""
 }
