@@ -402,7 +402,10 @@ let popup=`
 
 <b>SITE INFORMATION</b><br>
 ${s.site_id}<br>
-${s.node_name}<br>
+
+<b>NODES</b><br>
+${s.nodes ? s.nodes.join("<br>") : s.node_name}<br>
+
 ${s.category ?? "-"}<br>
 FLAG : ${s.flag ?? "-"}<br><br>
 
@@ -473,7 +476,7 @@ allSites.forEach(s=>{
 
 if(s.status!="GREEN"){
 
-activeFaults[s.site_id]={
+node: s.nodes ? s.nodes.join(", ") : s.node_name
 
 site:s.site_id,
 
