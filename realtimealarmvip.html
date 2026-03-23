@@ -3,6 +3,8 @@
 
 <head>
 
+<meta charset="UTF-8">
+
 <title>NETDRONE VIP JAYA</title>
 
 <link rel="stylesheet"
@@ -257,17 +259,27 @@ var markers=[]
 var previousStatus={}
 var activeFaults={}
 
-// ================= NEW NODE LOGIC =================
+// ================= 🔥 NORMALIZE =================
+function normalize(x){
+return (x || "").toString().trim().toUpperCase()
+}
 
+// ================= 🔥 NODE LOGIC FIX =================
 function renderNodes(s){
 
 if(!s.nodes) return "-"
 
 return s.nodes.map(n=>{
 
-let nodeAlarms = (s.alarms || []).filter(a =>
-(a.node_name || "").toLowerCase() === n.toLowerCase()
-)
+let nodeNorm = normalize(n)
+
+let nodeAlarms = (s.alarms || []).filter(a => {
+
+let alarmNodes = normalize(a.node_name).split(",")
+
+return alarmNodes.some(an => normalize(an) === nodeNorm)
+
+})
 
 if(nodeAlarms.length > 0){
 return `❌ ${n}<br>
@@ -283,8 +295,17 @@ return `✔ ${n}`
 
 function getFaultNode(s){
 
-if(s.alarm_nodes && s.alarm_nodes.length){
-return "❌ " + s.alarm_nodes.join(", ")
+if(s.alarms && s.alarms.length){
+
+let nodes = new Set()
+
+s.alarms.forEach(a=>{
+normalize(a.node_name).split(",").forEach(n=>{
+nodes.add(normalize(n))
+})
+})
+
+return "❌ " + Array.from(nodes).join(", ")
 }
 
 return s.nodes ? s.nodes.join(", ") : "-"
