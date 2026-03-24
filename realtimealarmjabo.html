@@ -197,6 +197,7 @@ tr.age14p{background:#7f1d1d;animation:blink 1s infinite}
 <th>WO</th>
 <th>Updated At</th>
 <th>MO Location</th>
+<th>Site Category</th>  
 </tr>
 </thead>
 <tbody></tbody>
@@ -277,6 +278,7 @@ function renderTable(data){
       <td>${r["WO"]||"-"}</td>
       <td>${r["Updated At"]||"-"}</td>
       <td>${r["MO Name"]||"-"}</td>
+      <td>${r["Category"]||"-"}</td>
     `;
    tbody.appendChild(tr);
  });
