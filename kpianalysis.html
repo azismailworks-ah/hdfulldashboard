@@ -183,6 +183,14 @@ height:420px!important;
 .grid{grid-template-columns:1fr}
 .summary{grid-template-columns:1fr 1fr}
 }
+
+.analysis-summary{
+  background:#020617;
+  border-left:4px solid #22d3ee;
+  padding:10px;
+  border-radius:8px;
+}
+
 </style>
 </head>
 
@@ -245,6 +253,13 @@ height:420px!important;
 <div class="card"><h3>Connected User</h3><canvas id="chart7"></canvas></div>
 <div class="card"><h3>Throughput</h3><canvas id="chart8"></canvas></div>
 <div class="card"><h3>S1 Signaling Success Rate</h3><canvas id="chart9"></canvas></div>
+</div>
+
+<div id="analysisPanel" style="padding:40px 60px;">
+  <div class="card">
+    <h3>🧠 AUTO KPI ANALYSIS</h3>
+    <div id="analysisContent">Click Analyze...</div>
+  </div>
 </div>
 
 <script>
@@ -570,6 +585,9 @@ async function loadData(){
     }
 });
 
+// ===== CALL ANALYSIS (NON-INTRUSIVE) =====
+loadAnalysis(site, days);
+
 }
 
 /* ===================== EXPORT PNG ===================== */
@@ -612,6 +630,94 @@ async function exportDashboard(){
   // Kembalikan tombol
   buttons.forEach(b=>b.style.display="inline-block");
 }
+
+/* ================= ANALYSIS ENGINE (NEW - NON DESTRUCTIVE) ================= */
+
+const API_ANALYSIS = "https://api.azhautomation.com/api/auto-analysis";
+
+async function loadAnalysis(site, days){
+
+  try{
+
+    document.getElementById("analysisContent").innerHTML="⏳ Analyzing...";
+
+    const r = await fetch(`${API_ANALYSIS}?site_id=${site}&days=${days}`);
+
+    if(!r.ok){
+      throw new Error("API not reachable");
+    }
+
+    const j = await r.json();
+
+    console.log("ANALYSIS RESULT:", j);
+
+    if(!j || !j.trend){
+      document.getElementById("analysisContent").innerHTML =
+        "❌ No analysis data";
+      return;
+    }
+
+    let html = "";
+
+    // ================= HEADER =================
+    html += `<div class="analysis-item"><b>Root Cause:</b> ${j.root_cause}</div>`;
+    html += `<div class="analysis-item"><b>Confidence:</b> ${j.confidence ?? '-'}%</div>`;
+    html += `<div class="analysis-item"><b>Alarm:</b> ${j.alarm}</div>`;
+
+    // ================= SUMMARY =================
+    html += `<div class="analysis-title">Summary</div>`;
+    html += `<div class="analysis-summary">${j.summary}</div>`;
+
+    // ================= KPI SNAPSHOT (NEW) =================
+    html += `<div class="analysis-title">KPI Snapshot</div>`;
+
+    // Availability
+    if(j.availability_status){
+      html += `<div class="analysis-item">
+        Availability : ${j.availability_status} (${j.availability_min ?? '-'}%)
+      </div>`;
+    }
+
+    // PRB per sector
+    if(j.sector_prb){
+      html += `<div class="analysis-item">
+        PRB S1 : ${j.sector_prb.S1?.toFixed(1) ?? '-'}%
+      </div>`;
+      html += `<div class="analysis-item">
+        PRB S2 : ${j.sector_prb.S2?.toFixed(1) ?? '-'}%
+      </div>`;
+      html += `<div class="analysis-item">
+        PRB S3 : ${j.sector_prb.S3?.toFixed(1) ?? '-'}%
+      </div>`;
+    }
+
+    // ================= TREND =================
+    html += `<div class="analysis-title">Trend</div>`;
+    Object.entries(j.trend).forEach(([k,v])=>{
+      html += `<div class="analysis-item">${k} : ${v}</div>`;
+    });
+
+    // ================= INSIGHT =================
+    html += `<div class="analysis-title">Insight</div>`;
+    if(j.insight && j.insight.length){
+      j.insight.forEach(i=>{
+        html += `<div class="analysis-item">• ${i}</div>`;
+      });
+    }else{
+      html += `<div class="analysis-item">No insight</div>`;
+    }
+
+    document.getElementById("analysisContent").innerHTML = html;
+
+  }catch(e){
+
+    console.error("ANALYSIS ERROR:", e);
+
+    document.getElementById("analysisContent").innerHTML =
+      "❌ Analysis error (check console)";
+  }
+}
+
 </script>
 
 </body>
