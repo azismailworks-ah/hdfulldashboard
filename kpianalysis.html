@@ -266,6 +266,14 @@ height:420px!important;
 Chart.defaults.color="#cbd5e1";
 Chart.defaults.borderColor="rgba(148,163,184,.2)";
 Chart.defaults.font.family="Inter";
+Chart.defaults.font.size = 10;
+
+Chart.defaults.scales.category.ticks.font = {
+  size:10
+};
+
+Chart.defaults.elements.line.borderWidth = 2;  // 🔥 semua line jadi tipis
+Chart.defaults.elements.point.radius = 1;        // 🔥 hilangkan titik
 
 /* Fullscreen */
 function toggleFullscreen(){
@@ -445,7 +453,7 @@ async function loadData(){
     },
     options:{
       scales:{
-        y1:{beginAtZero:true,title:{display:true,text:"Delay (ms)"}},
+         y1:{beginAtZero:true,title:{display:true,text:"Delay (ms)"}},
         y2:{beginAtZero:true,position:"right",grid:{drawOnChartArea:false},title:{display:true,text:"PLR (%)"}}
       }
     }
