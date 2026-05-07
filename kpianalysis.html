@@ -465,18 +465,26 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"PRB S1 (%)",data:j.data.map(d=>pctLine(d.prb_s1)),borderColor:"#2563eb",spanGaps:false},
-        {label:"PRB S2 (%)",data:j.data.map(d=>pctLine(d.prb_s2)),borderColor:"#16a34a",spanGaps:false},
-        {label:"PRB S3 (%)",data:j.data.map(d=>pctLine(d.prb_s3)),borderColor:"#dc2626",spanGaps:false}
+        {
+          label:"S1SR (%)",
+          data:j.data.map(d=>pctLine(d.s1_sr)),
+          borderColor:"#22c55e",
+          spanGaps:false
+        }
       ]
     },
     options:{
       scales:{
-        y:{min:0,max:100,ticks:{callback:v=>v+"%"},title:{display:true,text:"PRB Utilization (%)"}}
+        y:{
+          min:0,
+          max:100,
+          ticks:{callback:v=>v+"%"},
+          title:{display:true,text:"S1 Signaling Success Rate (%)"}
+        }
       }
     }
-  });
-  
+});
+	
     /* ===== BOX 4 ===== */
   c4 = new Chart(chart4,{
     type:"line",
@@ -519,14 +527,14 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {label:"Sector 1",data:j.data.map(d=>numLine(d.ulrssi_s1)),borderColor:"#2563eb"},
-        {label:"Sector 2",data:j.data.map(d=>numLine(d.ulrssi_s2)),borderColor:"#16a34a"},
-        {label:"Sector 3",data:j.data.map(d=>numLine(d.ulrssi_s3)),borderColor:"#dc2626"}
+        {label:"PRB S1 (%)",data:j.data.map(d=>pctLine(d.prb_s1)),borderColor:"#2563eb",spanGaps:false},
+        {label:"PRB S2 (%)",data:j.data.map(d=>pctLine(d.prb_s2)),borderColor:"#16a34a",spanGaps:false},
+        {label:"PRB S3 (%)",data:j.data.map(d=>pctLine(d.prb_s3)),borderColor:"#dc2626",spanGaps:false}
       ]
     },
     options:{
       scales:{
-        y:{title:{display:true,text:"UL RSSI (dBm)"}}
+        y:{min:0,max:100,ticks:{callback:v=>v+"%"},title:{display:true,text:"PRB Utilization (%)"}}
       }
     }
   });
@@ -573,25 +581,17 @@ async function loadData(){
     data:{
       labels:L,
       datasets:[
-        {
-          label:"S1SR (%)",
-          data:j.data.map(d=>pctLine(d.s1_sr)),
-          borderColor:"#22c55e",
-          spanGaps:false
-        }
+        {label:"Sector 1",data:j.data.map(d=>numLine(d.ulrssi_s1)),borderColor:"#2563eb"},
+        {label:"Sector 2",data:j.data.map(d=>numLine(d.ulrssi_s2)),borderColor:"#16a34a"},
+        {label:"Sector 3",data:j.data.map(d=>numLine(d.ulrssi_s3)),borderColor:"#dc2626"}
       ]
     },
     options:{
       scales:{
-        y:{
-          min:0,
-          max:100,
-          ticks:{callback:v=>v+"%"},
-          title:{display:true,text:"S1 Signaling Success Rate (%)"}
-        }
+        y:{title:{display:true,text:"UL RSSI (dBm)"}}
       }
     }
-});
+  });
 
 // ===== CALL ANALYSIS (NON-INTRUSIVE) =====
 loadAnalysis(site, days);
