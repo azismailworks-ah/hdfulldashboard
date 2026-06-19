@@ -991,7 +991,12 @@ function clean(v){
 }
 
 function asNum(v){
-  const n = Number(clean(v));
+  const s = clean(v);
+
+  // Jika kosong atau N/A maka dianggap tidak ada data
+  if(s === '') return null;
+
+  const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
 
