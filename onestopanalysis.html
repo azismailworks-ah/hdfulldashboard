@@ -968,6 +968,7 @@ const state = {
   autoRefreshTimer: null,
   data: null,
   topologyData: null,
+  graphs: null,
   lastUpdate: null,
   siteName: '',
   meName: '',
@@ -1116,27 +1117,68 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
   });
 
   const lldpGraph = new Map();
-  (mwRoute || []).forEach(r => {
-    const headers = Object.keys(r);
-    const meCol = findCol(headers, ['metro name', 'ne name', 'me name', 'node'], 0);
-    const lldpCol = findCol(headers, ['lldp list', 'lldp', 'link', 'neighbors'], 3);
-    const me = clean(r[meCol]);
-    if(!me) return;
-    const nbs = splitNeighbors(r[lldpCol]);
-    if(!lldpGraph.has(me)) lldpGraph.set(me, new Set());
-    nbs.forEach(nb => {
-      if(!lldpGraph.has(nb)) lldpGraph.set(nb, new Set());
-      lldpGraph.get(me).add(nb);
-      lldpGraph.get(nb).add(me);
+  const nodeToSite = new Map();
+  const metroToSite = new Map();
+    (mwRoute || []).forEach(r => {
+
+        const headers = Object.keys(r);
+
+        const siteCol = findCol(
+            headers,
+            ['site id','siteid','site_id'],
+            0
+        );
+
+        const meCol = findCol(
+            headers,
+            ['metro name','ne name','me name','node'],
+            1
+        );
+
+        const lldpCol = findCol(
+            headers,
+            ['lldp list','lldp','link','neighbors'],
+            3
+        );
+
+        const siteId = clean(r[siteCol]);
+        const me = clean(r[meCol]);
+
+        if(siteId && me){
+            metroToSite.set(me, siteId);
+            nodeToSite.set(me, siteId);
+        }
+
+        if(!me) return;
+
+        const nbs = splitNeighbors(r[lldpCol]);
+
+        if(!lldpGraph.has(me))
+            lldpGraph.set(me,new Set());
+
+        nbs.forEach(nb => {
+            if(!lldpGraph.has(nb))
+                lldpGraph.set(nb,new Set());
+
+            lldpGraph.get(me).add(nb);
+            lldpGraph.get(nb).add(me);
+        });
+
     });
-  });
 
   // IMPORTANT:
   // siteName = database naming metro (site id -> ME name) for topology direct-ME resolution
   // siteMap = site id / site name lookup for display only
   const { siteToMe, meToSites } = buildLookupMap(siteName || []);
+  const meToSite = new Map();
+
+    for(const [siteId, meName] of siteToMe.entries()){
+      if(!meToSite.has(meName)){
+        meToSite.set(meName, siteId);
+      }
+    }
   const siteLabels = buildLookupMap(siteMap || []);
-  return { mwGraph, lldpGraph, siteToMe, meToSites, siteLabels };
+  return { mwGraph, lldpGraph, siteToMe, meToSites, meToSite, nodeToSite, siteLabels };
 }
 
 function bfs(start, graph, isTarget, blocked = new Set()){
@@ -1885,14 +1927,37 @@ function buildTopologyNetwork(rows, topo){
     return alarmMap.has(node) ? '#ff4d4d' : '#26d37c';
   }
 
+  function getNodeSiteId(node){
+
+  return state.graphs?.nodeToSite?.get(node)
+      || state.graphs?.meToSite?.get(node)
+      || '';
+  }
+
+  function metroLabel(node){
+
+    const siteId = getNodeSiteId(node);
+
+    return siteId
+        ? `${siteId} | ${node}`
+        : node;
+  }
+
   function addNode(node){
     if(!node || added.has(node)) return;
     added.add(node);
     const type = nodeTypeOf(node, topo);
-    const label = type === 'MW' ? `MW | ${node}` :
-                  type === 'ME' ? `ME | ${topo.siteId || ''} |${node}` :
-                  type === 'CN' ? `CN | ${node}` : node;
-      nodes.push({
+    const nodeSiteId = getNodeSiteId(node);
+
+    const label =
+        type === 'MW'
+          ? `MW | ${node}`
+          : type === 'ME'
+          ? `ME | ${nodeSiteId || topo.siteId || ''} | ${node}`
+          : type === 'CN'
+          ? `CN | ${getNodeSiteId(node) || ''} | ${node}`
+          : metroLabel(node);
+    nodes.push({
       id: node,
       label,
       shape: nodeShape(type),
@@ -2118,6 +2183,7 @@ async function analyze(){
     state.rangeDays = rangeDays;
 
     const graphs = buildGraphs(sheets);
+    state.graphs = graphs; 
     const topo = resolveE2E(siteId, graphs);
     state.topologyData = topo;
     state.meName = topo.meName || topo.directMe || '';
