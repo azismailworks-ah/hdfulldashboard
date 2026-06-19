@@ -1885,14 +1885,23 @@ function buildTopologyNetwork(rows, topo){
     return alarmMap.has(node) ? '#ff4d4d' : '#26d37c';
   }
 
+  function metroLabel(node, topo){
+  const siteId = topo.siteId || '';
+
+  if(!siteId) return node;
+
+  return `${siteId} | ${node}`;
+  }
+
   function addNode(node){
     if(!node || added.has(node)) return;
     added.add(node);
     const type = nodeTypeOf(node, topo);
-    const label = type === 'MW' ? `MW\\n${node}` :
-                  type === 'ME' ? `ME\\n${topo.siteId || ''}\\n${node}` :
-                  type === 'CN' ? `CN\\n${node}` : node;
-    nodes.push({
+    const label = type === 'MW' ? `MW | ${node}` :
+                  type === 'ME' ? `ME | ${topo.siteId || ''} |${node}` :
+                  type === 'CN' ? `CN | ${topo.siteId || ''} |${node}` : 
+                  metroLabel(node, topo);
+      nodes.push({
       id: node,
       label,
       shape: nodeShape(type),
