@@ -1891,7 +1891,7 @@ function buildTopologyNetwork(rows, topo){
     const type = nodeTypeOf(node, topo);
     const label = type === 'MW' ? `MW | ${node}` :
                   type === 'ME' ? `ME | ${topo.siteId || ''} |${node}` :
-                  type === 'CN' ? `CN | ${topo.siteId || ''} |${node}` : node;
+                  type === 'CN' ? `CN | ${node}` : node;
       nodes.push({
       id: node,
       label,
