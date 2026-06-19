@@ -10,6 +10,12 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <style>
 :root{
@@ -678,6 +684,76 @@ tr:hover td{
     grid-template-columns: 1fr;
   }
 }
+/* =====================================================
+   GEO ANALYTICS
+===================================================== */
+
+.geo-layout{
+  display:grid;
+  grid-template-columns: 58% 42%;
+  gap:12px;
+}
+
+.geo-card{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:rgba(5,11,20,.48);
+  overflow:hidden;
+}
+
+#geoMap{
+  width:100%;
+  height:420px;
+}
+
+.geo-table-wrap{
+  max-height:480px;
+  overflow:auto;
+}
+
+#geoTable{
+  width:100%;
+  border-collapse:collapse;
+}
+
+#geoTable th{
+  position:sticky;
+  top:0;
+  z-index:2;
+}
+
+#geoTable td,
+#geoTable th{
+  padding:10px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  font-size:.84rem;
+}
+
+.geo-good{
+  color:#26d37c;
+  font-weight:700;
+}
+
+.geo-warn{
+  color:#fbbf24;
+  font-weight:700;
+}
+
+.geo-bad{
+  color:#ff4d4d;
+  font-weight:700;
+}
+
+@media(max-width:1200px){
+
+  .geo-layout{
+    grid-template-columns:1fr;
+  }
+
+  #geoMap{
+    height:400px;
+  }
+}
 @media (max-width: 980px){
   .app{ padding:10px; }
   .topbar{
@@ -725,6 +801,93 @@ tr:hover td{
     height: 480px;
   }
 }
+#geoTable{
+  width:100%;
+  min-width:unset;
+  table-layout:fixed;
+}
+
+#geoTable th,
+#geoTable td{
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.geo-label{
+  background:rgba(0,0,0,.65) !important;
+  border:1px solid rgba(255,255,255,.15) !important;
+  border-radius:4px !important;
+
+  color:#ffffff;
+  font-size:10px;
+  font-weight:700;
+
+  padding:1px 4px;
+
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.5);
+}
+
+.geo-label-main{
+  background:rgba(0,212,255,.25) !important;
+  border:1px solid rgba(0,212,255,.6) !important;
+  border-radius:4px !important;
+
+  color:#00d4ff;
+  font-size:11px;
+  font-weight:800;
+
+  padding:2px 5px;
+
+  box-shadow:
+    0 1px 3px rgba(0,0,0,.5);
+}
+
+#geoTable{
+  width:100%;
+  table-layout:fixed;
+}
+
+#geoTable th:nth-child(1),
+#geoTable td:nth-child(1){
+  width:95px;
+}
+
+#geoTable th:nth-child(2),
+#geoTable td:nth-child(2){
+  width:auto;
+}
+
+#geoTable th:nth-child(3),
+#geoTable td:nth-child(3){
+  width:70px;
+}
+
+#geoTable th:nth-child(4),
+#geoTable td:nth-child(4){
+  width:70px;
+  text-align:center;
+}
+
+#geoTable th:nth-child(5),
+#geoTable td:nth-child(5){
+  width:60px;
+  text-align:center;
+}
+
+#geoTable th:nth-child(6),
+#geoTable td:nth-child(6){
+  width:60px;
+  text-align:center;
+}
+
+#geoTable td:nth-child(2){
+  overflow:visible;
+  text-overflow:unset;
+  white-space:nowrap;
+}
+
 </style>
 </head>
 <body>
@@ -948,6 +1111,61 @@ tr:hover td{
     </div>
   </div>
 
+  <section class="section">
+
+    <div class="section-head">
+      <div>
+        <h3>🌍 Geographical Analytics</h3>
+        <div class="section-sub">
+          Top 10 nearest surrounding sites
+        </div>
+      </div>
+    </div>
+
+    <div class="geo-layout">
+
+      <div class="geo-card">
+        <div id="geoMap"></div>
+      </div>
+
+      <div class="geo-card">
+
+        <div class="table-head">
+          <div>
+            <h4>Nearby Site KPI</h4>
+            <div class="sub">
+              Sorted by nearest distance
+            </div>
+          </div>
+        </div>
+
+        <div class="geo-table-wrap">
+
+          <table id="geoTable">
+
+            <thead>
+              <tr>
+                <th>Site ID</th>
+                <th>Site Name</th>
+                <th>Dist</th>
+                <th>Avail</th>
+                <th>PLR</th>
+                <th>Delay</th>
+              </tr>
+            </thead>
+
+            <tbody></tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </section>  
+
   <div class="footer">© Aziz Husen Automation · One Stop Analysis Helpdesk DIOC</div>
 </div>
 
@@ -959,7 +1177,9 @@ const CONFIG = {
   RME_ROUTE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=0&single=true&output=csv",
   MW_ROUTE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=1067174993&single=true&output=csv",
   SITE_MAP_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=1937060528&single=true&output=csv",
-  SITE_NAME_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=57915834&single=true&output=csv"
+  SITE_NAME_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=57915834&single=true&output=csv",
+  KPI_MATRIX_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSjSsM84WeDJgrs2yyOTd7Qdv5YJN2X9mV3dEmjYgKxmkmKkd0q7d0vUGZlsgOBOMzQ05VlqHqZzrcV/pub?gid=0&single=true&output=csv",
+  GEO_SHEET_ID: "1whOqrMXCWPGfKVVqaQwuehYoaxTuIRuE2dSrJMEH5n8"
 };
 
 const state = {
@@ -973,6 +1193,9 @@ const state = {
   siteName: '',
   meName: '',
   rangeDays: 7,
+  geoMap: null,
+  geoSiteDb:null,
+  geoData: [],
   allAlarms: []
 };
 
@@ -1056,15 +1279,16 @@ async function fetchCsv(url){
 }
 
 async function loadSheets(){
-  const [mwRoute, mwLinks, siteMap, siteName, masterAlarm] = await Promise.all([
+  const [mwRoute, mwLinks, siteMap, siteName, masterAlarm, kpiMatrix] = await Promise.all([
     fetchCsv(CONFIG.RME_ROUTE_CSV),
     fetchCsv(CONFIG.MW_ROUTE_CSV),
     fetchCsv(CONFIG.SITE_MAP_CSV),
     fetchCsv(CONFIG.SITE_NAME_CSV),
-    fetchCsv(CONFIG.MASTER_ALARM_CSV)
+    fetchCsv(CONFIG.MASTER_ALARM_CSV),
+    fetchCsv(CONFIG.KPI_MATRIX_CSV)
   ]);
 
-  return { mwRoute, mwLinks, siteMap, siteName, masterAlarm };
+  return { mwRoute, mwLinks, siteMap, siteName, masterAlarm, kpiMatrix };
 }
 
 function headerMap(rows){
@@ -1095,6 +1319,141 @@ function splitNeighbors(v){
   const s = clean(v);
   if(!s) return [];
   return s.split(/[;,|]/g).map(x => clean(x)).filter(Boolean);
+}
+
+function distanceKm(lat1, lon1, lat2, lon2){
+
+  const R = 6371;
+
+  const dLat =
+    (lat2 - lat1) * Math.PI / 180;
+
+  const dLon =
+    (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLon/2) *
+    Math.sin(dLon/2);
+
+  const c =
+    2 * Math.atan2(
+      Math.sqrt(a),
+      Math.sqrt(1-a)
+    );
+
+  return R * c;
+}
+
+function buildGeoKpiLookup(rows){
+
+  const map = new Map();
+
+  (rows || []).forEach(r => {
+
+    const site = clean(r["Short name"]);
+
+    if(!site) return;
+
+    const availRaw = Number(
+      r["IOH_4G_cell_availability_auto(Number)"]
+    );
+
+    let avail = "-";
+
+    if(Number.isFinite(availRaw)){
+
+      avail =
+        availRaw <= 1
+          ? (availRaw * 100).toFixed(1) + "%"
+          : availRaw.toFixed(1) + "%";
+
+    }
+
+    const plrRaw = clean(r["PLR"]);
+
+    map.set(site,{
+      avail,
+      plr: plrRaw
+        ? plrRaw + "%"
+        : "-",
+      delay: clean(r["Delay"])
+    });
+
+  });
+
+  return map;
+}
+
+function buildKpiLookup(rows){
+
+  const map = new Map();
+
+  (rows || []).forEach(r => {
+
+    const site =
+      clean(r['Short name']);
+
+    if(!site) return;
+
+    map.set(site,{
+      avail: clean(
+        r['IOH_4G_cell_availability_auto(Number)']
+      ),
+      plr: clean(r['PLR']),
+      delay: clean(r['Delay'])
+    });
+
+  });
+
+  return map;
+}
+
+function geoClass(type,value){
+
+  const n = Number(
+    String(value).replace('%','')
+  );
+
+  if(!Number.isFinite(n))
+    return '';
+
+  if(type === 'avail'){
+
+    if(n >= 99)
+      return 'geo-good';
+
+    if(n >= 95)
+      return 'geo-warn';
+
+    return 'geo-bad';
+  }
+
+  if(type === 'plr'){
+
+    if(n < 1)
+      return 'geo-good';
+
+    if(n <= 2)
+      return 'geo-warn';
+
+    return 'geo-bad';
+  }
+
+  if(type === 'delay'){
+
+    if(n < 11)
+      return 'geo-good';
+
+    if(n <= 20)
+      return 'geo-warn';
+
+    return 'geo-bad';
+  }
+
+  return '';
 }
 
 function isCn(v){
@@ -2163,6 +2522,385 @@ function setBusy(isBusy){
   btn.innerHTML = isBusy ? '<span>⏳</span>Analyzing...' : '<span>▶</span>Analyze';
 }
 
+async function loadGeoSiteDatabase(){
+
+  if(state.geoSiteDb){
+    return state.geoSiteDb;
+  }
+
+  const regions = [
+    "JABODETABEK",
+    "SUMATERA",
+    "CWJ",
+    "EJBN",
+    "KALISUMAPA"
+  ];
+
+  const allSites = [];
+
+  for(const region of regions){
+
+    const url =
+      `https://docs.google.com/spreadsheets/d/${
+        CONFIG.GEO_SHEET_ID
+      }/gviz/tq?tqx=out:csv&sheet=${
+        encodeURIComponent(region)
+      }`;
+
+    try{
+
+      const rows = await fetchCsv(url);
+
+      rows.forEach(r=>{
+
+        const siteId =
+          clean(
+            r["Site ID"] ||
+            r["site id"]
+          );
+
+        const siteName =
+          clean(
+            r["Site Name"] ||
+            r["site name"]
+          );
+
+        const lat =
+          Number(
+            r["Latitude"] ||
+            r["latitude"]
+          );
+
+        const lon =
+          Number(
+            r["Longitude"] ||
+            r["longitude"]
+          );
+
+        if(
+          !siteId ||
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lon)
+        ){
+          return;
+        }
+
+        allSites.push({
+
+          siteId,
+          siteName,
+
+          lat,
+          lon,
+
+          region
+
+        });
+
+      });
+
+    }catch(err){
+
+      console.error(
+        "Geo sheet error",
+        region,
+        err
+      );
+
+    }
+
+  }
+
+  state.geoSiteDb = allSites;
+
+  console.log(
+    "Geo DB loaded",
+    allSites.length
+  );
+
+  return allSites;
+}
+
+async function loadGeoAnalytics(siteId, sheets){
+
+  const siteRows = await loadGeoSiteDatabase();
+  const kpiLookup = buildGeoKpiLookup(
+    sheets.kpiMatrix || []
+  );
+
+  const refSite = siteRows.find(
+    r =>
+    r.siteId === siteId
+  );
+
+  if(!refSite){
+    console.warn(
+      "Geo Analytics: site not found",
+      siteId
+    );
+    return;
+  }
+
+    const refLat = refSite.lat;
+    const refLon = refSite.lon;
+
+  if(
+    !Number.isFinite(refLat) ||
+    !Number.isFinite(refLon)
+  ){
+    console.warn(
+      "Geo Analytics: invalid coordinate",
+      siteId
+    );
+    return;
+  }
+
+  const nearest = siteRows
+    .filter(r =>
+      r.siteId !== siteId
+    )
+  .map(r => {
+
+    const dist =
+      distanceKm(
+        refLat,
+        refLon,
+        r.lat,
+        r.lon
+      );
+
+    const kpi =
+      kpiLookup.get(r.siteId) || {};
+
+    return {
+
+      siteId:
+        r.siteId,
+
+      siteName:
+        r.siteName,
+
+      lat:
+        r.lat,
+
+      lon:
+        r.lon,
+
+      distance:
+        dist,
+
+      avail:
+        kpi.avail || "-",
+
+      plr:
+        kpi.plr || "-",
+
+      delay:
+        kpi.delay || "-"
+
+    };
+
+  })
+    .filter(Boolean)
+    .sort(
+      (a,b) =>
+      a.distance - b.distance
+    )
+    .slice(0,10);
+
+  state.geoData = nearest;
+
+  renderGeoTable(nearest);
+
+  renderGeoMap({
+    refSite,
+    nearest
+  });
+
+}
+
+function renderGeoTable(rows){
+
+  const tbody =
+    document.querySelector(
+      "#geoTable tbody"
+    );
+
+  if(!tbody) return;
+
+  tbody.innerHTML =
+    rows.map(r => `
+
+      <tr>
+
+        <td>${r.siteId}</td>
+
+        <td title="${r.siteName}">
+          ${r.siteName}
+        </td>
+
+        <td>
+          ${r.distance.toFixed(2)}
+          km
+        </td>
+
+        <td class="${geoClass('avail',r.avail)}">
+          ${r.avail}
+        </td>
+
+        <td class="${geoClass('plr',r.plr)}">
+          ${r.plr}
+        </td>
+
+        <td class="${geoClass('delay',r.delay)}">
+          ${r.delay}
+        </td>
+
+      </tr>
+
+    `).join('');
+
+}
+
+function renderGeoMap(data){
+
+  const mapDiv =
+    document.getElementById(
+      "geoMap"
+    );
+
+  if(!mapDiv) return;
+
+  if(state.geoMap){
+    state.geoMap.remove();
+    state.geoMap = null;
+  }
+
+  const refLat = data.refSite.lat;
+  const refLon = data.refSite.lon;
+
+  state.geoMap = L.map(
+    "geoMap",
+    {
+      zoomControl:true
+    }
+  );
+
+  L.tileLayer(
+    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    {
+      attribution:""
+    }
+  ).addTo(state.geoMap);
+
+  const centerMarker =
+    L.circleMarker(
+      [refLat,refLon],
+      {
+        radius:12,
+        weight:3,
+        color:"#00d4ff",
+        fillColor:"#00d4ff",
+        fillOpacity:1
+      }
+    )
+    .addTo(state.geoMap);
+
+  centerMarker.bindPopup(`
+    <b>ANALYZED SITE</b>
+    <br>
+    ${data.refSite.siteId}
+    <br>
+    ${data.refSite.siteName}
+  `);
+
+  centerMarker.bindTooltip(
+  data.refSite.siteId,
+  {
+    permanent:true,
+    direction:"top",
+    offset:[0,-12],
+    className:"geo-label-main"
+  }
+  );
+
+  L.circle(
+  [refLat,refLon],
+  {
+    radius:5000,
+    color:"#00d4ff",
+    weight:1,
+    opacity:0.35,
+    fillOpacity:0.02
+  }
+  ).addTo(state.geoMap);
+
+  const bounds = [];
+
+  bounds.push([refLat,refLon]);
+
+  data.nearest.forEach(site => {
+
+    const marker =
+      L.circleMarker(
+        [site.lat,site.lon],
+        {
+          radius:7,
+          color:"#26d37c",
+          fillColor:"#26d37c",
+          fillOpacity:.9
+        }
+      )
+      .addTo(state.geoMap);
+
+    marker.bindPopup(`
+      <b>${site.siteId}</b>
+      <br>
+      ${site.siteName}
+      <br>
+      ${site.distance.toFixed(2)} km
+    `);
+
+    marker.bindTooltip(
+  site.siteId,
+  {
+    permanent:true,
+    direction:"top",
+    offset:[0,-8],
+    className:"geo-label"
+  }
+  );
+
+    L.polyline(
+      [
+        [refLat,refLon],
+        [site.lat,site.lon]
+      ],
+      {
+        color:"#ffffff",
+        weight:1,
+        opacity:.25,
+        dashArray:"5,5"
+      }
+    )
+    .addTo(state.geoMap);
+
+    bounds.push([
+      site.lat,
+      site.lon
+    ]);
+
+  });
+
+  state.geoMap.fitBounds(
+    bounds,
+    {
+      padding:[30,30]
+    }
+  );
+
+}
+
 async function analyze(){
   const siteId = document.getElementById('siteId').value.trim();
   const rangeDays = Number(document.getElementById('days').value || 7);
@@ -2215,6 +2953,10 @@ async function analyze(){
 
     document.getElementById('topologyTitle').textContent = `Transport Topology For Site · ${siteId}`;
     document.getElementById('overviewText').textContent = `Site ${siteId}${state.siteName ? ' — ' + state.siteName : ''} · ${apiData.length} KPI points loaded.`;
+    await loadGeoAnalytics(
+      siteId,
+      sheets
+    );
   }catch(err){
     console.error(err);
     alert('Analysis failed. Check console for details.');
