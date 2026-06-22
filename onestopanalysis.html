@@ -1537,6 +1537,30 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
       }
     }
   const siteLabels = buildLookupMap(siteMap || []);
+
+    console.log(
+      "NODE TO SITE SIZE",
+      nodeToSite.size
+    );
+
+    console.log(
+      "HAS DNPG",
+      [...nodeToSite.keys()]
+        .filter(x => x.includes("DNPG"))
+    );
+
+    console.log(
+      "HAS MRHL",
+      [...nodeToSite.keys()]
+        .filter(x => x.includes("MRHL"))
+    );
+
+    console.log(
+      "HAS NGRB",
+      [...nodeToSite.keys()]
+        .filter(x => x.includes("NGRB"))
+    );  
+
   return { mwGraph, lldpGraph, siteToMe, meToSites, meToSite, nodeToSite, siteLabels };
 }
 
@@ -1558,7 +1582,7 @@ function bfs(start, graph, isTarget, blocked = new Set()){
 }
 
 function resolveE2E(siteId, graphs){
-  const { mwGraph, lldpGraph, siteToMe } = graphs;
+  const { mwGraph, lldpGraph, siteToMe, nodeToSite } = graphs;
 
   // Support both routing models:
   // 1) direct ME mapped from site id
@@ -1599,14 +1623,38 @@ function resolveE2E(siteId, graphs){
     if(n && !finalNodes.includes(n)) finalNodes.push(n);
   });
 
+  const alarmSiteIds = [];
+
+  finalNodes.forEach(node => {
+
+      const sid = nodeToSite.get(node);
+
+      if (
+          sid &&
+          !alarmSiteIds.includes(sid)
+      ){
+          alarmSiteIds.push(sid);
+      }
+
+      if (
+          /^\d{2}[A-Z]{3}\d{4}$/i.test(node)
+      ){
+          if(!alarmSiteIds.includes(node)){
+              alarmSiteIds.push(node);
+          }
+      }
+
+  });
+
   return {
-    siteId,
-    mwPath,
-    meName,
-    directMe,
-    traceMode,
-    metroPaths,
-    finalNodes
+      siteId,
+      mwPath,
+      meName,
+      directMe,
+      traceMode,
+      metroPaths,
+      finalNodes,
+      alarmSiteIds
   };
 }
 
@@ -2014,6 +2062,68 @@ function severityDot(sev){
   if(s.includes('minor')) return '#ffd34d';
   if(s.includes('info')) return '#7dc4ff';
   return '#9aa9c7';
+}
+
+function buildBucketsFromOWS(rows, analyzedSite){
+
+  const normalized = rows.map((r, idx) => ({
+
+    __idx: idx,
+
+    __firstOcc : r.first_occurrence || '-',
+    __alarmName: r.alarm_name || '-',
+    __alarmSrc : r.alarm_source || '-',
+    __severity : r.severity || '-',
+    __domain   : r.domain || '-',
+    __siteId   : r.site_id || '-',
+    __siteName : r.site_name || '-',
+    __loc      : r.location || '-',
+    __ticket   : r.ticket_id || '-'
+
+  }));
+
+  const RAN_DOMAINS = new Set([
+    'RAN',
+    'RAN-2G',
+    'RAN-3G',
+    'RAN-4G',
+    'RAN-5G'
+  ]);
+
+  const ran = normalized.filter(r => {
+
+    const domain = String(
+      r.__domain || ''
+    ).toUpperCase().trim();
+
+    return (
+      RAN_DOMAINS.has(domain)
+      &&
+      String(r.__siteId).toUpperCase()
+      ===
+      String(analyzedSite).toUpperCase()
+    );
+
+  });
+
+  const transport = normalized.filter(r =>
+    ['104','IP','MW','TRANSPORT','TRANSMISSION']
+      .some(x =>
+        String(r.__domain).toUpperCase().includes(x)
+      )
+  );
+
+  const external = normalized.filter(r =>
+    !ran.includes(r) &&
+    !transport.includes(r)
+  );
+
+  return {
+    normalized,
+    ran,
+    transport,
+    external
+  };
 }
 
 function tableRowsHtml(rows, tableId){
@@ -2911,8 +3021,12 @@ async function analyze(){
   setBusy(true);
   try{
     const [kpiRes, sheets] = await Promise.all([
-      fetch(`${CONFIG.KPI_API}?site_id=${encodeURIComponent(siteId)}&days=${encodeURIComponent(rangeDays)}`).then(r => r.json()),
+      fetch(
+        `${CONFIG.KPI_API}?site_id=${encodeURIComponent(siteId)}&days=${encodeURIComponent(rangeDays)}`
+      ).then(r => r.json()),
+
       loadSheets()
+
     ]);
 
     const apiData = Array.isArray(kpiRes.data) ? kpiRes.data : [];
@@ -2926,20 +3040,73 @@ async function analyze(){
     state.topologyData = topo;
     state.meName = topo.meName || topo.directMe || '';
 
-    const alarmLatest = latestAlarmTimestamp(sheets.masterAlarm || []);
+    const corrRes = await fetch(
+      'https://api.azhautomation.com/api/ows/multi',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          site_ids: topo.alarmSiteIds
+        })
+      }
+    ).then(r => r.json());        
+
+    const alarmLatest = new Date();
     state.lastUpdate = alarmLatest;
 
-    const correlatedAlarms = buildAlarmCorrelation(
-      sheets.masterAlarm || [],
-      topo,
-      graphs.siteToMe,
-      graphs.meToSites,
-      rangeDays
+    const owsAlarms = [];
+
+    Object.values(
+      corrRes.data || {}
+    ).forEach(arr => {
+
+      if(Array.isArray(arr)){
+
+        owsAlarms.push(...arr);
+
+      }
+
+    });
+
+    const buckets = buildBucketsFromOWS(
+      owsAlarms, siteId
+    );    
+
+    console.log(
+      'TOPO SITE IDS',
+      topo.alarmSiteIds
     );
-    const buckets = splitAlarmBuckets(correlatedAlarms, siteId, topo);
+
+    console.log(
+      'OWS MULTI',
+      corrRes
+    );
+
+    console.log(
+      'TOTAL OWS ALARM',
+      owsAlarms.length
+    );
+
+    console.log(
+      'RAN',
+      buckets.ran.length
+    );
+
+    console.log(
+      'TRANSPORT',
+      buckets.transport.length
+    );
+
+    console.log(
+      'EXTERNAL',
+      buckets.external.length
+    );
+
 
     state.alarmBuckets = buckets;
-    state.allAlarms = buckets.normalized || [];
+    state.allAlarms = buckets.normalized;      
 
     updateTopText(siteId, state.siteName, apiData, rangeDays, alarmLatest);
     makeKpiCards(apiData);
