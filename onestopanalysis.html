@@ -684,6 +684,38 @@ tr:hover td{
     grid-template-columns: 1fr;
   }
 }
+
+/* ====================================
+   SITE INFORMATION
+==================================== */
+
+#siteInfoCards{
+  width:100%;
+}
+
+.site-mini-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.78rem;
+}
+
+.site-mini-table td{
+  padding:5px 8px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+.site-mini-table td:first-child{
+  width:110px;
+  color:#9aa9c7;
+  font-weight:600;
+}
+
+.site-mini-table td:last-child{
+  color:#ffffff;
+  font-weight:500;
+  word-break:break-word;
+}
+
 /* =====================================================
    GEO ANALYTICS
 ===================================================== */
@@ -888,6 +920,17 @@ tr:hover td{
   white-space:nowrap;
 }
 
+.site-info-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:4px;
+}
+
+.site-info-item{
+    padding:6px 10px;
+    min-height:auto;
+}
+
 </style>
 </head>
 <body>
@@ -966,17 +1009,8 @@ tr:hover td{
         <div class="topology-note" id="overviewText">
           The dashboard merges KPI trend analysis, topology trace, and alarm classification into one workflow.
         </div>
+        <div id="siteInfoCards"></div>
         <div style="height:14px"></div>
-        <div class="mini-card">
-          <h4 style="margin-bottom:10px;">Legend</h4>
-          <div class="legend">
-            <div class="item"><span class="swatch dot" style="background:var(--green)"></span>Healthy</div>
-            <div class="item"><span class="swatch dot" style="background:var(--red)"></span>Alarm</div>
-            <div class="item"><span class="swatch box" style="background:var(--blue)"></span>MW</div>
-            <div class="item"><span class="swatch box" style="background:var(--purple)"></span>ME</div>
-            <div class="item"><span class="swatch star" style="background:var(--cyan)"></span>CN</div>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -1193,6 +1227,7 @@ const state = {
   siteName: '',
   meName: '',
   rangeDays: 7,
+  siteInfo: null,
   geoMap: null,
   geoSiteDb:null,
   geoData: [],
@@ -2697,6 +2732,8 @@ async function loadGeoSiteDatabase(){
 
         allSites.push({
 
+          ...r,
+
           siteId,
           siteName,
 
@@ -2727,6 +2764,26 @@ async function loadGeoSiteDatabase(){
     "Geo DB loaded",
     allSites.length
   );
+
+  console.log(
+    "GEO SAMPLE",
+    state.geoSiteDb[0]
+  );  
+
+  const siteInfo =
+    getSiteInfo(siteId);
+
+    console.log(
+      "SITE INFO",
+      siteInfo
+    );
+
+  state.siteInfo =
+    siteInfo;
+
+  renderSiteInfo(
+    siteInfo
+  );  
 
   return allSites;
 }
@@ -3011,6 +3068,64 @@ function renderGeoMap(data){
 
 }
 
+function getSiteInfo(siteId){
+
+  return (
+    state.geoSiteDb || []
+  ).find(r =>
+
+    String(
+      r.siteId || ''
+    ).toUpperCase()
+
+    ===
+
+    String(siteId)
+      .toUpperCase()
+
+  );
+
+}
+
+function renderSiteInfo(info){
+
+  const el = document.getElementById('siteInfoCards');
+
+  if(!el) return;
+
+  if(!info){
+    el.innerHTML = 'No Site Information Found';
+    return;
+  }
+
+  const rows = [
+
+    ['RAN Type', info['RAN Type Label']],
+    ['Circle', info['Circle ID']],
+    ['VIP', info['Is VIP']],
+    ['Hub Type', info['HUB Type']],
+    ['Site Grid', info['Site Grid']],
+    ['DG Status', info['DG Status']],
+    ['Battery', info['Battery Backup Category']],
+    ['GM FSO', info['GM FSO Name']],
+    ['ROH', info['ROH Name']]
+
+  ];
+
+  el.innerHTML = `
+    <table class="site-mini-table">
+      <tbody>
+        ${rows.map(r=>`
+          <tr>
+            <td>${r[0]}</td>
+            <td>${r[1] || '-'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 async function analyze(){
   const siteId = document.getElementById('siteId').value.trim();
   const rangeDays = Number(document.getElementById('days').value || 7);
@@ -3039,6 +3154,11 @@ async function analyze(){
     const topo = resolveE2E(siteId, graphs);
     state.topologyData = topo;
     state.meName = topo.meName || topo.directMe || '';
+
+    console.log(
+      "SITE MAP SAMPLE",
+      sheets.siteMap[0]
+    );
 
     const corrRes = await fetch(
       'https://api.azhautomation.com/api/ows/multi',
@@ -3123,6 +3243,18 @@ async function analyze(){
     await loadGeoAnalytics(
       siteId,
       sheets
+    );
+    const siteInfo =
+      getSiteInfo(siteId);
+
+    state.siteInfo =
+      siteInfo;
+
+    renderSiteInfo(
+      siteInfo
+    );
+    renderSiteInfo(
+      state.siteInfo
     );
   }catch(err){
     console.error(err);
