@@ -931,6 +931,287 @@ tr:hover td{
     min-height:auto;
 }
 
+/* ==========================================================
+   HISTORY ALARM MODAL
+========================================================== */
+
+.history-modal{
+
+    position:fixed;
+
+    inset:0;
+
+    background:rgba(0,0,0,.65);
+
+    display:none;
+
+    justify-content:center;
+
+    align-items:center;
+
+    z-index:999999;
+
+    backdrop-filter:blur(4px);
+
+}
+
+.history-modal.show{
+
+    display:flex;
+
+}
+
+.history-dialog{
+
+    width:min(1100px,90vw);
+
+    height:min(820px,90vh);
+
+    background:#07111f;
+
+    border:1px solid rgba(255,255,255,.10);
+
+    border-radius:18px;
+
+    display:flex;
+
+    flex-direction:column;
+
+    overflow:hidden;
+
+    box-shadow:0 20px 60px rgba(0,0,0,.45);
+
+}
+
+.history-header{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    align-items:center;
+
+    padding:18px 24px;
+
+    border-bottom:1px solid rgba(255,255,255,.08);
+
+}
+
+.history-header h2{
+
+    margin:0;
+
+    color:#fff;
+
+    font-size:22px;
+
+    font-weight:700;
+
+}
+
+.history-close{
+
+    width:40px;
+
+    height:40px;
+
+    border:none;
+
+    border-radius:10px;
+
+    cursor:pointer;
+
+    font-size:20px;
+
+    color:#fff;
+
+    background:transparent;
+
+}
+
+.history-close:hover{
+
+    background:rgba(255,255,255,.08);
+
+}
+
+.history-body{
+
+    flex:1;
+
+    overflow:auto;
+
+    padding:24px;
+
+}
+
+.history-body label{
+
+    display:block;
+
+    margin-bottom:8px;
+
+    margin-top:18px;
+
+    color:#9aa9c7;
+
+    font-weight:600;
+
+}
+
+.history-body input{
+
+    width:100%;
+
+    height:46px;
+
+    padding:0 14px;
+
+    border-radius:10px;
+
+    border:1px solid rgba(255,255,255,.10);
+
+    background:#0d182b;
+
+    color:#fff;
+
+}
+
+.history-footer{
+
+    padding:16px 24px;
+
+    border-top:1px solid rgba(255,255,255,.08);
+
+    display:flex;
+
+    justify-content:flex-end;
+
+}
+
+.history-summary{
+
+    display:grid;
+
+    grid-template-columns:
+        repeat(4,1fr);
+
+    gap:15px;
+
+    margin-bottom:25px;
+
+}
+
+.history-card{
+
+    background:#101b2c;
+
+    border:1px solid rgba(255,255,255,.08);
+
+    border-radius:14px;
+
+    padding:18px;
+
+    text-align:center;
+
+}
+
+.history-number{
+
+    margin-top:8px;
+
+    font-size:28px;
+
+    font-weight:bold;
+
+    color:#48b7ff;
+
+}
+
+.history-section{
+
+    margin-top:25px;
+
+    background:#101b2c;
+
+    border-radius:14px;
+
+    padding:16px;
+
+}
+
+.history-section h3{
+
+    margin-top:0;
+
+    margin-bottom:15px;
+
+    color:#fff;
+
+}
+
+.spinner{
+
+    width:14px;
+
+    height:14px;
+
+    display:inline-block;
+
+    border:2px solid #ffffff55;
+
+    border-top-color:#fff;
+
+    border-radius:50%;
+
+    animation:spin .8s linear infinite;
+
+    margin-right:6px;
+
+}
+
+@keyframes spin{
+
+    to{
+
+        transform:rotate(360deg);
+
+    }
+
+}
+
+.history-info{
+
+    display:grid;
+
+    grid-template-columns:1fr 1fr 1fr;
+
+    gap:12px;
+
+    margin-bottom:20px;
+
+    padding:12px;
+
+    background:#101b2c;
+
+    border-radius:12px;
+
+}
+
+.history-last-search{
+
+    margin-top:12px;
+
+    margin-bottom:20px;
+
+    font-size:13px;
+
+    color:#9fb4d6;
+
+    line-height:1.5;
+
+}
+
 </style>
 </head>
 <body>
@@ -979,6 +1260,7 @@ tr:hover td{
     <button id="btnRefresh" class="button ghost">Refresh Data</button>
     <button id="btnFullscreen" class="button ghost">Fullscreen</button>
     <button id="btnAuto" class="button ghost">Auto Refresh</button>
+    <button id="btnHistoryAnalysis" class="button ghost" type="button">📜 History Analysis</button>
   </div>
 
   <div class="hero">
@@ -987,7 +1269,7 @@ tr:hover td{
         <div class="left">
           <div class="eyebrow">Result Analysis for Site ID</div>
           <h2 id="siteTitle">—</h2>
-          <div class="site-line" id="siteSubtitle">Enter a Site ID and analyze. If Any Query Contact Aziz Husen</div>
+          <div class="site-line" id="siteSubtitle">Enter a Site ID and analyze. If any Query Ask Admin Aziz Husen</div>
         </div>
         <div class="right">
           <div class="chip">Selected Range <span class="n" id="rangeChip">7 Days</span></div>
@@ -1201,6 +1483,223 @@ tr:hover td{
   </section>  
 
   <div class="footer">© Aziz Husen Automation · One Stop Analysis Helpdesk DIOC</div>
+</div>
+
+<!-- ========================================================= -->
+<!-- HISTORY ALARM MODAL -->
+<!-- ========================================================= -->
+
+<div id="historyModal" class="history-modal">
+
+    <div class="history-dialog">
+
+        <div class="history-header">
+
+            <h2>History Alarm Analysis</h2>
+
+            <div class="history-info">
+
+                <div>
+                    <b>Site ID :</b>
+                    <span id="historySiteId">-</span>
+                </div>
+
+                <div>
+                    <b>Site Name :</b>
+                    <span id="historySiteName">-</span>
+                </div>
+
+                <div>
+                    <b>Topology Site :</b>
+                    <span id="historyTopologyCount">0</span>
+                </div>
+
+            </div>            
+
+            <button
+                id="btnHistoryCloseTop"
+                class="history-close">
+
+                ✕
+
+            </button>
+
+        </div>
+
+        <div class="history-body">
+
+            <label>
+                Start Date Time
+            </label>
+
+            <input
+                id="historyStart"
+                type="datetime-local">
+
+            <label>
+                End Date Time
+            </label>
+
+            <input
+                id="historyEnd"
+                type="datetime-local">
+
+            <div
+                style="
+                margin-top:20px;
+                margin-bottom:25px;">
+
+                <button
+                    id="btnHistorySearch"
+                    class="button">
+
+                    Search History
+
+                </button>
+
+                <div
+                    id="historyLastSearch"
+                    class="history-last-search">
+
+                    No Search Yet
+
+                </div>
+
+            </div>
+
+            <!-- SUMMARY -->
+
+            <div
+                class="history-summary">
+
+                <div class="history-card">
+
+                    <div>Total Alarm</div>
+
+                    <div
+                        id="hisTotal"
+                        class="history-number">
+
+                        0
+
+                    </div>
+
+                </div>
+
+                <div class="history-card">
+
+                    <div>Transport</div>
+
+                    <div
+                        id="hisTransport"
+                        class="history-number">
+
+                        0
+
+                    </div>
+
+                </div>
+
+                <div class="history-card">
+
+                    <div>RAN</div>
+
+                    <div
+                        id="hisRan"
+                        class="history-number">
+
+                        0
+
+                    </div>
+
+                </div>
+
+                <div class="history-card">
+
+                    <div>External</div>
+
+                    <div
+                        id="hisExternal"
+                        class="history-number">
+
+                        0
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- TRANSPORT -->
+
+            <div class="history-section">
+
+                <h3>
+
+                    🚛 Transport Alarm
+
+                </h3>
+
+                <table
+                    id="historyTransport"
+                    class="alarm-table">
+
+                </table>
+
+            </div>
+
+            <!-- RAN -->
+
+            <div class="history-section">
+
+                <h3>
+
+                    📡 RAN Alarm
+
+                </h3>
+
+                <table
+                    id="historyRan"
+                    class="alarm-table">
+
+                </table>
+
+            </div>
+
+            <!-- EXTERNAL -->
+
+            <div class="history-section">
+
+                <h3>
+
+                    🌐 External Alarm
+
+                </h3>
+
+                <table
+                    id="historyExternal"
+                    class="alarm-table">
+
+                </table>
+
+            </div>
+
+        </div>
+
+        <div class="history-footer">
+
+            <button
+                id="btnHistoryCloseBottom"
+                class="button ghost">
+
+                Close
+
+            </button>
+
+        </div>
+
+    </div>
+
 </div>
 
 <script>
@@ -2151,6 +2650,8 @@ function buildBucketsFromOWS(rows, analyzedSite){
     __idx: idx,
 
     __firstOcc : r.first_occurrence || '-',
+    __clearTime : r.clear_time || '-',
+    __duration : r.duration || '-',
     __alarmName: r.alarm_name || '-',
     __alarmSrc : r.alarm_source || '-',
     __severity : r.severity || '-',
@@ -2207,7 +2708,7 @@ function buildBucketsFromOWS(rows, analyzedSite){
 }
 
 function tableRowsHtml(rows, tableId){
-  const cols = ['No', 'First Occurred On', 'Alarm Name', 'Alarm Source', 'Severity', 'Domain', 'Site ID', 'Site Name', 'Location', 'Ticket ID'];
+  const cols = ['No', 'First Occurred On', 'Cleared On', 'Duration','Alarm Name', 'Alarm Source', 'Severity', 'Domain', 'Site ID', 'Site Name', 'Location', 'Ticket ID'];
   return `
     <thead>
       <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>
@@ -2217,6 +2718,8 @@ function tableRowsHtml(rows, tableId){
         <tr data-search="${[r.__firstOcc, r.__alarmName, r.__alarmSrc, r.__severity, r.__domain, r.__siteId, r.__siteName, r.__loc, r.__ticket].join(' ').toLowerCase()}">
           <td>${i + 1}</td>
           <td>${r.__firstOcc || '-'}</td>
+          <td>${r.__clearTime || '-'}</td>
+          <td>${r.__duration || '-'}</td>
           <td>${r.__alarmName || '-'}</td>
           <td>${r.__alarmSrc || '-'}</td>
           <td><span class="sev ${severityClass(r.__severity)}"><span class="dot" style="background:${severityDot(r.__severity)}"></span>${r.__severity || '-'}</span></td>
@@ -3171,6 +3674,352 @@ function renderSiteInfo(info){
   `;
 }
 
+/* ==========================================================
+   HISTORY MODAL
+========================================================== */
+
+function openHistoryModal(){
+
+    const now = new Date();
+
+    const start = new Date(
+        now.getTime() - 60*60*1000
+    );
+
+    const formatLocal = d => {
+
+        const yyyy = d.getFullYear();
+
+        const MM = String(
+            d.getMonth()+1
+        ).padStart(2,"0");
+
+        const dd = String(
+            d.getDate()
+        ).padStart(2,"0");
+
+        const hh = String(
+            d.getHours()
+        ).padStart(2,"0");
+
+        const mm = String(
+            d.getMinutes()
+        ).padStart(2,"0");
+
+        return `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+
+    };
+
+    document.getElementById(
+        "historyStart"
+    ).value = formatLocal(start);
+
+    document.getElementById(
+        "historyEnd"
+    ).value = formatLocal(now);
+
+    document.getElementById(
+        "historySiteId"
+    ).textContent =
+    document.getElementById(
+        "siteId"
+    ).value;
+
+    document.getElementById(
+        "historySiteName"
+    ).textContent =
+    state.siteName || "-";
+
+    document.getElementById(
+        "historyTopologyCount"
+    ).textContent =
+    state.topologyData?.alarmSiteIds?.length || 0;
+    
+    document
+        .getElementById("historyModal")
+        .classList
+        .add("show");
+
+}
+
+function closeHistoryModal(){
+
+    document
+        .getElementById("historyModal")
+        .classList
+        .remove("show");
+
+}
+
+// ==========================================================
+// HISTORY SEARCH
+// ==========================================================
+
+async function searchHistoryAlarm(){
+
+    try{
+
+        const startValue =
+            document.getElementById(
+                "historyStart"
+            ).value;
+
+        const endValue =
+            document.getElementById(
+                "historyEnd"
+            ).value;
+
+        if(!startValue || !endValue){
+
+            alert(
+                "Please select Start and End Date."
+            );
+
+            return;
+
+        }
+
+        const start =
+            new Date(startValue);
+
+        const end =
+            new Date(endValue);
+
+        const diffHour =
+            (
+                end-start
+            )/3600000;
+
+        if(diffHour<=0){
+
+            alert(
+                "End Date must be greater than Start Date."
+            );
+
+            return;
+
+        }
+
+        if(diffHour>2){
+
+            alert(
+                "Maximum History Period is 2 Hours."
+            );
+
+            return;
+
+        }
+
+        if(
+            !state.topologyData
+            ||
+            !state.topologyData.alarmSiteIds
+        ){
+
+            alert(
+                "Please Analyze Site First."
+            );
+
+            return;
+
+        }
+
+        const btn =
+            document.getElementById(
+                "btnHistorySearch"
+            );
+
+        btn.disabled=true;
+
+        btn.innerHTML=
+`
+          <span class="spinner"></span>
+          Searching...
+          `;
+          
+        const payload={
+
+            site_ids:
+                state.topologyData.alarmSiteIds,
+
+            start:
+                startValue.replace("T"," ")+":00",
+
+            end:
+                endValue.replace("T"," ")+":00"
+
+        };
+
+        document.getElementById(
+            "historyLastSearch"
+        ).innerHTML =
+
+        `
+        <b>Period</b>
+
+        <br>
+
+        ${payload.start}
+
+        <br>
+
+        ↓
+
+        <br>
+
+        ${payload.end}
+
+        <br><br>
+
+        <b>Topology Site</b>
+
+        <br>
+
+        ${payload.site_ids.length} Site
+        `;        
+
+        document.getElementById(
+        "historyLastSearch"
+        ).innerHTML=
+
+        `Showing Alarm
+
+        <br>
+
+        ${payload.start}
+
+        <br>
+
+        ↓
+
+        <br>
+
+        ${payload.end}`;
+        
+        console.log(
+            "History Payload",
+            payload
+        );
+
+        const res =
+            await fetch(
+
+            "https://api.azhautomation.com/api/ows/history",
+
+            {
+
+                method:"POST",
+
+                headers:{
+
+                    "Content-Type":"application/json"
+
+                },
+
+                body:
+                    JSON.stringify(
+                        payload
+                    )
+
+            }
+
+        );
+
+        const json =
+            await res.json();
+
+        console.log(json);
+
+        const allHistoryAlarm=[];
+
+        Object.values(
+            json.data||{}
+        ).forEach(arr=>{
+
+            if(Array.isArray(arr)){
+
+                allHistoryAlarm.push(...arr);
+
+            }
+
+        });
+
+        console.log(
+            "TOTAL HISTORY",
+            allHistoryAlarm.length
+        );
+
+        const buckets=
+            buildBucketsFromOWS(
+                allHistoryAlarm,
+                document.getElementById(
+                    "siteId"
+                ).value.trim()
+            );
+
+        document.getElementById(
+            "hisTotal"
+        ).textContent=
+        allHistoryAlarm.length;
+
+        document.getElementById(
+            "hisTransport"
+        ).textContent=
+        buckets.transport.length;
+
+        document.getElementById(
+            "hisRan"
+        ).textContent=
+        buckets.ran.length;
+
+        document.getElementById(
+            "hisExternal"
+        ).textContent=
+        buckets.external.length;
+
+        renderTable(
+            "historyTransport",
+            buckets.transport
+        );
+
+        renderTable(
+            "historyRan",
+            buckets.ran
+        );
+
+        renderTable(
+            "historyExternal",
+            buckets.external
+        );
+
+        btn.disabled=false;
+
+        btn.innerHTML="Search History";
+
+    }
+    catch(err){
+
+        console.error(err);
+
+        alert(err);
+
+        document
+            .getElementById(
+                "btnHistorySearch"
+            )
+            .disabled=false;
+
+        document
+            .getElementById(
+                "btnHistorySearch"
+            )
+            .innerHTML=
+            "Search History";
+
+    }
+
+}
+
 async function analyze(){
   const siteId = document.getElementById('siteId').value.trim();
   const rangeDays = Number(document.getElementById('days').value || 7);
@@ -3320,8 +4169,38 @@ document.getElementById('btnAuto').addEventListener('click', () => {
     return;
   }
   state.autoRefreshTimer = setInterval(analyze, 300000);
-  document.getElementById('btnAuto').textContent = 'Auto Refresh ON';
+  document.getElementById('btnAuto').textContent = 'Auto Refresh ON';  
 });
+
+document
+.getElementById('btnHistoryAnalysis')
+.addEventListener(
+'click',
+openHistoryModal
+);
+
+document
+.getElementById('btnHistoryCloseTop')
+.addEventListener(
+'click',
+closeHistoryModal
+);
+
+document
+.getElementById('btnHistoryCloseBottom')
+.addEventListener(
+'click',
+closeHistoryModal
+);
+
+document
+.getElementById(
+'btnHistorySearch'
+)
+.addEventListener(
+'click',
+searchHistoryAlarm
+);
 
 ['searchRan','searchTransport','searchExternal'].forEach((id, idx) => {
   const tableIds = ['tableRan','tableTransport','tableExternal'];
@@ -3350,6 +4229,20 @@ document.getElementById('days').addEventListener('change', () => {
 
 window.addEventListener('resize', () => {
   try { state.topology?.redraw(); } catch(e){}
+});
+
+document.addEventListener(
+'keydown',
+function(e){
+
+    if(
+        e.key==="Escape"
+    ){
+
+        closeHistoryModal();
+
+    }
+
 });
 
 window.addEventListener('load', () => {
