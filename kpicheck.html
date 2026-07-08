@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multi Site KPI Comparison</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 30px;
+  font-family: Arial, sans-serif;
+  background: #020617;
+  color: #e2e8f0;
+}
+
+.container {
+  max-width: 1600px;
+  margin: auto;
+}
+
+h1 {
+  margin-bottom: 8px;
+  color: #22d3ee;
+}
+
+.description {
+  color: #94a3b8;
+  margin-bottom: 25px;
+}
+
+.panel {
+  padding: 20px;
+  margin-bottom: 22px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 14px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+textarea {
+  width: 100%;
+  min-height: 170px;
+  padding: 12px;
+  color: white;
+  background: #020617;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  font-family: Consolas, monospace;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.hint {
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 10px 20px;
+  color: white;
+  background: linear-gradient(90deg, #0891b2, #16a34a);
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #334155;
+}
+
+button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+#status {
+  margin-left: auto;
+  color: #94a3b8;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #334155;
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  min-width: 1500px;
+  border-collapse: collapse;
+  background: #0b1324;
+}
+
+th, td {
+  padding: 12px 10px;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid #1e293b;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #162033;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+td {
+  font-size: 13px;
+}
+
+th:first-child,
+td:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+  background: #101a2c;
+  font-weight: bold;
+}
+
+.good { color: #22c55e; }
+.bad { color: #ef4444; }
+.same { color: #f59e0b; }
+.missing { color: #94a3b8; }
+.error { color: #fca5a5; }
+
+.empty {
+  padding: 45px;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.legend {
+  margin-top: 14px;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  body { padding: 15px; }
+  #status {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+    <h1>Site Performance Evaluation, Comparison, Tracking, Review & Analytics</h1>
+    <h2>SPECTRA - HELPDESK DIOC</h2>  
+  <div class="description">
+    Comparing the latest KPI data against the day-before baseline at the same hour
+  </div>
+
+  <div class="panel">
+    <label for="siteInput">Site ID And Open Date</label>
+
+    <textarea id="siteInput"
+      placeholder="21TML0001 | 01/07/2026&#10;21TML0002 | 03/07/2026&#10;21TML0003 | 05/07/2026"></textarea>
+
+    <div class="hint">
+      Format: <b>Site ID | DD/MM/YYYY</b> — One Site per Row.
+    </div>
+
+    <div class="actions">
+      <button id="analyzeButton" onclick="analyzeSites()">
+        Analyze
+      </button>
+
+      <button id="exportButton"
+        class="secondary"
+        onclick="exportCSV()"
+        disabled>
+        Export CSV
+      </button>
+
+      <button class="secondary" onclick="clearData()">
+        Clear
+      </button>
+
+      <span id="status">Ready</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="result">
+      <div class="empty">
+        Input Site ID and Open Date to start analysis. Any confiusion or error Please contact Admin Aziz Husen
+      </div>
+    </div>
+
+    <div class="legend">
+      Green = better, Red = worse, Yellow = same.
+      Traffic is the total of LTE + 5G.
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = "https://api.azhautomation.com/api/kpi";
+let finalResults = [];
+
+/* =========================
+   INPUT
+========================= */
+
+function parseInput() {
+  const text = document.getElementById("siteInput").value.trim();
+
+  if (!text) {
+    throw new Error("Daftar Site ID masih kosong.");
+  }
+
+  const rows = [];
+  const duplicateCheck = new Set();
+
+  text.split(/\r?\n/).forEach((line, index) => {
+    const value = line.trim();
+    if (!value) return;
+
+    const parts = value.split(/\s*[|,\t;]\s*/);
+
+    if (parts.length < 2) {
+      throw new Error(
+        `Format baris ${index + 1} tidak benar. Gunakan: SITE_ID | YYYY-MM-DD`
+      );
+    }
+
+    const siteId = parts[0].trim().toUpperCase();
+    const openDate = parts[1].trim();
+
+    if (!siteId) {
+      throw new Error(`Site ID pada baris ${index + 1} kosong.`);
+    }
+
+    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(openDate)) {
+      throw new Error(
+        `Tanggal pada baris ${index + 1} harus menggunakan format DD/MM/YYYY.`
+      );
+    }
+
+    const testDate = createLocalDate(openDate);
+
+    if (!testDate) {
+      throw new Error(
+        `Tanggal pada baris ${index + 1} tidak valid.`
+      );
+    }
+
+    const key = `${siteId}|${openDate}`;
+
+    if (!duplicateCheck.has(key)) {
+      duplicateCheck.add(key);
+      rows.push({ siteId, openDate });
+    }
+  });
+
+  return rows;
+}
+
+/* =========================
+   DATE
+========================= */
+
+function parseApiTime(value) {
+  if (value === null || value === undefined) return null;
+
+  if (typeof value === "number") {
+    const timestamp = value < 1000000000000
+      ? value * 1000
+      : value;
+
+    const date = new Date(timestamp);
+    return isNaN(date) ? null : date;
+  }
+
+  const raw = String(value).trim();
+
+  let date = new Date(raw);
+
+  if (!isNaN(date)) return date;
+
+  const match = raw.match(
+    /(\d{4})[-/](\d{1,2})[-/](\d{1,2})[ T](\d{1,2}):(\d{2})/
+  );
+
+  if (!match) return null;
+
+  date = new Date(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]),
+    Number(match[4]),
+    Number(match[5])
+  );
+
+  return isNaN(date) ? null : date;
+}
+
+function createLocalDate(dateString) {
+  const match = dateString.match(
+    /^(\d{2})\/(\d{2})\/(\d{4})$/
+  );
+
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+
+  const date = new Date(year, month - 1, day);
+
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function dateHourKey(date) {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+    String(date.getHours()).padStart(2, "0")
+  ].join("-");
+}
+
+function displayDate(date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  }).format(date);
+}
+
+function displayTime(date) {
+  return new Intl.DateTimeFormat("id-ID", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).format(date).replace(".", ":");
+}
+
+function calculateDays(openDate) {
+  const compareDate = createLocalDate(openDate);
+  compareDate.setDate(compareDate.getDate() - 1);
+
+  const difference =
+    (Date.now() - compareDate.getTime()) / 86400000;
+
+  return Math.max(3, Math.ceil(difference) + 2);
+}
+
+/* =========================
+   KPI
+========================= */
+
+function numberValue(value) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === "" ||
+    value === "NA"
+  ) {
+    return null;
+  }
+
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function availabilityValue(value) {
+  const number = numberValue(value);
+
+  if (number === null) return null;
+
+  return Math.abs(number) <= 1.000001
+    ? number * 100
+    : number;
+}
+
+function trafficValue(data) {
+  if (!data) return null;
+
+  const directTraffic = numberValue(data.traffic);
+
+  if (directTraffic !== null) {
+    return directTraffic;
+  }
+
+  const lte = numberValue(data.traffic_lte);
+  const fiveG = numberValue(data.traffic_5g);
+
+  if (lte === null && fiveG === null) {
+    return null;
+  }
+
+  return (lte || 0) + (fiveG || 0);
+}
+
+function formatNumber(value, suffix = "") {
+  if (value === null || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  return value.toLocaleString("id-ID", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + suffix;
+}
+
+function comparisonClass(metric, now, compare) {
+  if (now === null || compare === null) {
+    return "missing";
+  }
+
+  if (now === compare) {
+    return "same";
+  }
+
+  const higherIsBetter =
+    metric === "availability" ||
+    metric === "traffic";
+
+  const improved = higherIsBetter
+    ? now > compare
+    : now < compare;
+
+  return improved ? "good" : "bad";
+}
+
+/* =========================
+   API
+========================= */
+
+async function fetchSiteData(siteId, openDate) {
+  const days = calculateDays(openDate);
+
+  const url =
+    `${API}?site_id=${encodeURIComponent(siteId)}` +
+    `&days=${days}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`API error ${response.status}`);
+  }
+
+  const json = await response.json();
+
+  if (!Array.isArray(json.data) || !json.data.length) {
+    throw new Error("Data KPI tidak tersedia");
+  }
+
+  const validData = json.data
+    .map(item => ({
+      item,
+      date: parseApiTime(item.time)
+    }))
+    .filter(row => row.date)
+    .sort((a, b) => a.date - b.date);
+
+  if (!validData.length) {
+    throw new Error("Format waktu API tidak dikenali");
+  }
+
+  /* Timestamp paling terakhir dari API */
+  const lastAvailable = validData[validData.length - 1];
+
+  /* Now = satu jam sebelum timestamp terakhir */
+  const nowTarget = new Date(lastAvailable.date);
+  nowTarget.setHours(nowTarget.getHours() - 1);
+
+  const nowRow = validData.find(row =>
+    dateHourKey(row.date) === dateHourKey(nowTarget)
+  );
+
+  if (!nowRow) {
+    throw new Error(
+      `Data satu jam sebelum data terakhir tidak ditemukan`
+    );
+  }
+
+  /*
+    Compare = H-1 tanggal open,
+    menggunakan jam yang sama dengan Now.
+  */
+  const compareDate = createLocalDate(openDate);
+  compareDate.setDate(compareDate.getDate() - 1);
+  compareDate.setHours(
+    nowRow.date.getHours(),
+    0,
+    0,
+    0
+  );
+
+  const compareRow = validData.find(row =>
+    dateHourKey(row.date) === dateHourKey(compareDate)
+  );
+
+  const now = nowRow.item;
+  const compare = compareRow
+    ? compareRow.item
+    : {};
+
+  return {
+    siteId,
+    siteName: json.site_name || "",
+    openDate,
+
+    /*
+      latestDate tetap digunakan agar bagian tabel
+      sebelumnya tidak perlu diubah.
+      Nilainya sekarang adalah timestamp Now (H-1 jam).
+    */
+    latestDate: nowRow.date,
+    compareDate,
+
+    availabilityNow:
+      availabilityValue(now.availability),
+
+    availabilityCompare:
+      availabilityValue(compare.availability),
+
+    trafficNow:
+      trafficValue(now),
+
+    trafficCompare:
+      trafficValue(compare),
+
+    plrNow:
+      numberValue(now.plr),
+
+    plrCompare:
+      numberValue(compare.plr),
+
+    delayNow:
+      numberValue(now.delay),
+
+    delayCompare:
+      numberValue(compare.delay)
+  };
+}
+
+/* =========================
+   PROCESS
+========================= */
+
+async function analyzeSites() {
+  let inputRows;
+
+  try {
+    inputRows = parseInput();
+  } catch (error) {
+    alert(error.message);
+    return;
+  }
+
+  const button = document.getElementById("analyzeButton");
+  const exportButton = document.getElementById("exportButton");
+  const status = document.getElementById("status");
+
+  button.disabled = true;
+  exportButton.disabled = true;
+  finalResults = [];
+
+  document.getElementById("result").innerHTML =
+    `<div class="empty">Mengambil data KPI...</div>`;
+
+  /*
+    API dipanggil maksimal lima site bersamaan
+    agar server tidak menerima request berlebihan.
+  */
+  const batchSize = 5;
+
+  for (let index = 0; index < inputRows.length; index += batchSize) {
+    const batch = inputRows.slice(index, index + batchSize);
+
+    status.textContent =
+      `Memproses ${Math.min(index + batchSize, inputRows.length)}` +
+      ` dari ${inputRows.length} site`;
+
+    const batchResults = await Promise.all(
+      batch.map(async row => {
+        try {
+          return await fetchSiteData(
+            row.siteId,
+            row.openDate
+          );
+        } catch (error) {
+          return {
+            siteId: row.siteId,
+            openDate: row.openDate,
+            error: error.message
+          };
+        }
+      })
+    );
+
+    finalResults.push(...batchResults);
+    renderTable();
+  }
+
+  const successful = finalResults.filter(
+    row => !row.error
+  ).length;
+
+  status.textContent =
+    `Selesai: ${successful}/${inputRows.length} site berhasil`;
+
+  button.disabled = false;
+  exportButton.disabled = successful === 0;
+}
+
+/* =========================
+   TABLE
+========================= */
+
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
+function renderTable() {
+  const rows = finalResults.map(row => {
+    if (row.error) {
+      return `
+        <tr>
+          <td>${escapeHTML(row.siteId)}</td>
+          <td>${escapeHTML(row.openDate)}</td>
+          <td colspan="10" class="error">
+            ${escapeHTML(row.error)}
+          </td>
+        </tr>
+      `;
+    }
+
+    return `
+      <tr>
+        <td title="${escapeHTML(row.siteName)}">
+          ${escapeHTML(row.siteId)}
+        </td>
+
+        <td>${escapeHTML(row.openDate)}</td>
+        <td>${displayDate(row.latestDate)}</td>
+        <td>${displayTime(row.latestDate)}</td>
+
+        <td class="${comparisonClass(
+          "availability",
+          row.availabilityNow,
+          row.availabilityCompare
+        )}">
+          ${formatNumber(row.availabilityNow, "%")}
+        </td>
+
+        <td>
+          ${formatNumber(row.availabilityCompare, "%")}
+        </td>
+
+        <td class="${comparisonClass(
+          "traffic",
+          row.trafficNow,
+          row.trafficCompare
+        )}">
+          ${formatNumber(row.trafficNow)}
+        </td>
+
+        <td>
+          ${formatNumber(row.trafficCompare)}
+        </td>
+
+        <td class="${comparisonClass(
+          "plr",
+          row.plrNow,
+          row.plrCompare
+        )}">
+          ${formatNumber(row.plrNow)}
+        </td>
+
+        <td>
+          ${formatNumber(row.plrCompare)}
+        </td>
+
+        <td class="${comparisonClass(
+          "delay",
+          row.delayNow,
+          row.delayCompare
+        )}">
+          ${formatNumber(row.delayNow)}
+        </td>
+
+        <td>
+          ${formatNumber(row.delayCompare)}
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  document.getElementById("result").innerHTML = `
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Site ID</th>
+            <th>Tanggal Open</th>
+            <th>Tanggal Data</th>
+            <th>Jam</th>
+            <th>Avail Now</th>
+            <th>Avail Compare</th>
+            <th>Traffic Now</th>
+            <th>Traffic Compare</th>
+            <th>PLR Now</th>
+            <th>PLR Compare</th>
+            <th>Delay Now</th>
+            <th>Delay Compare</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* =========================
+   CSV
+========================= */
+
+function exportCSV() {
+  const successfulRows = finalResults.filter(
+    row => !row.error
+  );
+
+  if (!successfulRows.length) return;
+
+  const headers = [
+    "Site ID",
+    "Tanggal Open",
+    "Tanggal Data",
+    "Jam",
+    "Avail Now",
+    "Avail Compare",
+    "Traffic Now",
+    "Traffic Compare",
+    "PLR Now",
+    "PLR Compare",
+    "Delay Now",
+    "Delay Compare"
+  ];
+
+  const data = successfulRows.map(row => [
+    row.siteId,
+    row.openDate,
+    displayDate(row.latestDate),
+    displayTime(row.latestDate),
+    row.availabilityNow,
+    row.availabilityCompare,
+    row.trafficNow,
+    row.trafficCompare,
+    row.plrNow,
+    row.plrCompare,
+    row.delayNow,
+    row.delayCompare
+  ]);
+
+  const quote = value => {
+    const text = value === null ||
+      value === undefined
+      ? ""
+      : String(value);
+
+    return `"${text.replaceAll("\"", "\"\"")}"`;
+  };
+
+  const csv = [headers, ...data]
+    .map(row => row.map(quote).join(";"))
+    .join("\r\n");
+
+  const blob = new Blob(
+    ["\uFEFF" + csv],
+    { type: "text/csv;charset=utf-8" }
+  );
+
+  const link = document.createElement("a");
+
+  link.href = URL.createObjectURL(blob);
+  link.download = "KPI_Multisite_Comparison.csv";
+  link.click();
+
+  URL.revokeObjectURL(link.href);
+}
+
+/* =========================
+   CLEAR
+========================= */
+
+function clearData() {
+  document.getElementById("siteInput").value = "";
+  document.getElementById("status").textContent = "Siap";
+  document.getElementById("exportButton").disabled = true;
+
+  finalResults = [];
+
+  document.getElementById("result").innerHTML = `
+    <div class="empty">
+      Masukkan daftar Site ID dan tanggal open.
+    </div>
+  `;
+}
+</script>
+</body>
+</html>
