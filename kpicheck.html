@@ -220,18 +220,18 @@ td:first-child {
 
 <script>
 const API = "https://api.azhautomation.com/api/kpi";
-let finalResults = [];
 
-/* =========================
-   INPUT
-========================= */
+const NOW_WINDOW_HOURS = 3;
+const BASELINE_LOOKBACK_DAYS = 5;
+const HEALTHY_AVAILABILITY = 99.9;
+const HEALTHY_PLR = 1;
+const HEALTHY_DELAY = 30;
+
+let finalResults = [];
 
 function parseInput() {
   const text = document.getElementById("siteInput").value.trim();
-
-  if (!text) {
-    throw new Error("Daftar Site ID masih kosong.");
-  }
+  if (!text) throw new Error("Daftar Site ID masih kosong.");
 
   const rows = [];
   const duplicateCheck = new Set();
@@ -241,36 +241,22 @@ function parseInput() {
     if (!value) return;
 
     const parts = value.split(/\s*[|,\t;]\s*/);
-
     if (parts.length < 2) {
-      throw new Error(
-        `Format baris ${index + 1} tidak benar. Gunakan: SITE_ID | YYYY-MM-DD`
-      );
+      throw new Error(`Format baris ${index + 1} tidak benar. Gunakan: SITE_ID | DD/MM/YYYY`);
     }
 
     const siteId = parts[0].trim().toUpperCase();
     const openDate = parts[1].trim();
 
-    if (!siteId) {
-      throw new Error(`Site ID pada baris ${index + 1} kosong.`);
-    }
-
+    if (!siteId) throw new Error(`Site ID pada baris ${index + 1} kosong.`);
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(openDate)) {
-      throw new Error(
-        `Tanggal pada baris ${index + 1} harus menggunakan format DD/MM/YYYY.`
-      );
+      throw new Error(`Tanggal pada baris ${index + 1} harus menggunakan format DD/MM/YYYY.`);
     }
-
-    const testDate = createLocalDate(openDate);
-
-    if (!testDate) {
-      throw new Error(
-        `Tanggal pada baris ${index + 1} tidak valid.`
-      );
+    if (!createLocalDate(openDate)) {
+      throw new Error(`Tanggal pada baris ${index + 1} tidak valid.`);
     }
 
     const key = `${siteId}|${openDate}`;
-
     if (!duplicateCheck.has(key)) {
       duplicateCheck.add(key);
       rows.push({ siteId, openDate });
@@ -280,32 +266,20 @@ function parseInput() {
   return rows;
 }
 
-/* =========================
-   DATE
-========================= */
-
 function parseApiTime(value) {
   if (value === null || value === undefined) return null;
 
   if (typeof value === "number") {
-    const timestamp = value < 1000000000000
-      ? value * 1000
-      : value;
-
+    const timestamp = value < 1000000000000 ? value * 1000 : value;
     const date = new Date(timestamp);
     return isNaN(date) ? null : date;
   }
 
   const raw = String(value).trim();
-
   let date = new Date(raw);
-
   if (!isNaN(date)) return date;
 
-  const match = raw.match(
-    /(\d{4})[-/](\d{1,2})[-/](\d{1,2})[ T](\d{1,2}):(\d{2})/
-  );
-
+  const match = raw.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})[ T](\d{1,2}):(\d{2})/);
   if (!match) return null;
 
   date = new Date(
@@ -320,16 +294,12 @@ function parseApiTime(value) {
 }
 
 function createLocalDate(dateString) {
-  const match = dateString.match(
-    /^(\d{2})\/(\d{2})\/(\d{4})$/
-  );
-
+  const match = dateString.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
   if (!match) return null;
 
   const day = Number(match[1]);
   const month = Number(match[2]);
   const year = Number(match[3]);
-
   const date = new Date(year, month - 1, day);
 
   if (
@@ -341,6 +311,12 @@ function createLocalDate(dateString) {
   }
 
   return date;
+}
+
+function addHours(date, hours) {
+  const next = new Date(date);
+  next.setHours(next.getHours() + hours, 0, 0, 0);
+  return next;
 }
 
 function dateHourKey(date) {
@@ -368,19 +344,17 @@ function displayTime(date) {
   }).format(date).replace(".", ":");
 }
 
-function calculateDays(openDate) {
-  const compareDate = createLocalDate(openDate);
-  compareDate.setDate(compareDate.getDate() - 1);
-
-  const difference =
-    (Date.now() - compareDate.getTime()) / 86400000;
-
-  return Math.max(3, Math.ceil(difference) + 2);
+function displayWindow(startDate, endDate) {
+  return `${displayTime(startDate)}-${displayTime(endDate)}`;
 }
 
-/* =========================
-   KPI
-========================= */
+function calculateDays(openDate) {
+  const compareDate = createLocalDate(openDate);
+  compareDate.setDate(compareDate.getDate() - BASELINE_LOOKBACK_DAYS);
+
+  const difference = (Date.now() - compareDate.getTime()) / 86400000;
+  return Math.max(8, Math.ceil(difference) + 2);
+}
 
 function numberValue(value) {
   if (
@@ -398,37 +372,46 @@ function numberValue(value) {
 
 function availabilityValue(value) {
   const number = numberValue(value);
-
   if (number === null) return null;
 
-  return Math.abs(number) <= 1.000001
-    ? number * 100
-    : number;
+  return Math.abs(number) <= 1.000001 ? number * 100 : number;
 }
 
 function trafficValue(data) {
   if (!data) return null;
 
   const directTraffic = numberValue(data.traffic);
-
-  if (directTraffic !== null) {
-    return directTraffic;
-  }
+  if (directTraffic !== null) return directTraffic;
 
   const lte = numberValue(data.traffic_lte);
   const fiveG = numberValue(data.traffic_5g);
 
-  if (lte === null && fiveG === null) {
-    return null;
-  }
+  if (lte === null && fiveG === null) return null;
 
   return (lte || 0) + (fiveG || 0);
 }
 
+function average(values) {
+  const validValues = values.filter(value =>
+    value !== null && Number.isFinite(value)
+  );
+
+  if (!validValues.length) return null;
+
+  return validValues.reduce((total, value) => total + value, 0) / validValues.length;
+}
+
+function averageRows(rows) {
+  return {
+    availability: average(rows.map(row => availabilityValue(row.item.availability))),
+    traffic: average(rows.map(row => trafficValue(row.item))),
+    plr: average(rows.map(row => numberValue(row.item.plr))),
+    delay: average(rows.map(row => numberValue(row.item.delay)))
+  };
+}
+
 function formatNumber(value, suffix = "") {
-  if (value === null || !Number.isFinite(value)) {
-    return "—";
-  }
+  if (value === null || !Number.isFinite(value)) return "—";
 
   return value.toLocaleString("id-ID", {
     minimumFractionDigits: 2,
@@ -437,28 +420,131 @@ function formatNumber(value, suffix = "") {
 }
 
 function comparisonClass(metric, now, compare) {
-  if (now === null || compare === null) {
-    return "missing";
-  }
-
-  if (now === compare) {
-    return "same";
-  }
+  if (now === null || compare === null) return "missing";
+  if (now === compare) return "same";
 
   const higherIsBetter =
     metric === "availability" ||
     metric === "traffic";
 
-  const improved = higherIsBetter
-    ? now > compare
-    : now < compare;
-
+  const improved = higherIsBetter ? now > compare : now < compare;
   return improved ? "good" : "bad";
 }
 
-/* =========================
-   API
-========================= */
+function buildHourMap(validData) {
+  const map = new Map();
+
+  validData.forEach(row => {
+    map.set(dateHourKey(row.date), row);
+  });
+
+  return map;
+}
+
+function getWindowRows(hourMap, endDate, hours) {
+  const rows = [];
+
+  for (let offset = hours - 1; offset >= 0; offset--) {
+    const targetDate = addHours(endDate, -offset);
+    const row = hourMap.get(dateHourKey(targetDate));
+
+    if (!row) return null;
+
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function hasPlrAndDelay(candidate) {
+  return candidate.metrics.plr !== null &&
+    candidate.metrics.delay !== null;
+}
+
+function isHealthyBaseline(candidate, allowAvailabilityOnly) {
+  const metrics = candidate.metrics;
+
+  if (
+    metrics.availability === null ||
+    metrics.availability < HEALTHY_AVAILABILITY
+  ) {
+    return false;
+  }
+
+  if (allowAvailabilityOnly) {
+    return true;
+  }
+
+  return metrics.plr !== null &&
+    metrics.plr < HEALTHY_PLR &&
+    metrics.delay !== null &&
+    metrics.delay < HEALTHY_DELAY;
+}
+
+function scoreCompleteness(metrics) {
+  return [
+    metrics.availability,
+    metrics.plr,
+    metrics.delay
+  ].filter(value => value !== null).length;
+}
+
+function pickBaseline(hourMap, openDate, nowEnd) {
+  const openDateValue = createLocalDate(openDate);
+  const candidates = [];
+
+  for (let dayOffset = 1; dayOffset <= BASELINE_LOOKBACK_DAYS; dayOffset++) {
+    const compareEnd = new Date(openDateValue);
+
+    compareEnd.setDate(compareEnd.getDate() - dayOffset);
+    compareEnd.setHours(nowEnd.getHours(), 0, 0, 0);
+
+    const rows = getWindowRows(hourMap, compareEnd, NOW_WINDOW_HOURS);
+    if (!rows) continue;
+
+    candidates.push({
+      dayOffset,
+      source: `H-${dayOffset}`,
+      startDate: addHours(compareEnd, -(NOW_WINDOW_HOURS - 1)),
+      endDate: compareEnd,
+      metrics: averageRows(rows)
+    });
+  }
+
+  if (!candidates.length) return null;
+
+  const hasQualityBaseline = candidates.some(hasPlrAndDelay);
+
+  const healthyCandidate = candidates.find(candidate =>
+    isHealthyBaseline(candidate, !hasQualityBaseline)
+  );
+
+  if (healthyCandidate) {
+    return {
+      ...healthyCandidate,
+      status: hasQualityBaseline ? "Healthy" : "Healthy by availability"
+    };
+  }
+
+  const fallback = candidates
+    .slice()
+    .sort((a, b) => {
+      const availabilityA = a.metrics.availability ?? -Infinity;
+      const availabilityB = b.metrics.availability ?? -Infinity;
+
+      if (availabilityB !== availabilityA) {
+        return availabilityB - availabilityA;
+      }
+
+      return scoreCompleteness(b.metrics) - scoreCompleteness(a.metrics) ||
+        a.dayOffset - b.dayOffset;
+    })[0];
+
+  return {
+    ...fallback,
+    status: "Baseline not healthy"
+  };
+}
 
 async function fetchSiteData(siteId, openDate) {
   const days = calculateDays(openDate);
@@ -491,87 +577,55 @@ async function fetchSiteData(siteId, openDate) {
     throw new Error("Format waktu API tidak dikenali");
   }
 
-  /* Timestamp paling terakhir dari API */
+  const hourMap = buildHourMap(validData);
   const lastAvailable = validData[validData.length - 1];
 
-  /* Now = satu jam sebelum timestamp terakhir */
-  const nowTarget = new Date(lastAvailable.date);
-  nowTarget.setHours(nowTarget.getHours() - 1);
+  /*
+    Jam terakhir API tidak dipakai karena kadang belum lengkap.
+    Now = average 3 jam sebelum jam terakhir.
+  */
+  const nowEnd = addHours(lastAvailable.date, -1);
+  const nowRows = getWindowRows(hourMap, nowEnd, NOW_WINDOW_HOURS);
 
-  const nowRow = validData.find(row =>
-    dateHourKey(row.date) === dateHourKey(nowTarget)
-  );
-
-  if (!nowRow) {
-    throw new Error(
-      `Data satu jam sebelum data terakhir tidak ditemukan`
-    );
+  if (!nowRows) {
+    throw new Error("Data 3 jam sebelum data terakhir tidak lengkap");
   }
 
-  /*
-    Compare = H-1 tanggal open,
-    menggunakan jam yang sama dengan Now.
-  */
-  const compareDate = createLocalDate(openDate);
-  compareDate.setDate(compareDate.getDate() - 1);
-  compareDate.setHours(
-    nowRow.date.getHours(),
-    0,
-    0,
-    0
-  );
+  const nowStart = addHours(nowEnd, -(NOW_WINDOW_HOURS - 1));
+  const nowMetrics = averageRows(nowRows);
 
-  const compareRow = validData.find(row =>
-    dateHourKey(row.date) === dateHourKey(compareDate)
-  );
+  const baseline = pickBaseline(hourMap, openDate, nowEnd);
 
-  const now = nowRow.item;
-  const compare = compareRow
-    ? compareRow.item
-    : {};
+  if (!baseline) {
+    throw new Error("Baseline H-1 sampai H-5 pada jam yang sama tidak ditemukan");
+  }
 
   return {
     siteId,
     siteName: json.site_name || "",
     openDate,
 
-    /*
-      latestDate tetap digunakan agar bagian tabel
-      sebelumnya tidak perlu diubah.
-      Nilainya sekarang adalah timestamp Now (H-1 jam).
-    */
-    latestDate: nowRow.date,
-    compareDate,
+    nowStart,
+    nowEnd,
 
-    availabilityNow:
-      availabilityValue(now.availability),
+    compareStart: baseline.startDate,
+    compareEnd: baseline.endDate,
+    compareSource: baseline.source,
+    baselineStatus: baseline.status,
 
-    availabilityCompare:
-      availabilityValue(compare.availability),
+    availabilityNow: nowMetrics.availability,
+    availabilityCompare: baseline.metrics.availability,
 
-    trafficNow:
-      trafficValue(now),
+    trafficNow: nowMetrics.traffic,
+    trafficCompare: baseline.metrics.traffic,
 
-    trafficCompare:
-      trafficValue(compare),
+    plrNow: nowMetrics.plr,
+    plrCompare: baseline.metrics.plr,
 
-    plrNow:
-      numberValue(now.plr),
-
-    plrCompare:
-      numberValue(compare.plr),
-
-    delayNow:
-      numberValue(now.delay),
-
-    delayCompare:
-      numberValue(compare.delay)
+    delayNow: nowMetrics.delay,
+    delayCompare: baseline.metrics.delay
   };
 }
-
-/* =========================
-   PROCESS
-========================= */
 
 async function analyzeSites() {
   let inputRows;
@@ -594,10 +648,6 @@ async function analyzeSites() {
   document.getElementById("result").innerHTML =
     `<div class="empty">Mengambil data KPI...</div>`;
 
-  /*
-    API dipanggil maksimal lima site bersamaan
-    agar server tidak menerima request berlebihan.
-  */
   const batchSize = 5;
 
   for (let index = 0; index < inputRows.length; index += batchSize) {
@@ -610,10 +660,7 @@ async function analyzeSites() {
     const batchResults = await Promise.all(
       batch.map(async row => {
         try {
-          return await fetchSiteData(
-            row.siteId,
-            row.openDate
-          );
+          return await fetchSiteData(row.siteId, row.openDate);
         } catch (error) {
           return {
             siteId: row.siteId,
@@ -628,9 +675,7 @@ async function analyzeSites() {
     renderTable();
   }
 
-  const successful = finalResults.filter(
-    row => !row.error
-  ).length;
+  const successful = finalResults.filter(row => !row.error).length;
 
   status.textContent =
     `Selesai: ${successful}/${inputRows.length} site berhasil`;
@@ -638,10 +683,6 @@ async function analyzeSites() {
   button.disabled = false;
   exportButton.disabled = successful === 0;
 }
-
-/* =========================
-   TABLE
-========================= */
 
 function escapeHTML(value) {
   return String(value).replace(/[&<>"']/g, character => ({
@@ -653,6 +694,12 @@ function escapeHTML(value) {
   })[character]);
 }
 
+function baselineClass(status) {
+  if (status === "Healthy") return "good";
+  if (status === "Healthy by availability") return "same";
+  return "bad";
+}
+
 function renderTable() {
   const rows = finalResults.map(row => {
     if (row.error) {
@@ -660,7 +707,7 @@ function renderTable() {
         <tr>
           <td>${escapeHTML(row.siteId)}</td>
           <td>${escapeHTML(row.openDate)}</td>
-          <td colspan="10" class="error">
+          <td colspan="14" class="error">
             ${escapeHTML(row.error)}
           </td>
         </tr>
@@ -674,56 +721,34 @@ function renderTable() {
         </td>
 
         <td>${escapeHTML(row.openDate)}</td>
-        <td>${displayDate(row.latestDate)}</td>
-        <td>${displayTime(row.latestDate)}</td>
+        <td>${displayDate(row.nowEnd)}</td>
+        <td>${displayWindow(row.nowStart, row.nowEnd)}</td>
+        <td>${displayDate(row.compareEnd)}</td>
+        <td>${displayWindow(row.compareStart, row.compareEnd)}</td>
+        <td>${escapeHTML(row.compareSource)}</td>
+        <td class="${baselineClass(row.baselineStatus)}">
+          ${escapeHTML(row.baselineStatus)}
+        </td>
 
-        <td class="${comparisonClass(
-          "availability",
-          row.availabilityNow,
-          row.availabilityCompare
-        )}">
+        <td class="${comparisonClass("availability", row.availabilityNow, row.availabilityCompare)}">
           ${formatNumber(row.availabilityNow, "%")}
         </td>
+        <td>${formatNumber(row.availabilityCompare, "%")}</td>
 
-        <td>
-          ${formatNumber(row.availabilityCompare, "%")}
-        </td>
-
-        <td class="${comparisonClass(
-          "traffic",
-          row.trafficNow,
-          row.trafficCompare
-        )}">
+        <td class="${comparisonClass("traffic", row.trafficNow, row.trafficCompare)}">
           ${formatNumber(row.trafficNow)}
         </td>
+        <td>${formatNumber(row.trafficCompare)}</td>
 
-        <td>
-          ${formatNumber(row.trafficCompare)}
-        </td>
-
-        <td class="${comparisonClass(
-          "plr",
-          row.plrNow,
-          row.plrCompare
-        )}">
+        <td class="${comparisonClass("plr", row.plrNow, row.plrCompare)}">
           ${formatNumber(row.plrNow)}
         </td>
+        <td>${formatNumber(row.plrCompare)}</td>
 
-        <td>
-          ${formatNumber(row.plrCompare)}
-        </td>
-
-        <td class="${comparisonClass(
-          "delay",
-          row.delayNow,
-          row.delayCompare
-        )}">
+        <td class="${comparisonClass("delay", row.delayNow, row.delayCompare)}">
           ${formatNumber(row.delayNow)}
         </td>
-
-        <td>
-          ${formatNumber(row.delayCompare)}
-        </td>
+        <td>${formatNumber(row.delayCompare)}</td>
       </tr>
     `;
   }).join("");
@@ -735,8 +760,12 @@ function renderTable() {
           <tr>
             <th>Site ID</th>
             <th>Tanggal Open</th>
-            <th>Tanggal Data</th>
-            <th>Jam</th>
+            <th>Tanggal Now</th>
+            <th>Now Window</th>
+            <th>Tanggal Compare</th>
+            <th>Compare Window</th>
+            <th>Source</th>
+            <th>Baseline</th>
             <th>Avail Now</th>
             <th>Avail Compare</th>
             <th>Traffic Now</th>
@@ -756,22 +785,19 @@ function renderTable() {
   `;
 }
 
-/* =========================
-   CSV
-========================= */
-
 function exportCSV() {
-  const successfulRows = finalResults.filter(
-    row => !row.error
-  );
-
+  const successfulRows = finalResults.filter(row => !row.error);
   if (!successfulRows.length) return;
 
   const headers = [
     "Site ID",
     "Tanggal Open",
-    "Tanggal Data",
-    "Jam",
+    "Tanggal Now",
+    "Now Window",
+    "Tanggal Compare",
+    "Compare Window",
+    "Source",
+    "Baseline",
     "Avail Now",
     "Avail Compare",
     "Traffic Now",
@@ -785,8 +811,12 @@ function exportCSV() {
   const data = successfulRows.map(row => [
     row.siteId,
     row.openDate,
-    displayDate(row.latestDate),
-    displayTime(row.latestDate),
+    displayDate(row.nowEnd),
+    displayWindow(row.nowStart, row.nowEnd),
+    displayDate(row.compareEnd),
+    displayWindow(row.compareStart, row.compareEnd),
+    row.compareSource,
+    row.baselineStatus,
     row.availabilityNow,
     row.availabilityCompare,
     row.trafficNow,
@@ -798,11 +828,7 @@ function exportCSV() {
   ]);
 
   const quote = value => {
-    const text = value === null ||
-      value === undefined
-      ? ""
-      : String(value);
-
+    const text = value === null || value === undefined ? "" : String(value);
     return `"${text.replaceAll("\"", "\"\"")}"`;
   };
 
@@ -818,15 +844,11 @@ function exportCSV() {
   const link = document.createElement("a");
 
   link.href = URL.createObjectURL(blob);
-  link.download = "KPI_Multisite_Comparison.csv";
+  link.download = "KPI_Multisite_Trend_Comparison.csv";
   link.click();
 
   URL.revokeObjectURL(link.href);
 }
-
-/* =========================
-   CLEAR
-========================= */
 
 function clearData() {
   document.getElementById("siteInput").value = "";
