@@ -5,7 +5,7 @@
 
 <meta charset="UTF-8">
 
-<title>NOC Health Check PRO</title>
+<title>NOVA — NOC HD Health Intelligence</title>
 
 <style>
 
@@ -60,8 +60,8 @@ letter-spacing:2px;
 
 <div class="container">
 
-<h2>HD DIOC HEALTH CHECK SITE JABODETABEK</h2>
-<div class="brand">AZH Automation</div>
+<h2>Network Operations Validation & Analysis</h2>
+<div class="brand"> NOVA </div>
 
 <textarea id="sites"></textarea>
 
@@ -76,75 +76,386 @@ letter-spacing:2px;
 
 <script>
 
-async function run(){
+const RAN_DOMAINS = new Set([
+  "RAN",
+  "RAN-2G",
+  "RAN-3G",
+  "RAN-4G",
+  "RAN-5G"
+]);
 
-let sites=document.getElementById("sites").value
-.split("\n")
-.filter(x=>x!="")
 
-let url="https://api.azhautomation.com/api/noc/healthcheck?sites="+sites.join(",")
-
-let r=await fetch(url)
-
-let j=await r.json()
-
-let text=""
-
-j.result.forEach(s=>{
-
-let siaText=""
-
-if(s.sia.startsWith("❌")){
-
-let alarm=s.sia.replace("❌ ","")
-
-siaText=`❌ SIA Status (${alarm})`
-
-}else{
-
-siaText=`✅ SIA Status`
-
+function normalizeText(value){
+  return String(value ?? "")
+    .trim()
+    .toUpperCase();
 }
 
-text+=
+
+function normalizeOwsRows(rows){
+
+  if(!Array.isArray(rows)){
+
+    console.error(
+      "normalizeOwsRows menerima data bukan array:",
+      rows
+    );
+
+    return [];
+  }
+
+  return rows.map((r, idx) => ({
+
+    __idx: idx,
+
+    __firstOcc:
+      r.first_occurrence ||
+      r.first_occurred ||
+      r.start_time ||
+      r["First Occurred (NT)"] ||
+      "-",
+
+    __clearTime:
+      r.clear_time ||
+      r.cleared_time ||
+      "-",
+
+    __duration:
+      r.duration ||
+      "-",
+
+    __alarmName:
+      r.alarm_name ||
+      r.name ||
+      r["Name"] ||
+      "-",
+
+    __alarmSrc:
+      r.alarm_source ||
+      r.source_name ||
+      r["Alarm Source"] ||
+      "-",
+
+    __severity:
+      r.severity ||
+      r["Severity"] ||
+      "-",
+
+    __domain:
+      r.domain ||
+      r["Domain"] ||
+      "-",
+
+    __siteId:
+      r.site_id ||
+      r.siteId ||
+      r.site_code ||
+      r["Site ID"] ||
+      "-",
+
+    __siteName:
+      r.site_name ||
+      r.siteName ||
+      r["Site Name"] ||
+      "-",
+
+    __loc:
+      r.location ||
+      r.location_information ||
+      r["Location Information"] ||
+      "-",
+
+    __ticket:
+      r.ticket_id ||
+      r.ticketId ||
+      r["Ticket ID"] ||
+      "-"
+  }));
+}
+
+
+function extractOwsRows(payload){
+
+  if(!payload){
+    return [];
+  }
+
+  if(Array.isArray(payload)){
+    return payload;
+  }
+
+  const directCandidates = [
+    payload.result,
+    payload.data,
+    payload.alarms,
+    payload.active,
+    payload.rows,
+    payload.items
+  ];
+
+  for(const candidate of directCandidates){
+
+    if(Array.isArray(candidate)){
+      return candidate;
+    }
+  }
+
+  const nestedContainers = [
+    payload.result,
+    payload.data
+  ];
+
+  for(const container of nestedContainers){
+
+    if(!container || typeof container !== "object"){
+      continue;
+    }
+
+    const nestedCandidates = [
+      container.alarms,
+      container.active,
+      container.rows,
+      container.items,
+      container.result,
+      container.data
+    ];
+
+    for(const candidate of nestedCandidates){
+
+      if(Array.isArray(candidate)){
+        return candidate;
+      }
+    }
+  }
+
+  /*
+    Fallback dua tingkat untuk response dengan key per site.
+    Contoh:
+    {
+      "02PYB0001": [...],
+      "21MTW0020": [...]
+    }
+  */
+  const collectedRows = [];
+
+  for(const value of Object.values(payload)){
+
+    if(Array.isArray(value)){
+      collectedRows.push(...value);
+      continue;
+    }
+
+    if(value && typeof value === "object"){
+
+      for(const nestedValue of Object.values(value)){
+
+        if(Array.isArray(nestedValue)){
+          collectedRows.push(...nestedValue);
+        }
+      }
+    }
+  }
+
+  if(collectedRows.length > 0){
+    return collectedRows;
+  }
+
+  console.error(
+    "Tidak menemukan array alarm pada response OWS:",
+    payload
+  );
+
+  return [];
+}
+
+
+function getRanAlarmsBySite(owsRows, siteId){
+
+  const requestedSite = normalizeText(siteId);
+
+  return owsRows.filter(a => {
+
+    const alarmSite = normalizeText(a.__siteId);
+    const alarmDomain = normalizeText(a.__domain);
+
+    return (
+      alarmSite === requestedSite &&
+      RAN_DOMAINS.has(alarmDomain)
+    );
+  });
+}
+
+
+function formatSiaMainAlarm(ranAlarms){
+
+  if(ranAlarms.length === 0){
+    return "✅ SIA Status";
+  }
+
+  return `❌ SIA Status (${ranAlarms[0].__alarmName})`;
+}
+
+
+async function run(){
+
+  const resultElement =
+    document.getElementById("result");
+
+  let sites = document
+    .getElementById("sites")
+    .value
+    .split(/[\n,;]+/)
+    .map(x => normalizeText(x))
+    .filter(x => x !== "");
+
+  sites = [...new Set(sites)];
+
+  if(sites.length === 0){
+
+    resultElement.innerText =
+      "Silakan input Site ID terlebih dahulu.";
+
+    return;
+  }
+
+  resultElement.innerText =
+    "Sedang melakukan analysis...";
+
+  try{
+
+    const kpiUrl =
+      "https://api.azhautomation.com" +
+      "/api/noc/healthcheck?sites=" +
+      encodeURIComponent(sites.join(","));
+
+    const [kpiRes, owsRes] = await Promise.all([
+
+      fetch(kpiUrl),
+
+      fetch(
+        "https://api.azhautomation.com/api/ows/multi",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            site_ids: sites
+          })
+        }
+      )
+    ]);
+
+    if(!kpiRes.ok){
+
+      const errorText = await kpiRes.text();
+
+      throw new Error(
+        `KPI API error ${kpiRes.status}: ${errorText}`
+      );
+    }
+
+    if(!owsRes.ok){
+
+      const errorText = await owsRes.text();
+
+      throw new Error(
+        `OWS API error ${owsRes.status}: ${errorText}`
+      );
+    }
+
+    const kpiJson = await kpiRes.json();
+    const owsJson = await owsRes.json();
+
+    console.log("KPI RESPONSE:", kpiJson);
+    console.log("OWS RESPONSE:", owsJson);
+
+    const rawOwsRows = extractOwsRows(owsJson);
+
+    console.log("RAW OWS ROWS:", rawOwsRows);
+
+    const owsRows =
+      normalizeOwsRows(rawOwsRows);
+
+    console.log(
+      "NORMALIZED OWS ROWS:",
+      owsRows
+    );
+
+    const kpiResults = Array.isArray(kpiJson.result)
+      ? kpiJson.result
+      : [];
+
+    if(kpiResults.length === 0){
+
+      resultElement.innerText =
+        "KPI API tidak mengembalikan result.";
+
+      return;
+    }
+
+    let text = "";
+
+    kpiResults.forEach(s => {
+
+      const ranAlarms =
+        getRanAlarmsBySite(
+          owsRows,
+          s.site_id
+        );
+
+      const siaText =
+        formatSiaMainAlarm(ranAlarms);
+
+      text +=
 `━━━━━━━━━━━━━━━━━━━━
 SITE : ${s.site_id}
 SITE NAME : ${s.site_name}
 
 ${siaText}
-`
+`;
 
-/* ===== NEW MULTI ALARM SECTION ===== */
+      if(ranAlarms.length > 0){
 
-if(s.alarms && s.alarms.length>0){
+        text += `
+Detected RAN Alarms :
+`;
 
-text+=`
-Detected Alarms :
-`
+        ranAlarms.forEach(a => {
 
-s.alarms.forEach(a=>{
-text+=`• ${a}\n`
-})
+          text +=
+`• ${a.__alarmName} | ${a.__severity} | ${a.__domain} | ${a.__firstOcc} | ${a.__duration}
+`;
+        });
+      }
 
-}
+      /*
+        Suspect dan Action hanya ditampilkan
+        ketika memang dikirim oleh Healthcheck API.
+      */
+      if(
+        s.suspect &&
+        String(s.suspect).trim() !== ""
+      ){
 
-/* ===== EXISTING RCA SECTION ===== */
-
-if(s.suspect && s.suspect.trim()!=""){
-text+=`
+        text += `
 Suspect Cause :
 ${s.suspect}
-`
-}
+`;
+      }
 
-if(s.action && s.action.trim()!=""){
-text+=`
+      if(
+        s.action &&
+        String(s.action).trim() !== ""
+      ){
+
+        text += `
 Action Needed :
 ${s.action}
-`
-}
+`;
+      }
 
-text+=`
+      text += `
 
 KPI HEALTHCHECK
 ${s.availability} Availability Status
@@ -153,22 +464,52 @@ ${s.delay} DELAY Status
 ${s.traffic} Traffic Status
 ${s.s1sr} S1SR Status
 
-`
+`;
+    });
 
-})
+    resultElement.innerText = text;
 
-document.getElementById("result").innerText=text
+  }catch(error){
 
+    console.error(
+      "HEALTHCHECK ERROR:",
+      error
+    );
+
+    resultElement.innerText =
+      "Analysis gagal:\n" +
+      error.message;
+  }
 }
 
-function copy(){
 
-navigator.clipboard.writeText(
-document.getElementById("result").innerText
-)
+async function copy(){
 
-alert("Copied")
+  const text =
+    document.getElementById("result").innerText;
 
+  if(!text.trim()){
+    alert("Belum ada result untuk disalin.");
+    return;
+  }
+
+  try{
+
+    await navigator.clipboard.writeText(text);
+
+    alert("Copied");
+
+  }catch(error){
+
+    console.error(
+      "COPY ERROR:",
+      error
+    );
+
+    alert(
+      "Gagal copy. Silakan salin secara manual."
+    );
+  }
 }
 
 </script>
