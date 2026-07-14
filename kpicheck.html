@@ -456,6 +456,16 @@ function getWindowRows(hourMap, endDate, hours) {
   return rows;
 }
 
+function getLastAvailableWindow(validData, lastAvailable, hours) {
+  const rows = validData
+    .filter(row => row.date < lastAvailable.date)
+    .slice(-hours);
+
+  if (!rows.length) return null;
+
+  return rows;
+}
+
 function hasPlrAndDelay(candidate) {
   return candidate.metrics.plr !== null &&
     candidate.metrics.delay !== null;
@@ -584,14 +594,18 @@ async function fetchSiteData(siteId, openDate) {
     Jam terakhir API tidak dipakai karena kadang belum lengkap.
     Now = average 3 jam sebelum jam terakhir.
   */
-  const nowEnd = addHours(lastAvailable.date, -1);
-  const nowRows = getWindowRows(hourMap, nowEnd, NOW_WINDOW_HOURS);
+  const nowRows = getLastAvailableWindow(
+    validData,
+    lastAvailable,
+    NOW_WINDOW_HOURS
+  );
 
   if (!nowRows) {
-    throw new Error("Data 3 jam sebelum data terakhir tidak lengkap");
+    throw new Error("Data sebelum jam terakhir tidak tersedia");
   }
 
-  const nowStart = addHours(nowEnd, -(NOW_WINDOW_HOURS - 1));
+  const nowStart = nowRows[0].date;
+  const nowEnd = nowRows[nowRows.length - 1].date;
   const nowMetrics = averageRows(nowRows);
 
   const baseline = pickBaseline(hourMap, openDate, nowEnd);
