@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CTT HELPDESK DIOC</title>
+  <link rel="stylesheet" href="ctt-helpdesk-assets/styles.css">
+</head>
+<body>
+<main>
+  <header>
+    <div><p class="eyebrow">COSTUMER TROUBLE TICKET</p><h1>CTT HELPDESK DIOC</h1><p class="muted">TT Trend, Performance Trend and TT Analyzing</p></div>
+    <div class="top-actions"><span class="live">Live data</span><button id="refresh">Refresh</button></div>
+  </header>
+  <div id="message" class="message">Mengambil data Google Sheetâ€¦</div>
+  <section class="kpis" id="kpis"></section>
+  <section class="panel">
+    <div class="head"><div><h2>Trend TT & Average Aging</h2><p class="muted">Stacked Open, Closed, Monitoring dan rata-rata Aging</p></div>
+      <div class="controls"><button id="monthly" class="active">Monthly</button><button id="weekly">Weekly</button><label>Dari <input id="from" type="date"></label><label>Sampai <input id="to" type="date"></label></div>
+    </div>
+    <div class="legend"><span><i class="open"></i>Open</span><span><i class="closed"></i>Closed</span><span><i class="monitoring"></i>Monitoring</span><span><i class="aging"></i>Avg Aging</span></div>
+    <div class="chart" id="trend"></div><div class="detail" id="trendDetail"></div>
+  </section>
+  <section class="panel"><h2>Trend TT per Region</h2><p class="muted">Mengikuti mode dan rentang tanggal di atas</p><div class="chart" id="region"></div></section>
+  <section class="cols">
+    <section class="panel"><h2>Escalate To</h2><p class="muted">Open case</p><div class="bars" id="esc"></div></section>
+    <section class="panel"><h2>RCA Category</h2><p class="muted">Open case</p><div class="bars" id="rca"></div></section>
+    <section class="panel"><h2>Type Urgent</h2><p class="muted">Blank ditampilkan sebagai Normal TT</p><div class="bars" id="urgent"></div></section>
+  </section>
+  <section class="panel">
+    <div class="head"><div><h2>Open & Monitoring Tickets</h2><p class="muted" id="count"></p></div><input id="search" placeholder="Cari Site ID / Site Name"></div>
+    <div class="filter-grid">
+      <label>Circle<select id="fCircle"></select></label><label>Type Urgent<select id="fUrgent"></select></label>
+      <label>Escalate To<select id="fEsc"></select></label><label>Status<select id="fStatus"></select></label>
+      <label>Type<select id="fType"></select></label><label>Aging<select id="fAging"><option value="">Semua</option><option value="lt3">&lt;3</option><option value="gte3">&gt;=3</option><option value="gt7">&gt;7</option><option value="gt30">&gt;30</option></select></label>
+    </div>
+    <div class="tablewrap"><table><thead><tr>
+      <th>TT</th><th>Severity</th><th>Open Date</th><th>Type</th><th>Site ID</th><th>Sitename</th><th>Region</th>
+      <th>Summary Issue TT</th><th>Founding</th><th>Part Issue</th><th>No RMA</th><th>Time Periode</th>
+      <th>Final RCA/Action</th><th>RCA Category</th><th>Escalate To</th><th>TT NOC</th><th>TT FSO</th>
+      <th>Aging</th><th>Status</th><th>Type Urgent</th><th>Week</th>
+    </tr></thead><tbody id="tbody"></tbody></table></div>
+    <footer id="foot"></footer>
+  </section>
+</main>
+<script src="ctt-helpdesk-assets/config.js"></script><script src="ctt-helpdesk-assets/app.js"></script>
+</body></html>
