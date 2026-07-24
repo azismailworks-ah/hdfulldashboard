@@ -428,6 +428,112 @@ body::before{
   height:100% !important;
 }
 
+.twamp-realtime-card{
+  margin-top:12px;
+  border:1px solid rgba(45,226,230,.22);
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(7,19,34,.92), rgba(4,11,20,.8));
+  padding:12px 14px 10px;
+  min-height:230px;
+}
+.twamp-realtime-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:8px;
+}
+.twamp-realtime-head h4{
+  margin:0;
+  font-size:.96rem;
+}
+.twamp-realtime-meta{
+  color:var(--muted);
+  font-size:.8rem;
+  margin-top:4px;
+}
+.twamp-thresholds{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:6px;
+  font-size:.72rem;
+}
+.twamp-thresholds span{
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:4px 7px;
+  white-space:nowrap;
+}
+.twamp-chart-wrap{
+  position:relative;
+  height:170px;
+}
+.twamp-series-legend{
+  height:24px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:18px;
+  color:#d8e6ff;
+  font-size:.76rem;
+  font-weight:650;
+}
+.twamp-series-key{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+}
+.twamp-legend-bar{
+  width:13px;
+  height:9px;
+  border-radius:2px;
+  background:linear-gradient(90deg, #26d37c 0 34%, #fbbf24 34% 67%, #ff4d4d 67%);
+  box-shadow:0 0 0 1px rgba(255,255,255,.13);
+}
+.twamp-legend-line{
+  position:relative;
+  width:20px;
+  height:10px;
+  display:inline-block;
+}
+.twamp-legend-line::before{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  top:4px;
+  height:2px;
+  border-radius:2px;
+  background:#26d37c;
+}
+.twamp-legend-line::after{
+  content:"";
+  position:absolute;
+  left:8px;
+  top:1px;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:#26d37c;
+  box-shadow:0 0 0 2px rgba(5,11,20,.9);
+}
+.twamp-chart-stage{
+  position:relative;
+  height:146px;
+}
+.twamp-chart-stage canvas{
+  width:100% !important;
+  height:100% !important;
+}
+.twamp-empty{
+  height:170px;
+  display:grid;
+  place-items:center;
+  color:var(--muted);
+  font-size:.86rem;
+}
+
 .topology-layout{
   display:grid;
   grid-template-columns: 1.8fr .72fr;
@@ -722,7 +828,7 @@ tr:hover td{
 
 .geo-layout{
   display:grid;
-  grid-template-columns: 58% 42%;
+  grid-template-columns: minmax(0, 52%) minmax(0, 48%);
   gap:12px;
 }
 
@@ -735,11 +841,11 @@ tr:hover td{
 
 #geoMap{
   width:100%;
-  height:420px;
+  height:620px;
 }
 
 .geo-table-wrap{
-  max-height:480px;
+  max-height:620px;
   overflow:auto;
 }
 
@@ -761,6 +867,29 @@ tr:hover td{
   font-size:.72rem;
 }
 
+#geoTable tbody .geo-site-row td{
+  padding-top:9px;
+  padding-bottom:5px;
+  border-bottom:0;
+  vertical-align:top;
+}
+
+.geo-site-id{
+  color:#f4f8ff;
+  font-weight:800;
+  letter-spacing:.1px;
+  white-space:nowrap;
+}
+
+.geo-site-name{
+  color:#d8e6ff;
+  font-weight:650;
+  line-height:1.25;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
 .geo-good{
   color:#26d37c;
   font-weight:700;
@@ -774,6 +903,54 @@ tr:hover td{
 .geo-bad{
   color:#ff4d4d;
   font-weight:700;
+}
+
+.geo-twamp-row td{
+  padding:0 8px 10px !important;
+  background:rgba(2,9,20,.4);
+  border-bottom:1px solid rgba(120,154,255,.16) !important;
+}
+.geo-twamp-row .geo-twamp-indent{
+  background:transparent;
+  border-right:1px solid rgba(120,154,255,.12);
+}
+.geo-twamp-row .geo-twamp-content{
+  padding-left:10px !important;
+}
+.geo-twamp-line{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:5px;
+  color:var(--muted);
+  font-size:.68rem;
+  min-height:25px;
+}
+.geo-twamp-label{
+  color:#a8b8d6;
+  font-weight:700;
+  margin-right:4px;
+  white-space:nowrap;
+}
+.geo-twamp-label strong{
+  color:#f4f8ff;
+  font-weight:800;
+}
+.geo-twamp-window{
+  color:#7d8da8;
+  font-weight:600;
+}
+.twamp-plr-value{
+  min-width:40px;
+  text-align:center;
+  border-radius:6px;
+  border:1px solid color-mix(in srgb, currentColor 75%, transparent);
+  background:color-mix(in srgb, currentColor 8%, transparent);
+  padding:3px 5px;
+  font-weight:800;
+}
+.twamp-plr-empty{
+  color:#7d8da8;
 }
 
 @media(max-width:1200px){
@@ -883,7 +1060,7 @@ tr:hover td{
 
 #geoTable th:nth-child(1),
 #geoTable td:nth-child(1){
-  width:95px;
+  width:86px;
 }
 
 #geoTable th:nth-child(2),
@@ -893,24 +1070,24 @@ tr:hover td{
 
 #geoTable th:nth-child(3),
 #geoTable td:nth-child(3){
-  width:70px;
+  width:62px;
 }
 
 #geoTable th:nth-child(4),
 #geoTable td:nth-child(4){
-  width:70px;
+  width:56px;
   text-align:center;
 }
 
 #geoTable th:nth-child(5),
 #geoTable td:nth-child(5){
-  width:60px;
+  width:48px;
   text-align:center;
 }
 
 #geoTable th:nth-child(6),
 #geoTable td:nth-child(6){
-  width:60px;
+  width:48px;
   text-align:center;
 }
 
@@ -1280,6 +1457,25 @@ tr:hover td{
 
       <div class="kpi-strip" id="kpiStrip">
         <!-- KPI cards injected here -->
+      </div>
+
+      <div class="twamp-realtime-card">
+        <div class="twamp-realtime-head">
+          <div>
+            <h4>Realtime TWAMP · PLR &amp; Delay</h4>
+            <div class="twamp-realtime-meta" id="twampTrendMeta">
+              Trend 3 jam terakhir · interval 15 menit
+            </div>
+          </div>
+          <div class="twamp-thresholds">
+            <span class="geo-good">Good</span>
+            <span class="geo-warn">Warning</span>
+            <span class="geo-bad">Bad</span>
+          </div>
+        </div>
+        <div class="twamp-chart-wrap" id="twampTrendWrap">
+          <canvas id="twampTrendChart"></canvas>
+        </div>
       </div>
     </div>
 
@@ -1705,6 +1901,8 @@ tr:hover td{
 <script>
 const CONFIG = {
   KPI_API: "https://api.azhautomation.com/api/kpi",
+  TWAMP_REALTIME_API: "https://api.azhautomation.com/api/twamp/realtime",
+  TWAMP_NEARBY_API: "https://api.azhautomation.com/api/twamp/nearby",
   ANALYSIS_API: "https://api.azhautomation.com/api/auto-analysis",
   MASTER_ALARM_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=1448770603&single=true&output=csv",
   RME_ROUTE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=0&single=true&output=csv",
@@ -1719,6 +1917,8 @@ const DEBUG_TOPOLOGY = true;
 
 const state = {
   charts: [],
+  twampChart: null,
+  twampData: null,
   topology: null,
   autoRefreshTimer: null,
   data: null,
@@ -1758,6 +1958,34 @@ function asNum(v){
 
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
+}
+
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  })[ch]);
+}
+
+function twampStatusColor(type, value){
+  const n = asNum(value);
+  if(n === null) return '#7d8da8';
+  if(type === 'plr'){
+    if(n < 1) return '#26d37c';
+    if(n <= 2) return '#fbbf24';
+    return '#ff4d4d';
+  }
+  if(type === 'delay'){
+    if(n < 11) return '#26d37c';
+    if(n <= 20) return '#fbbf24';
+    return '#ff4d4d';
+  }
+  return '#7d8da8';
+}
+
+function shortTwampTime(value){
+  const text = clean(value);
+  const match = text.match(/(\d{2}:\d{2})$/);
+  return match ? match[1] : text;
 }
 
 function pct(v){
@@ -2792,6 +3020,123 @@ function createChart(ctx, config){
   return c;
 }
 
+function renderTwampTrend(payload){
+  if(state.twampChart){
+    try { state.twampChart.destroy(); } catch(e){}
+    state.twampChart = null;
+  }
+
+  const wrap = document.getElementById('twampTrendWrap');
+  const meta = document.getElementById('twampTrendMeta');
+  const rows = Array.isArray(payload?.data) ? payload.data : [];
+
+  if(meta){
+    const start = shortTwampTime(payload?.window_start);
+    const end = shortTwampTime(payload?.latest_time);
+    meta.textContent = start && end
+      ? `Trend 3 jam terakhir · ${start}–${end} GMT+7 · interval 15 menit`
+      : 'Trend 3 jam terakhir · interval 15 menit';
+  }
+
+  if(!wrap) return;
+  if(!rows.length){
+    wrap.innerHTML = '<div class="twamp-empty">Belum ada data TWAMP realtime untuk site ini.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="twamp-series-legend" aria-label="TWAMP chart series">
+      <span class="twamp-series-key">
+        <span class="twamp-legend-bar" aria-hidden="true"></span>
+        <span>PLR (%) · Bar</span>
+      </span>
+      <span class="twamp-series-key">
+        <span class="twamp-legend-line" aria-hidden="true"></span>
+        <span>Delay (ms) · Line</span>
+      </span>
+    </div>
+    <div class="twamp-chart-stage">
+      <canvas id="twampTrendChart"></canvas>
+    </div>
+  `;
+  const labels = rows.map(row => shortTwampTime(row.time));
+  const plr = rows.map(row => asNum(row.plr));
+  const delay = rows.map(row => asNum(row.delay));
+
+  state.twampChart = new Chart(
+    document.getElementById('twampTrendChart'),
+    {
+      type:'bar',
+      data:{
+        labels,
+        datasets:[
+          {
+            label:'PLR (%)',
+            data:plr,
+            backgroundColor:plr.map(value => twampStatusColor('plr', value)),
+            borderRadius:3,
+            yAxisID:'yPlr'
+          },
+          {
+            label:'Delay (ms)',
+            type:'line',
+            data:delay,
+            borderColor:'#ff6f2f',
+            backgroundColor:'#ff6f2f',
+            pointRadius:3,
+            pointBackgroundColor:delay.map(value => twampStatusColor('delay', value)),
+            pointBorderColor:delay.map(value => twampStatusColor('delay', value)),
+            tension:.25,
+            spanGaps:true,
+            segment:{
+              borderColor:ctx => twampStatusColor(
+                'delay',
+                Math.max(ctx.p0.parsed.y, ctx.p1.parsed.y)
+              )
+            },
+            yAxisID:'yDelay'
+          }
+        ]
+      },
+      options:{
+        ...chartOptions(),
+        plugins:{
+          ...chartOptions().plugins,
+          legend:{ display:false },
+          tooltip:{
+            ...chartOptions().plugins.tooltip,
+            callbacks:{
+              afterLabel:ctx => {
+                const type = ctx.datasetIndex === 0 ? 'plr' : 'delay';
+                const value = ctx.parsed.y;
+                if(type === 'plr') return value < 1 ? 'GOOD' : value <= 2 ? 'WARNING' : 'BAD';
+                return value < 11 ? 'GOOD' : value <= 20 ? 'WARNING' : 'BAD';
+              }
+            }
+          }
+        },
+        scales:{
+          x:chartOptions().scales.x,
+          yDelay:{
+            beginAtZero:true,
+            position:'left',
+            ticks:{color:'#a8b8d6'},
+            grid:{color:'rgba(255,255,255,.06)'},
+            title:{display:true,text:'Delay (ms)',color:'#d8e6ff'}
+          },
+          yPlr:{
+            beginAtZero:true,
+            position:'right',
+            ticks:{color:'#a8b8d6'},
+            grid:{drawOnChartArea:false},
+            title:{display:true,text:'PLR (%)',color:'#d8e6ff'}
+          }
+        }
+      }
+    }
+  );
+}
+
 function renderCharts(apiData){
   destroyCharts();
   const labels = apiData.map(d => d.time);
@@ -3423,6 +3768,32 @@ async function loadGeoAnalytics(siteId, sheets){
     )
     .slice(0,10);
 
+  let nearbyTwamp = {
+    window_start:null,
+    latest_time:null,
+    sites:{}
+  };
+
+  if(nearest.length){
+    try{
+      const siteParam = nearest.map(row => row.siteId).join(',');
+      const response = await fetch(
+        `${CONFIG.TWAMP_NEARBY_API}?sites=${encodeURIComponent(siteParam)}&hours=1`,
+        { cache:'no-store' }
+      );
+      if(!response.ok) throw new Error(`TWAMP nearby HTTP ${response.status}`);
+      nearbyTwamp = await response.json();
+    }catch(error){
+      console.warn('Realtime TWAMP nearby unavailable', error);
+    }
+  }
+
+  nearest.forEach(row => {
+    row.twampPlr = nearbyTwamp.sites?.[row.siteId] || [];
+    row.twampWindowStart = nearbyTwamp.window_start;
+    row.twampLatestTime = nearbyTwamp.latest_time;
+  });
+
   state.geoData = nearest;
 
   renderGeoTable(nearest);
@@ -3444,14 +3815,27 @@ function renderGeoTable(rows){
   if(!tbody) return;
 
   tbody.innerHTML =
-    rows.map(r => `
+    rows.map(r => {
+      const start = shortTwampTime(r.twampWindowStart);
+      const end = shortTwampTime(r.twampLatestTime);
+      const values = Array.isArray(r.twampPlr) ? r.twampPlr : [];
+      const trendHtml = values.length
+        ? values.map(point => {
+            const value = asNum(point.plr);
+            const color = twampStatusColor('plr', value);
+            const label = value === null ? '-' : `${value.toFixed(2)}%`;
+            return `<span class="twamp-plr-value" style="color:${color}" title="${escapeHtml(shortTwampTime(point.time))}">${label}</span>`;
+          }).join('<span>·</span>')
+        : '<span class="twamp-plr-empty">No realtime data</span>';
 
-      <tr>
+      return `
 
-        <td>${r.siteId}</td>
+      <tr class="geo-site-row">
 
-        <td title="${r.siteName}">
-          ${r.siteName}
+        <td class="geo-site-id">${escapeHtml(r.siteId)}</td>
+
+        <td title="${escapeHtml(r.siteName)}">
+          <div class="geo-site-name">${escapeHtml(r.siteName)}</div>
         </td>
 
         <td>
@@ -3473,7 +3857,21 @@ function renderGeoTable(rows){
 
       </tr>
 
-    `).join('');
+      <tr class="geo-twamp-row">
+        <td class="geo-twamp-indent" aria-hidden="true"></td>
+        <td class="geo-twamp-content" colspan="5">
+          <div class="geo-twamp-line">
+            <span class="geo-twamp-label">
+              <strong>PLR Realtime</strong>
+              ${start && end ? `<span class="geo-twamp-window">${start}–${end}</span>` : ''}
+            </span>
+            ${trendHtml}
+          </div>
+        </td>
+      </tr>
+
+    `;
+    }).join('');
 
 }
 
@@ -4029,10 +4427,21 @@ async function analyze(){
   }
   setBusy(true);
   try{
-    const [kpiRes, sheets] = await Promise.all([
+    const [kpiRes, twampRes, sheets] = await Promise.all([
       fetch(
         `${CONFIG.KPI_API}?site_id=${encodeURIComponent(siteId)}&days=${encodeURIComponent(rangeDays)}`
       ).then(r => r.json()),
+
+      fetch(
+        `${CONFIG.TWAMP_REALTIME_API}?site_id=${encodeURIComponent(siteId)}&hours=3`,
+        { cache:'no-store' }
+      ).then(async response => {
+        if(!response.ok) throw new Error(`TWAMP realtime HTTP ${response.status}`);
+        return response.json();
+      }).catch(error => {
+        console.warn('Realtime TWAMP unavailable', error);
+        return { site_id:siteId, hours:3, data:[] };
+      }),
 
       loadSheets()
 
@@ -4040,6 +4449,7 @@ async function analyze(){
 
     const apiData = Array.isArray(kpiRes.data) ? kpiRes.data : [];
     state.data = apiData;
+    state.twampData = twampRes;
     state.siteName = clean(kpiRes.site_name || '');
     state.rangeDays = rangeDays;
 
@@ -4124,6 +4534,7 @@ async function analyze(){
     makeKpiCards(apiData);
     renderOverviewBadges(buckets);
     renderCharts(apiData);
+    renderTwampTrend(twampRes);
     buildTopologyNetwork(buckets.normalized, topo);
     setCounts(buckets.ran, buckets.transport, buckets.external);
     renderTable('tableRan', buckets.ran);
