@@ -165,7 +165,7 @@ body::before{
   margin-top:14px;
   padding:14px 16px;
   display:grid;
-  grid-template-columns: 1.2fr .95fr auto auto auto auto auto;
+  grid-template-columns: 1.2fr .95fr repeat(8, auto);
   gap:12px;
   align-items:end;
   border:1px solid var(--line);
@@ -944,8 +944,13 @@ tr:hover td{
   min-width:40px;
   text-align:center;
   border-radius:6px;
-  border:1px solid color-mix(in srgb, currentColor 75%, transparent);
-  background:color-mix(in srgb, currentColor 8%, transparent);
+  /*
+    html2canvas 1.4.1 cannot parse modern CSS color-function output
+    returned by Chromium. currentColor is supported and preserves the
+    status color applied inline by renderGeoTable().
+  */
+  border:1px solid currentColor;
+  background:rgba(5,11,22,.72);
   padding:3px 5px;
   font-weight:800;
 }
@@ -1432,6 +1437,7 @@ tr:hover td{
     </div>
 
     <button id="btnAnalyze" class="button"><span>▶</span>Analyze</button>
+    <button id="btnVipReport" class="button secondary" type="button">VIP Report</button>
     <button id="btnExportPng" class="button secondary">Export PNG</button>
     <button id="btnExportReport" class="button secondary">Export Report</button>
     <button id="btnRefresh" class="button ghost">Refresh Data</button>
@@ -1623,7 +1629,7 @@ tr:hover td{
     </div>
   </div>
 
-  <section class="section">
+  <section class="section" id="vipGeoSection">
 
     <div class="section-head">
       <div>
@@ -2735,9 +2741,20 @@ function sparkSvg(values, stroke){
   if(!cleanVals.length) return '<svg class="spark" viewBox="0 0 100 40"></svg>';
   const min = Math.min(...cleanVals);
   const max = Math.max(...cleanVals);
-  const norm = v => max === min ? 20 : 36 - ((v - min) / (max - min)) * 32;
+  // Keep the stroke away from every SVG edge so Chromium/html2canvas
+  // does not clip sharp peaks, valleys, or the first/last point.
+  const xMin = 3;
+  const xMax = 97;
+  const yMin = 7;
+  const yMax = 33;
+  const norm = v => max === min
+    ? (yMin + yMax) / 2
+    : yMax - ((v - min) / (max - min)) * (yMax - yMin);
   const path = cleanVals
-    .map((v, i) => `${i === 0 ? 'M' : 'L'} ${(i/(cleanVals.length-1||1))*100} ${norm(v)}`)
+    .map((v, i) => {
+      const x = xMin + (i / (cleanVals.length - 1 || 1)) * (xMax - xMin);
+      return `${i === 0 ? 'M' : 'L'} ${x} ${norm(v)}`;
+    })
     .join(' ');
   return `<svg class="spark" viewBox="0 0 100 40" preserveAspectRatio="none"><path d="${path}" stroke="${stroke}" fill="none"/></svg>`;
 }
@@ -3543,6 +3560,64 @@ async function exportDashboardPng(){
     link.click();
   } finally {
     buttons.forEach(b => b.style.visibility = 'visible');
+  }
+}
+
+async function exportVipReport(){
+  const siteId = document.getElementById('siteId').value.trim();
+  const hero = document.querySelector('.hero');
+  const geo = document.getElementById('vipGeoSection');
+  const hiddenElements = [
+    document.querySelector('.topbar'),
+    document.querySelector('.toolbar'),
+    ...Array.from(document.querySelectorAll('.section')).filter(section => section !== geo)
+  ].filter(Boolean);
+
+  if(!hero || !geo){
+    alert('VIP Report area was not found.');
+    return;
+  }
+
+  const originalDisplay = hiddenElements.map(element => element.style.display);
+  const button = document.getElementById('btnVipReport');
+  const originalButtonText = button.textContent;
+
+  button.disabled = true;
+  button.textContent = 'Preparing VIP Report...';
+
+  try{
+    hiddenElements.forEach(element => {
+      element.style.display = 'none';
+    });
+
+    state.geoMap?.invalidateSize?.();
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+    const target = document.getElementById('dashboard');
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#050b16',
+      logging: false,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight
+    });
+
+    const link = document.createElement('a');
+    link.download = `VIP_Report_${siteId || 'site'}.png`;
+    link.href = canvas.toDataURL('image/png', 1.0);
+    link.click();
+  }catch(error){
+    console.error('VIP Report export failed', error);
+    alert('VIP Report failed to export. Please check the browser console.');
+  }finally{
+    hiddenElements.forEach((element, index) => {
+      element.style.display = originalDisplay[index];
+    });
+    state.geoMap?.invalidateSize?.();
+    button.disabled = false;
+    button.textContent = originalButtonText;
   }
 }
 
@@ -4569,6 +4644,7 @@ async function analyze(){
 
 document.getElementById('btnAnalyze').addEventListener('click', analyze);
 document.getElementById('btnRefresh').addEventListener('click', analyze);
+document.getElementById('btnVipReport').addEventListener('click', exportVipReport);
 document.getElementById('btnExportPng').addEventListener('click', exportDashboardPng);
 document.getElementById('btnExportReport').addEventListener('click', exportTextReport);
 document.getElementById('btnFullscreen').addEventListener('click', toggleFullscreen);
