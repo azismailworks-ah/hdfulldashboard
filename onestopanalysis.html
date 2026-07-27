@@ -1394,6 +1394,32 @@ tr:hover td{
 
 }
 
+/*
+  Keep site dots and permanent labels in Leaflet's HTML marker system.
+  html2canvas can offset SVG paths and HTML tooltips differently.
+*/
+.geo-marker-icon{
+  background:transparent !important;
+  border:0 !important;
+}
+.geo-marker-icon span{
+  position:absolute;
+  inset:0;
+  display:block;
+  border-radius:50%;
+  box-sizing:border-box;
+}
+.geo-marker-main span{
+  background:#00d4ff;
+  border:3px solid #00d4ff;
+  box-shadow:0 0 0 12px rgba(0,212,255,.13);
+}
+.geo-marker-nearby span{
+  background:#26d37c;
+  border:1px solid #26d37c;
+  opacity:.9;
+}
+
 </style>
 </head>
 <body>
@@ -1936,6 +1962,7 @@ const state = {
   rangeDays: 7,
   siteInfo: null,
   geoMap: null,
+  geoBounds: null,
   geoSiteDb:null,
   geoData: [],
   allAlarms: []
@@ -3563,6 +3590,48 @@ async function exportDashboardPng(){
   }
 }
 
+async function synchronizeGeoMapForCapture(){
+  const map = state.geoMap;
+  if(!map) return;
+
+  map.stop();
+  map.invalidateSize({ animate:false, pan:false });
+
+  if(state.geoBounds?.isValid?.()){
+    map.fitBounds(state.geoBounds, {
+      padding:[30,30],
+      animate:false
+    });
+  }
+
+  map.eachLayer(layer => {
+    layer.redraw?.();
+    const tooltip = layer.getTooltip?.();
+    if(tooltip && layer.isTooltipOpen?.()){
+      tooltip.update?.();
+    }
+  });
+
+  map.fire('viewreset');
+  map.fire('moveend');
+  map.fire('zoomend');
+
+  await new Promise(resolve =>
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        setTimeout(resolve, 350)
+      )
+    )
+  );
+
+  map.eachLayer(layer => {
+    const tooltip = layer.getTooltip?.();
+    if(tooltip && layer.isTooltipOpen?.()){
+      tooltip.update?.();
+    }
+  });
+}
+
 async function exportVipReport(){
   const siteId = document.getElementById('siteId').value.trim();
   const hero = document.querySelector('.hero');
@@ -3590,8 +3659,7 @@ async function exportVipReport(){
       element.style.display = 'none';
     });
 
-    state.geoMap?.invalidateSize?.();
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    await synchronizeGeoMapForCapture();
 
     const target = document.getElementById('dashboard');
     const canvas = await html2canvas(target, {
@@ -3615,7 +3683,7 @@ async function exportVipReport(){
     hiddenElements.forEach((element, index) => {
       element.style.display = originalDisplay[index];
     });
-    state.geoMap?.invalidateSize?.();
+    await synchronizeGeoMapForCapture();
     button.disabled = false;
     button.textContent = originalButtonText;
   }
@@ -3970,7 +4038,10 @@ function renderGeoMap(data){
   state.geoMap = L.map(
     "geoMap",
     {
-      zoomControl:true
+      zoomControl:true,
+      zoomAnimation:false,
+      fadeAnimation:false,
+      markerZoomAnimation:false
     }
   );
 
@@ -3982,14 +4053,16 @@ function renderGeoMap(data){
   ).addTo(state.geoMap);
 
   const centerMarker =
-    L.circleMarker(
+    L.marker(
       [refLat,refLon],
       {
-        radius:12,
-        weight:3,
-        color:"#00d4ff",
-        fillColor:"#00d4ff",
-        fillOpacity:1
+        icon:L.divIcon({
+          className:"geo-marker-icon geo-marker-main",
+          html:"<span></span>",
+          iconSize:[24,24],
+          iconAnchor:[12,12]
+        }),
+        keyboard:false
       }
     )
     .addTo(state.geoMap);
@@ -4030,13 +4103,16 @@ function renderGeoMap(data){
   data.nearest.forEach(site => {
 
     const marker =
-      L.circleMarker(
+      L.marker(
         [site.lat,site.lon],
         {
-          radius:7,
-          color:"#26d37c",
-          fillColor:"#26d37c",
-          fillOpacity:.9
+          icon:L.divIcon({
+            className:"geo-marker-icon geo-marker-nearby",
+            html:"<span></span>",
+            iconSize:[14,14],
+            iconAnchor:[7,7]
+          }),
+          keyboard:false
         }
       )
       .addTo(state.geoMap);
@@ -4080,10 +4156,13 @@ function renderGeoMap(data){
 
   });
 
+  state.geoBounds = L.latLngBounds(bounds);
+
   state.geoMap.fitBounds(
-    bounds,
+    state.geoBounds,
     {
-      padding:[30,30]
+      padding:[30,30],
+      animate:false
     }
   );
 
