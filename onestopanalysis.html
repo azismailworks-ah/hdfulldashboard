@@ -164,14 +164,25 @@ body::before{
 .toolbar{
   margin-top:14px;
   padding:14px 16px;
-  display:grid;
-  grid-template-columns: 1.2fr .95fr repeat(8, auto);
+  display:flex;
+  flex-wrap:wrap;
   gap:12px;
   align-items:end;
   border:1px solid var(--line);
   border-radius:22px;
   background: linear-gradient(180deg, rgba(10,18,33,.87), rgba(8,14,26,.82));
   box-shadow: var(--shadow);
+}
+.toolbar .field:first-child{
+  flex:1 1 320px;
+  min-width:280px;
+}
+.toolbar .field:nth-child(2){
+  flex:0 1 220px;
+  min-width:190px;
+}
+.toolbar > .button{
+  flex:0 0 auto;
 }
 
 .field{
@@ -978,7 +989,15 @@ tr:hover td{
     justify-content:flex-start;
   }
   .toolbar{
+    display:grid;
     grid-template-columns: 1fr;
+  }
+  .toolbar .field:first-child,
+  .toolbar .field:nth-child(2){
+    min-width:0;
+  }
+  .toolbar > .button{
+    width:100%;
   }
   .kpi-strip{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1470,6 +1489,7 @@ tr:hover td{
     <button id="btnFullscreen" class="button ghost">Fullscreen</button>
     <button id="btnAuto" class="button ghost">Auto Refresh</button>
     <button id="btnHistoryAnalysis" class="button ghost" type="button">📜 History Analysis</button>
+    <button id="btnSingleSiteHistory" class="button ghost" type="button">🕘 Single Site History</button>
   </div>
 
   <div class="hero">
@@ -1714,6 +1734,103 @@ tr:hover td{
 </div>
 
 <!-- ========================================================= -->
+<!-- SINGLE SITE HISTORY MODAL (MAXIMUM 7 DAYS) -->
+<!-- ========================================================= -->
+
+<div id="singleSiteHistoryModal" class="history-modal">
+  <div class="history-dialog">
+    <div class="history-header">
+      <h2>Single Site Alarm History</h2>
+
+      <div class="history-info">
+        <div>
+          <b>Analyzed Site ID :</b>
+          <span id="singleHistorySiteId">-</span>
+        </div>
+        <div>
+          <b>Site Name :</b>
+          <span id="singleHistorySiteName">-</span>
+        </div>
+        <div>
+          <b>Maximum Period :</b>
+          <span>7 Days</span>
+        </div>
+      </div>
+
+      <button id="btnSingleHistoryCloseTop" class="history-close" type="button">✕</button>
+    </div>
+
+    <div class="history-body">
+      <label for="singleHistoryDays">History Period</label>
+      <select id="singleHistoryDays" class="select">
+        <option value="1">Last 1 Day</option>
+        <option value="2">Last 2 Days</option>
+        <option value="3" selected>Last 3 Days</option>
+        <option value="4">Last 4 Days</option>
+        <option value="5">Last 5 Days</option>
+        <option value="6">Last 6 Days</option>
+        <option value="7">Last 7 Days</option>
+      </select>
+
+      <div style="margin-top:20px;margin-bottom:25px;">
+        <button id="btnSingleHistorySearch" class="button" type="button">
+          Search Single Site History
+        </button>
+        <button
+          id="btnSingleHistoryExport"
+          class="button secondary"
+          type="button"
+          disabled>
+          Export Alarm CSV
+        </button>
+
+        <div id="singleHistoryStatus" class="history-last-search">
+          Analyze a site first, then select a period of up to 7 days.
+        </div>
+      </div>
+
+      <div class="history-summary">
+        <div class="history-card">
+          <div>Total Alarm</div>
+          <div id="singleHisTotal" class="history-number">0</div>
+        </div>
+        <div class="history-card">
+          <div>RAN</div>
+          <div id="singleHisRan" class="history-number">0</div>
+        </div>
+        <div class="history-card">
+          <div>Transport</div>
+          <div id="singleHisTransport" class="history-number">0</div>
+        </div>
+        <div class="history-card">
+          <div>External</div>
+          <div id="singleHisExternal" class="history-number">0</div>
+        </div>
+      </div>
+
+      <div class="history-section">
+        <h3>📡 RAN Alarm</h3>
+        <table id="singleHistoryRan" class="alarm-table"></table>
+      </div>
+
+      <div class="history-section">
+        <h3>🚛 Transport Alarm</h3>
+        <table id="singleHistoryTransport" class="alarm-table"></table>
+      </div>
+
+      <div class="history-section">
+        <h3>🌐 External Alarm</h3>
+        <table id="singleHistoryExternal" class="alarm-table"></table>
+      </div>
+    </div>
+
+    <div class="history-footer">
+      <button id="btnSingleHistoryCloseBottom" class="button ghost" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================= -->
 <!-- HISTORY ALARM MODAL -->
 <!-- ========================================================= -->
 
@@ -1933,6 +2050,7 @@ tr:hover td{
 <script>
 const CONFIG = {
   KPI_API: "https://api.azhautomation.com/api/kpi",
+  SINGLE_SITE_HISTORY_API: "https://api.azhautomation.com/api/ows/site-history",
   TWAMP_REALTIME_API: "https://api.azhautomation.com/api/twamp/realtime",
   TWAMP_NEARBY_API: "https://api.azhautomation.com/api/twamp/nearby",
   ANALYSIS_API: "https://api.azhautomation.com/api/auto-analysis",
@@ -1958,6 +2076,9 @@ const state = {
   graphs: null,
   lastUpdate: null,
   siteName: '',
+  analyzedSiteId: '',
+  singleSiteHistoryRows: [],
+  singleSiteHistoryDays: 0,
   meName: '',
   rangeDays: 7,
   siteInfo: null,
@@ -4230,6 +4351,197 @@ function renderSiteInfo(info){
    HISTORY MODAL
 ========================================================== */
 
+function openSingleSiteHistoryModal(){
+  const siteId = String(state.analyzedSiteId || '').trim().toUpperCase();
+
+  if(!siteId){
+    alert('Please Analyze Site First.');
+    return;
+  }
+
+  document.getElementById('singleHistorySiteId').textContent = siteId;
+  document.getElementById('singleHistorySiteName').textContent =
+    state.siteName || '-';
+  document.getElementById('singleHistoryStatus').textContent =
+    'Ready to search alarm history for this analyzed site only.';
+
+  document.getElementById('singleSiteHistoryModal').classList.add('show');
+}
+
+function closeSingleSiteHistoryModal(){
+  document.getElementById('singleSiteHistoryModal').classList.remove('show');
+}
+
+function resetSingleSiteHistoryResult(){
+  state.singleSiteHistoryRows = [];
+  state.singleSiteHistoryDays = 0;
+  document.getElementById('singleHisTotal').textContent = '0';
+  document.getElementById('singleHisRan').textContent = '0';
+  document.getElementById('singleHisTransport').textContent = '0';
+  document.getElementById('singleHisExternal').textContent = '0';
+  renderTable('singleHistoryRan', []);
+  renderTable('singleHistoryTransport', []);
+  renderTable('singleHistoryExternal', []);
+  document.getElementById('btnSingleHistoryExport').disabled = true;
+}
+
+function filterAlarmRowsForSingleSite(rows, siteId){
+  const expected = String(siteId || '').trim().toUpperCase();
+
+  return (Array.isArray(rows) ? rows : []).filter(row => {
+    const rowSite = String(
+      row?.site_id ??
+      row?.siteId ??
+      row?.['Site ID'] ??
+      ''
+    ).trim().toUpperCase();
+
+    // The API is already single-site. Rows without a site field are retained,
+    // while any explicitly different site is rejected defensively.
+    return !rowSite || rowSite === expected;
+  });
+}
+
+async function searchSingleSiteHistory(){
+  const siteId = String(state.analyzedSiteId || '').trim().toUpperCase();
+  const days = Number(document.getElementById('singleHistoryDays').value);
+  const button = document.getElementById('btnSingleHistorySearch');
+  const status = document.getElementById('singleHistoryStatus');
+
+  if(!siteId){
+    alert('Please Analyze Site First.');
+    return;
+  }
+
+  if(!Number.isInteger(days) || days < 1 || days > 7){
+    alert('History period must be between 1 and 7 days.');
+    return;
+  }
+
+  button.disabled = true;
+  button.innerHTML = '<span class="spinner"></span> Searching...';
+  status.textContent =
+    `Loading the last ${days} day${days > 1 ? 's' : ''} for ${siteId}. ` +
+    'The server processes the period in 2-hour windows.';
+  resetSingleSiteHistoryResult();
+
+  try{
+    const url =
+      `${CONFIG.SINGLE_SITE_HISTORY_API}` +
+      `?site_id=${encodeURIComponent(siteId)}` +
+      `&history_days=${encodeURIComponent(days)}`;
+
+    const response = await fetch(url, { cache:'no-store' });
+    const json = await response.json().catch(() => ({}));
+
+    if(!response.ok){
+      throw new Error(
+        json.detail ||
+        json.error ||
+        `History API HTTP ${response.status}`
+      );
+    }
+
+    const siteRows = filterAlarmRowsForSingleSite(
+      json.history_alarms,
+      siteId
+    );
+    const buckets = buildBucketsFromOWS(siteRows, siteId);
+
+    document.getElementById('singleHisTotal').textContent =
+      String(siteRows.length);
+    document.getElementById('singleHisRan').textContent =
+      String(buckets.ran.length);
+    document.getElementById('singleHisTransport').textContent =
+      String(buckets.transport.length);
+    document.getElementById('singleHisExternal').textContent =
+      String(buckets.external.length);
+
+    renderTable('singleHistoryRan', buckets.ran);
+    renderTable('singleHistoryTransport', buckets.transport);
+    renderTable('singleHistoryExternal', buckets.external);
+
+    state.singleSiteHistoryRows = [
+      ...buckets.ran.map(row => ({ category:'RAN', row })),
+      ...buckets.transport.map(row => ({ category:'Transport', row })),
+      ...buckets.external.map(row => ({ category:'External', row }))
+    ];
+    state.singleSiteHistoryDays = days;
+    document.getElementById('btnSingleHistoryExport').disabled =
+      state.singleSiteHistoryRows.length === 0;
+
+    const partialText = json.partial
+      ? ` Partial result: ${json.history_errors?.length || 0} window(s) failed.`
+      : '';
+
+    status.innerHTML =
+      `<b>${escapeHtml(siteId)}</b> · Last ${days} Day${days > 1 ? 's' : ''}` +
+      `<br>${escapeHtml(json.history_start || '-')} → ` +
+      `${escapeHtml(json.history_end || '-')}` +
+      `<br>${siteRows.length} alarm(s) loaded.${escapeHtml(partialText)}`;
+  }catch(error){
+    console.error('Single Site History failed', error);
+    status.textContent = `Failed: ${error.message || error}`;
+    alert(`Single Site History failed: ${error.message || error}`);
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Search Single Site History';
+  }
+}
+
+function csvSafeValue(value){
+  const text = String(value ?? '');
+  return /^[=+\-@]/.test(text) ? `'${text}` : text;
+}
+
+function exportSingleSiteHistoryCsv(){
+  const siteId = String(state.analyzedSiteId || '').trim().toUpperCase();
+  const rows = Array.isArray(state.singleSiteHistoryRows)
+    ? state.singleSiteHistoryRows
+    : [];
+
+  if(!siteId || !rows.length){
+    alert('Search Single Site History first. No alarm data is available to export.');
+    return;
+  }
+
+  const exportRows = rows.map(({ category, row }, index) => ({
+    No: index + 1,
+    Category: category,
+    'First Occurred On': csvSafeValue(row.__firstOcc),
+    'Cleared On': csvSafeValue(row.__clearTime),
+    Duration: csvSafeValue(row.__duration),
+    'Alarm Name': csvSafeValue(row.__alarmName),
+    'Alarm Source': csvSafeValue(row.__alarmSrc),
+    Severity: csvSafeValue(row.__severity),
+    Domain: csvSafeValue(row.__domain),
+    'Site ID': csvSafeValue(row.__siteId),
+    'Site Name': csvSafeValue(row.__siteName),
+    Location: csvSafeValue(row.__loc),
+    'Ticket ID': csvSafeValue(row.__ticket)
+  }));
+
+  const csv = Papa.unparse(exportRows, {
+    quotes:true,
+    newline:'\r\n'
+  });
+  const utf8Bom = '\uFEFF';
+  const blob = new Blob([utf8Bom, csv], {
+    type:'text/csv;charset=utf-8'
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const dateStamp = new Date().toISOString().slice(0,10);
+
+  link.href = url;
+  link.download =
+    `Single_Site_History_${siteId}_${state.singleSiteHistoryDays}Days_${dateStamp}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function openHistoryModal(){
 
     const now = new Date();
@@ -4713,6 +5025,10 @@ async function analyze(){
     renderSiteInfo(
       state.siteInfo
     );
+
+    // Lock the history feature to the site that completed analysis,
+    // even if the input field is edited afterward.
+    state.analyzedSiteId = String(siteId).trim().toUpperCase();
   }catch(err){
     console.error(err);
     alert('Analysis failed. Check console for details.');
@@ -4743,6 +5059,41 @@ document
 .addEventListener(
 'click',
 openHistoryModal
+);
+
+document
+.getElementById('btnSingleSiteHistory')
+.addEventListener(
+'click',
+openSingleSiteHistoryModal
+);
+
+document
+.getElementById('btnSingleHistoryCloseTop')
+.addEventListener(
+'click',
+closeSingleSiteHistoryModal
+);
+
+document
+.getElementById('btnSingleHistoryCloseBottom')
+.addEventListener(
+'click',
+closeSingleSiteHistoryModal
+);
+
+document
+.getElementById('btnSingleHistorySearch')
+.addEventListener(
+'click',
+searchSingleSiteHistory
+);
+
+document
+.getElementById('btnSingleHistoryExport')
+.addEventListener(
+'click',
+exportSingleSiteHistoryCsv
 );
 
 document
@@ -4806,6 +5157,7 @@ function(e){
     ){
 
         closeHistoryModal();
+        closeSingleSiteHistoryModal();
 
     }
 
