@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CTT Site Health</title>
+  <style>
+    :root {
+      --bg:#07111f; --panel:#0b1728; --panel2:#0e1d31; --line:#20324a;
+      --text:#eaf2fb; --muted:#8296ae; --green:#2ed49b; --green2:#0d3d36;
+      --red:#ff6673; --red2:#401e2b; --amber:#ffbd4a; --amber2:#3b301d;
+      --blue:#55a7ff; --violet:#aa83ff; --shadow:0 18px 45px rgba(0,0,0,.24);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);
+      font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;font-size:13px}
+    body{background:
+      radial-gradient(circle at 0 0,rgba(23,107,160,.15),transparent 30rem),
+      radial-gradient(circle at 100% 10%,rgba(28,145,105,.10),transparent 28rem),var(--bg)}
+    button,input,select{font:inherit} button{cursor:pointer}
+    button:disabled{cursor:not-allowed;opacity:.55}
+    .app{min-height:100vh;padding:22px}
+    .top{display:flex;align-items:flex-start;justify-content:space-between;gap:22px;margin-bottom:20px}
+    .eyebrow{margin:0 0 7px;color:var(--green);font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}
+    h1{margin:0;font-size:32px;line-height:1.1;letter-spacing:-.035em}
+    .subtitle{margin:7px 0 0;color:var(--muted);max-width:720px}
+    .actions{display:flex;gap:9px;align-items:center}
+    .btn{min-height:40px;border-radius:9px;padding:0 15px;border:1px solid var(--line);
+      background:var(--panel2);color:var(--text);font-weight:750;display:inline-flex;align-items:center;gap:8px}
+    .btn:hover{border-color:#3a5577}.btn.primary{background:#0f8c69;border-color:#18a47d;color:#fff}
+    .btn.primary:hover{background:#10a078}.btn.ghost{background:transparent;color:var(--muted)}
+    .spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    .summary{display:grid;grid-template-columns:repeat(5,minmax(145px,1fr));gap:10px;margin-bottom:14px}
+    .stat{background:linear-gradient(145deg,rgba(16,32,52,.98),rgba(9,21,37,.98));
+      border:1px solid var(--line);border-radius:13px;padding:15px;box-shadow:var(--shadow)}
+    .stat-top{display:flex;align-items:center;justify-content:space-between}
+    .stat small{color:var(--muted);font-size:9px;font-weight:800;letter-spacing:.1em}
+    .stat i{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-style:normal;font-weight:900}
+    .stat strong{display:block;font-size:25px;margin-top:9px}.stat p{margin:3px 0 0;color:var(--muted);font-size:10px}
+    .c-blue i{background:#15385e;color:var(--blue)}.c-green i{background:var(--green2);color:var(--green)}
+    .c-red i{background:var(--red2);color:var(--red)}.c-amber i{background:var(--amber2);color:var(--amber)}
+    .c-violet i{background:#2c2450;color:var(--violet)}
+    .panel{background:rgba(10,23,40,.94);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+    .panel-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:16px}
+    .panel-head h2{font-size:15px;margin:0}.panel-head p{font-size:10px;color:var(--muted);margin:4px 0 0}
+    .last{text-align:right}.last small{display:block;font-size:8px;color:var(--muted);letter-spacing:.1em}.last strong{font-size:10px}
+    .progress-area{display:none;padding:11px 17px;background:#0c2928;border-bottom:1px solid #1c5148}
+    .progress-area.show{display:block}.progress-meta{display:flex;justify-content:space-between;color:var(--green);font-size:10px;font-weight:750;margin-bottom:7px}
+    .progress{height:4px;background:#153d39;border-radius:99px;overflow:hidden}.progress span{display:block;width:0;height:100%;background:var(--green);transition:width .35s}
+    .filters{padding:11px 17px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;background:#091624}
+    .search{height:37px;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#07111e;border-radius:9px;padding:0 11px;flex:1;max-width:600px}
+    .search span{color:var(--muted);font-size:17px}.search input{border:0;outline:0;background:transparent;color:var(--text);width:100%}
+    .search input::placeholder{color:#61758d}
+    select{height:37px;border:1px solid var(--line);background:#0a1829;color:var(--text);border-radius:9px;padding:0 32px 0 10px;outline:0}
+    .table-wrap{overflow:auto;max-height:calc(100vh - 340px);min-height:280px}
+    table{width:100%;min-width:1450px;border-collapse:collapse}
+    thead{position:sticky;top:0;z-index:2}
+    th{background:#0c1b2d;color:#8296ae;text-align:left;padding:10px 12px;font-size:8px;letter-spacing:.1em;white-space:nowrap;border-bottom:1px solid var(--line)}
+    td{padding:12px;border-bottom:1px solid #17283e;vertical-align:middle}
+    tbody tr{transition:.15s;cursor:pointer}tbody tr:hover{background:#0e2137}
+    .health{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:6px 8px;font-size:9px;font-weight:850;white-space:nowrap}
+    .health:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+    .health.ok{background:var(--green2);color:var(--green)}.health.issue{background:var(--red2);color:var(--red)}
+    .health.verify{background:var(--amber2);color:var(--amber)}.health.pending{background:#1b2a3d;color:#91a2b7}
+    .metric{font-weight:800;white-space:nowrap}.metric small{font-size:8px;margin-left:2px}.metric.good{color:var(--green)}.metric.bad{color:var(--red)}.metric.na{color:#687d95;font-size:9px;font-weight:600}
+    .primary strong{display:block;font-size:10px;white-space:nowrap}.primary span{display:block;margin-top:3px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+    .alarm strong{display:block;font-size:9px;color:var(--red)}.alarm span{display:block;color:var(--muted);font-size:8px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .alarm.nonimpact strong{color:var(--amber)}.clear{color:var(--green);font-size:9px;font-weight:800}.pending-text{color:#667b93;font-size:9px}
+    .tag{font-size:8px;font-weight:800;color:#b9c7d6;background:#172941;padding:5px 7px;border-radius:5px}
+    .aging strong{display:block;color:var(--red);font-size:10px}.aging span{color:var(--muted);font-size:8px}
+    .foot{display:flex;justify-content:space-between;gap:15px;padding:10px 17px;background:#091624;color:var(--muted);font-size:9px;border-top:1px solid var(--line)}
+    .empty{padding:70px 20px;text-align:center;color:var(--muted)}.empty strong{display:block;color:var(--text);font-size:14px;margin-bottom:5px}
+    .overlay{position:fixed;inset:0;background:rgba(2,7,14,.72);backdrop-filter:blur(5px);z-index:20;display:none;justify-content:flex-end}
+    .overlay.show{display:flex}.drawer{height:100%;width:min(610px,96vw);background:#081524;border-left:1px solid var(--line);padding:23px;overflow:auto;box-shadow:-25px 0 55px rgba(0,0,0,.35);animation:slide .2s ease}
+    @keyframes slide{from{transform:translateX(35px);opacity:.6}}
+    .drawer-head{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid var(--line)}
+    .drawer-head h2{font-size:26px;margin:0}.drawer-head p{margin:5px 0 0;color:var(--muted)}.close{border:1px solid var(--line);background:#102036;color:var(--text);width:34px;height:34px;border-radius:9px;font-size:18px}
+    .verdict{margin:17px 0;border:1px solid;border-radius:12px;padding:15px;display:flex;gap:12px}.verdict.issue{border-color:#6e3040;background:#321a26}.verdict.ok{border-color:#1b6150;background:#0c332e}.verdict.verify,.verdict.pending{border-color:#67512a;background:#312817}
+    .vicon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.09);display:grid;place-items:center;font-weight:900;flex:0 0 auto}
+    .verdict small{font-size:8px;letter-spacing:.12em;font-weight:900}.verdict strong{font-size:20px;display:block;margin:2px 0}.verdict p{font-size:9px;color:#b3c0cd;margin:0;line-height:1.5}
+    .section-title{font-size:9px;color:#8ca0b7;letter-spacing:.12em;text-transform:uppercase;margin:20px 0 9px}
+    .evidence{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.evidence article{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+    .evidence article>small{display:block;color:var(--muted);font-size:8px;font-weight:800;margin-bottom:7px}.evidence .metric{font-size:18px}.evidence p{font-size:8px;color:var(--muted);margin:5px 0 0}
+    .alarm-box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:6px}.alarm-item{background:var(--red2);color:#ff9ba4;border-radius:7px;padding:8px;font-size:9px;font-weight:700}
+    .alarm-note{color:var(--amber);background:var(--amber2);padding:8px;border-radius:7px;font-size:9px}.all-clear{color:var(--green);font-weight:800}.all-clear small{display:block;color:var(--muted);font-weight:500;margin-top:4px}
+    dl{display:grid;grid-template-columns:1fr 1fr;margin:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+    dl div{padding:11px;border-bottom:1px solid var(--line)}dl div:nth-child(odd):not(.wide){border-right:1px solid var(--line)}dl .wide{grid-column:1/-1}
+    dt{font-size:8px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;font-weight:800}dd{margin:4px 0 0;font-size:9px;line-height:1.5}
+    .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,15px);opacity:0;pointer-events:none;z-index:40;background:#15263a;border:1px solid #34506f;color:var(--text);padding:10px 14px;border-radius:9px;box-shadow:var(--shadow);transition:.2s;font-size:10px}
+    .toast.show{opacity:1;transform:translate(-50%,0)}.toast.error{background:#3a1d28;border-color:#773747;color:#ffb0b7}
+    @media(max-width:1000px){.summary{grid-template-columns:repeat(3,1fr)}.top{display:block}.actions{margin-top:16px}.table-wrap{max-height:none}}
+    @media(max-width:650px){.app{padding:13px}.summary{grid-template-columns:1fr 1fr}.stat:last-child{grid-column:1/-1}.filters{flex-wrap:wrap}.search{max-width:none;flex-basis:100%}.filters select{flex:1}.foot{display:block;line-height:1.8}.evidence{grid-template-columns:1fr}.drawer{padding:17px}dl{grid-template-columns:1fr}dl div:nth-child(odd):not(.wide){border-right:0}dl .wide{grid-column:auto}}
+  </style>
+</head>
+<body>
+<main class="app">
+  <section class="top">
+    <div>
+      <p class="eyebrow">CTT - Service Health Intelligence & Event Logic Dashboard</p>
+      <h1>CTT - SHIELD</h1>
+      <p class="subtitle">Open-ticket intelligence using the latest available six-hour KPI, realtime TWAMP, and impact-alarm correlation.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="syncBtn" onclick="loadTickets()"><span>↻</span> Check Open TT</button>
+      <button class="btn primary" id="analyzeBtn" onclick="analyzeAll()"><span>✦</span> Analyze Sites</button>
+    </div>
+  </section>
+
+  <section class="summary">
+    <article class="stat c-blue"><div class="stat-top"><small>OPEN TICKETS</small><i>▤</i></div><strong id="sOpen">0</strong><p>Active work queue</p></article>
+    <article class="stat c-green"><div class="stat-top"><small>ALREADY OK</small><i>✓</i></div><strong id="sOk">0</strong><p>Healthy evidence</p></article>
+    <article class="stat c-red"><div class="stat-top"><small>STILL ISSUE</small><i>!</i></div><strong id="sIssue">0</strong><p>Needs intervention</p></article>
+    <article class="stat c-amber"><div class="stat-top"><small>VERIFY</small><i>?</i></div><strong id="sVerify">0</strong><p>Incomplete evidence</p></article>
+    <article class="stat c-violet"><div class="stat-top"><small>IMPACT ALARMS</small><i>⌁</i></div><strong id="sAlarms">0</strong><p>Active right now</p></article>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div><h2>Site health queue</h2><p id="statusText">Press Check Open TT to synchronize the bot sheet.</p></div>
+      <div class="last"><small>LAST UPDATED</small><strong id="lastUpdated">Not synchronized</strong></div>
+    </div>
+    <div class="progress-area" id="progressArea">
+      <div class="progress-meta"><span id="progressLabel">Preparing analysis…</span><strong id="progressValue">0%</strong></div>
+      <div class="progress"><span id="progressBar"></span></div>
+    </div>
+    <div class="filters">
+      <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search TT, Site ID, Site Name, or ROH…" oninput="render()"></label>
+      <select id="healthFilter" onchange="render()"><option value="ALL">All Health</option><option value="OK">Already OK</option><option value="ISSUE">Still Issue</option><option value="VERIFY">Need Verification</option><option value="PENDING">Not Analyzed</option></select>
+      <select id="regionFilter" onchange="render()"><option value="ALL">All Regions</option></select>
+      <button class="btn ghost" onclick="resetFilters()">Reset</button>
+      <button class="btn" id="exportBtn" onclick="exportFilteredCsv()" disabled><span>⇩</span> Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>SITE HEALTH</th><th>AVAIL 6H</th><th>PLR 6H</th><th>DELAY 6H</th><th>ACTIVE ALARM SIA</th><th>TT / OPEN DATE</th><th>SITE</th><th>REGION</th><th>AGING</th><th>OWNER</th></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty" id="emptyState"><strong>No ticket loaded</strong>Synchronize open TT from the bot sheet.</div>
+    </div>
+    <div class="foot"><span id="rowCount">Showing 0 of 0 open tickets</span><span>Latest available data · Avail hourly · PLR/Delay 15-min · No impact alarm in 6H</span></div>
+  </section>
+</main>
+
+<div class="overlay" id="overlay" onclick="closeDrawer(event)">
+  <aside class="drawer" id="drawer"></aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+const CONFIG = Object.freeze({
+  API_BASE: "https://api.azhautomation.com",
+  BOT_CSV: "https://docs.google.com/spreadsheets/d/11TckLhhJYst44004cOKequgsZHRC2N4pG05o4OjdGPQ/export?format=csv&gid=448941783",
+  IMPACT_RULES_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3Pbba7AX8zdtoEYcqrOjkQlkJEWuagDXggAtB7CL8Mu6qv8i2HoCYsMcNbBP3X5TJPJzuGqtaVOii/pub?output=csv",
+  HOURS: 6, AVAIL_MIN: 99, PLR_MAX: 1, DELAY_MAX: 10, KPI_CONCURRENCY: 8
+});
+
+let tickets = [], rules = null, selectedIndex = -1, busy = false;
+
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function key(value){return String(value||"").trim().toLowerCase().replace(/[^a-z0-9]+/g,"")}
+function cleanSite(value){return String(value||"").replace(/\s+/g,"").toUpperCase()}
+function num(value){const n=Number(value);return Number.isFinite(n)?n:null}
+function avg(values){return values.length?values.reduce((a,b)=>a+b,0)/values.length:null}
+function round(value){return value==null?null:Math.round(value*100)/100}
+function formatNum(value){return value==null?"":value.toLocaleString("id-ID",{maximumFractionDigits:2})}
+function formatTime(date=new Date()){return date.toLocaleTimeString("id-ID",{hour:"2-digit",minute:"2-digit"})}
+function bangkokStamp(ms){return new Date(ms+7*3600000).toISOString().slice(0,19).replace("T"," ")}
+function parseApiTime(value){
+  const raw=String(value||"").trim();if(!raw)return NaN;
+  // API KPI/TWAMP mengirim waktu Asia/Bangkok tanpa penanda timezone.
+  // Tambahkan +07:00 agar hasil konsisten pada browser dengan timezone apa pun.
+  if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(raw))return new Date(raw.replace(" ","T")+":00+07:00").getTime();
+  if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw))return new Date(raw.replace(" ","T")+"+07:00").getTime();
+  return new Date(raw).getTime();
+}
+
+function parseCsv(text) {
+  const rows=[]; let row=[],cell="",quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(c==='"'){if(quoted&&text[i+1]==='"'){cell+='"';i++}else quoted=!quoted}
+    else if(c===","&&!quoted){row.push(cell);cell=""}
+    else if((c==="\n"||c==="\r")&&!quoted){if(c==="\r"&&text[i+1]==="\n")i++;row.push(cell);if(row.some(v=>v.trim()))rows.push(row);row=[];cell=""}
+    else cell+=c;
+  }
+  if(cell||row.length){row.push(cell);rows.push(row)} return rows;
+}
+
+async function fetchText(url, options={}, timeoutMs=60000) {
+  const controller=new AbortController();
+  let timedOut=false;
+  const timer=setTimeout(()=>{timedOut=true;controller.abort()},timeoutMs);
+  try{
+    const response=await fetch(url,{...options,signal:controller.signal,cache:"no-store"});
+    if(!response.ok)throw new Error("HTTP "+response.status);
+    return await response.text();
+  }catch(error){
+    if(timedOut||error?.name==="AbortError"){
+      throw new Error(`Request timeout after ${Math.round(timeoutMs/1000)} seconds`);
+    }
+    throw error;
+  }finally{clearTimeout(timer)}
+}
+async function fetchJson(url, options={}, timeoutMs=60000) {
+  const text=await fetchText(url,options,timeoutMs); try{return JSON.parse(text)}catch{throw new Error("Invalid JSON response")}
+}
+async function fetchJsonRetry(url, options={}, timeoutMs=180000, retries=1){
+  let lastError;
+  for(let attempt=0;attempt<=retries;attempt++){
+    try{return await fetchJson(url,options,timeoutMs)}
+    catch(error){
+      lastError=error;
+      if(attempt<retries)await new Promise(resolve=>setTimeout(resolve,1500));
+    }
+  }
+  throw lastError;
+}
+function notify(message,error=false){
+  const el=document.getElementById("toast");el.textContent=message;el.className="toast show"+(error?" error":"");
+  clearTimeout(notify.timer);notify.timer=setTimeout(()=>el.className="toast",4200);
+}
+function setBusy(state,type=""){
+  busy=state;document.getElementById("syncBtn").disabled=state;document.getElementById("analyzeBtn").disabled=state||!tickets.length;
+  document.getElementById("syncBtn").innerHTML=state&&type==="sync"?'<span class="spin">↻</span> Synchronizing…':'<span>↻</span> Check Open TT';
+  document.getElementById("analyzeBtn").innerHTML=state&&type==="analyze"?'<span class="spin">✦</span> Analyzing…':'<span>✦</span> Analyze Sites';
+}
+function progress(value,label){
+  const area=document.getElementById("progressArea");area.classList.toggle("show",value>=0&&value<101);
+  document.getElementById("progressBar").style.width=Math.max(0,Math.min(100,value))+"%";
+  document.getElementById("progressValue").textContent=Math.round(value)+"%";document.getElementById("progressLabel").textContent=label;
+  if(value>=100)setTimeout(()=>area.classList.remove("show"),700);
+}
+
+async function loadTickets(){
+  if(busy)return;setBusy(true,"sync");document.getElementById("statusText").textContent="Synchronizing open tickets from bot sheet…";
+  try{
+    const text=await fetchText(CONFIG.BOT_CSV), rows=parseCsv(text), headers=rows.shift()||[], map=new Map(headers.map((h,i)=>[key(h),i]));
+    const get=(row,...names)=>{for(const name of names){const i=map.get(key(name));if(i!==undefined)return String(row[i]||"").trim()}return""};
+    tickets=rows.map(row=>({
+      tt:get(row,"TT"),openDate:get(row,"Open Date MM/DD/YYYY","Open Date"),siteId:cleanSite(get(row,"Site Id","Site ID")),
+      siteName:get(row,"Sitename","Site Name"),region:get(row,"Region"),agingPeriod:get(row,"Aging Periode"),
+      founding:get(row,"Founding"),rca:get(row,"RCA Category"),partIssue:get(row,"Part Issue"),roh:get(row,"ROH"),
+      status:get(row,"Status"),urgent:get(row,"Type Urgent"),escalateTo:get(row,"Escalate To"),ttFso:get(row,"TT FSO"),
+      aging:get(row,"Aging"),lastDate:get(row,"LAST DATE"),analysis:null
+    })).filter(t=>t.tt&&t.siteId&&t.status.toLowerCase()==="open");
+    populateRegions();render();document.getElementById("lastUpdated").textContent=formatTime();
+    document.getElementById("statusText").textContent=`${tickets.length} open TT synchronized successfully.`;
+    notify(`${tickets.length} open TT loaded`);
+  }catch(error){document.getElementById("statusText").textContent="Failed to synchronize bot sheet.";notify("Open TT sync failed: "+error.message,true)}
+  finally{setBusy(false)}
+}
+
+function populateRegions(){
+  const select=document.getElementById("regionFilter"), current=select.value;
+  select.innerHTML='<option value="ALL">All Regions</option>'+[...new Set(tickets.map(t=>t.region).filter(Boolean))].sort().map(r=>`<option value="${esc(r)}">${esc(r)}</option>`).join("");
+  if([...select.options].some(o=>o.value===current))select.value=current;
+}
+
+async function loadRules(){
+  if(rules)return rules;
+  const rows=parseCsv(await fetchText(CONFIG.IMPACT_RULES_CSV)), headers=rows.shift()||[], indexes=Object.fromEntries(headers.map((h,i)=>[key(h),i]));
+  rules={exact:new Set(),contains:[],starts:[],ends:[]};
+  rows.forEach(row=>{
+    const enabled=String(row[indexes.enabled]??"TRUE").trim().toUpperCase();
+    if(!["TRUE","YES","1","ENABLED"].includes(enabled))return;
+    const name=String(row[indexes.alarmname]||"").trim().toUpperCase();if(!name)return;
+    const match=String(row[indexes.matchtype]||"CONTAINS").trim().toUpperCase();
+    if(["EXACT","EQUALS"].includes(match))rules.exact.add(name);
+    else if(["STARTS_WITH","PREFIX"].includes(match))rules.starts.push(name);
+    else if(["ENDS_WITH","SUFFIX"].includes(match))rules.ends.push(name);
+    else rules.contains.push(name);
+  });return rules;
+}
+function alarmName(a){for(const k of ["alarm_name","alarmName","name","Name","alarm"]){if(a&&a[k])return String(a[k]).trim()}return"Unnamed alarm"}
+function normalizeAlarm(value){
+  return String(value||"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim().replace(/\s+/g," ");
+}
+function isImpact(name,ruleset){
+  const n=normalizeAlarm(name);
+  if([...ruleset.exact].some(rule=>n===normalizeAlarm(rule)))return true;
+  if(ruleset.starts.some(rule=>n.startsWith(normalizeAlarm(rule))))return true;
+  if(ruleset.ends.some(rule=>n.endsWith(normalizeAlarm(rule))))return true;
+  return ruleset.contains.some(rule=>{
+    const normalizedRule=normalizeAlarm(rule);
+    const wordCount=normalizedRule.split(" ").filter(Boolean).length;
+    // Rule pendek/generik seperti "Module" atau "Communication FAIL"
+    // tidak boleh mengenai alarm lain hanya karena substring. Rule 1–2 kata
+    // diperlakukan sebagai exact; CONTAINS hanya untuk frasa spesifik >=3 kata.
+    return wordCount>=3?n.includes(normalizedRule):n===normalizedRule;
+  });
+}
+
+async function getHistories(siteIds){
+  const output=Object.fromEntries(siteIds.map(id=>[id,[]])), now=Date.now(), start=now-CONFIG.HOURS*3600000;
+  for(let cursor=start;cursor<now;cursor+=2*3600000){
+    const end=Math.min(cursor+2*3600000,now);
+    const response=await fetchJsonRetry(CONFIG.API_BASE+"/api/ows/history",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({site_ids:siteIds,start:bangkokStamp(cursor),end:bangkokStamp(end)})
+    },180000,1);
+    if(!response.success)throw new Error(response.error||"OWS history failed");
+    siteIds.forEach(id=>{if(Array.isArray(response.data?.[id]))output[id].push(...response.data[id])});
+  }
+  return output;
+}
+
+async function analyzeKpi(siteId){
+  const [kpiState,twampState]=await Promise.allSettled([
+    fetchJson(`${CONFIG.API_BASE}/api/kpi?site_id=${encodeURIComponent(siteId)}&days=1`,{},60000),
+    fetchJson(`${CONFIG.API_BASE}/api/twamp/realtime?site_id=${encodeURIComponent(siteId)}&hours=${CONFIG.HOURS}`,{},60000)
+  ]);
+  const errors=[],kpi=kpiState.status==="fulfilled"?kpiState.value:null,twamp=twampState.status==="fulfilled"?twampState.value:null;
+  if(!kpi)errors.push("Availability API unavailable");if(!twamp)errors.push("TWAMP API unavailable");
+  const allKpiRows=Array.isArray(kpi?.data)?kpi.data:[];
+  const kpiTimes=allKpiRows.map(r=>parseApiTime(r.time)).filter(Number.isFinite);
+  const latestKpiTime=kpiTimes.length?Math.max(...kpiTimes):null;
+  // Window mengikuti data KPI terbaru, bukan wall-clock. Data yang terlambat
+  // tetap ditampilkan, lalu ditandai sebagai stale melalui dataFresh.
+  const cutoff=latestKpiTime==null?null:latestKpiTime-CONFIG.HOURS*3600000;
+  const kRows=allKpiRows.filter(r=>{const t=parseApiTime(r.time);return cutoff==null||!Number.isFinite(t)||t>cutoff});
+  const tRows=Array.isArray(twamp?.data)?twamp.data:[];
+  let av=kRows.map(r=>num(r.availability)).filter(v=>v!==null),plr=tRows.map(r=>num(r.plr)).filter(v=>v!==null),delay=tRows.map(r=>num(r.delay)).filter(v=>v!==null);
+  if(av.length&&Math.max(...av.map(Math.abs))<=1)av=av.map(v=>v*100);
+  const latest=[kRows.at(-1)?.time,twamp?.latest_time].map(parseApiTime).filter(Number.isFinite);
+  return {availability:round(avg(av)),availabilityMin:av.length?round(Math.min(...av)):null,plr:round(avg(plr)),plrMax:plr.length?round(Math.max(...plr)):null,
+    delay:round(avg(delay)),delayMax:delay.length?round(Math.max(...delay)):null,dataFresh:latest.length>=2&&latest.every(t=>t>=Date.now()-2*3600000),
+    complete:av.length>0&&plr.length>0&&delay.length>0,errors};
+}
+
+async function analyzeAll(){
+  if(busy||!tickets.length)return;setBusy(true,"analyze");progress(2,"Loading impact-alarm rules…");
+  try{
+    const ruleset=await loadRules(),siteIds=[...new Set(tickets.map(t=>t.siteId))];
+    progress(8,"Checking active alarms for all sites…");
+    const activeResponse=await fetchJsonRetry(
+      CONFIG.API_BASE+"/api/ows/multi",
+      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site_ids:siteIds})},
+      180000,
+      1
+    );
+    if(!activeResponse.success)throw new Error(activeResponse.error||"Active alarm check failed");
+    progress(18,"Loading six-hour alarm history in 2-hour windows…");
+    const histories=await getHistories(siteIds),kpiBySite={};
+    for(let i=0;i<siteIds.length;i+=CONFIG.KPI_CONCURRENCY){
+      const batch=siteIds.slice(i,i+CONFIG.KPI_CONCURRENCY),results=await Promise.all(batch.map(analyzeKpi));
+      batch.forEach((id,index)=>kpiBySite[id]=results[index]);
+      progress(25+65*Math.min(1,(i+batch.length)/siteIds.length),`Analyzing KPI & TWAMP · ${Math.min(i+batch.length,siteIds.length)} / ${siteIds.length} sites`);
+    }
+    tickets.forEach(ticket=>{
+      const allActive=Array.isArray(activeResponse.data?.[ticket.siteId])?activeResponse.data[ticket.siteId]:[];
+      const activeImpact=allActive.filter(a=>isImpact(alarmName(a),ruleset)),uniqueActive=[...new Set(activeImpact.map(alarmName))];
+      const history=histories[ticket.siteId]||[],historyImpact=history.filter(a=>isImpact(alarmName(a),ruleset));
+      const k=kpiBySite[ticket.siteId],reasons=[];
+      if(k.availabilityMin!=null&&k.availabilityMin<CONFIG.AVAIL_MIN)reasons.push(`Availability minimum ${formatNum(k.availabilityMin)}%`);
+      if(k.plrMax!=null&&k.plrMax>CONFIG.PLR_MAX)reasons.push(`PLR peak ${formatNum(k.plrMax)}% > ${CONFIG.PLR_MAX}%`);
+      if(k.delayMax!=null&&k.delayMax>CONFIG.DELAY_MAX)reasons.push(`Delay peak ${formatNum(k.delayMax)}ms > ${CONFIG.DELAY_MAX}ms`);
+      if(uniqueActive.length)reasons.push(`${uniqueActive.length} active impact alarm`);
+      if(!uniqueActive.length&&historyImpact.length)reasons.push(`${historyImpact.length} impact alarm occurrence within 6H`);
+      // Source KPI hourly dan TWAMP 15-menit memiliki delay ingestion yang
+      // berbeda. Keputusan memakai window relatif terhadap data terbaru dari
+      // masing-masing source, bukan relatif terhadap jam saat analisis.
+      let health=reasons.length?"ISSUE":(!k.complete||k.errors.length?"VERIFY":"OK");
+      if(health==="OK")reasons.push("KPI healthy and no impact alarm within 6H");
+      if(!k.complete)reasons.push("Six-hour KPI evidence incomplete");reasons.push(...k.errors);
+      ticket.analysis={...k,health,reasons:[...new Set(reasons)],activeAlarms:uniqueActive,activeAlarmTotal:allActive.length,
+        nonImpactAlarmCount:Math.max(0,allActive.length-activeImpact.length),historyImpactCount:historyImpact.length,checkedAt:new Date().toISOString()};
+    });
+    progress(100,"Analysis complete");render();document.getElementById("lastUpdated").textContent=formatTime();
+    document.getElementById("statusText").textContent=`Analysis completed for ${siteIds.length} unique sites.`;notify("Site health analysis completed");
+  }catch(error){progress(101,"Analysis failed");document.getElementById("statusText").textContent="Analysis could not be completed.";notify(error.message,true)}
+  finally{setBusy(false)}
+}
+
+function metric(value,unit,threshold,inverse=false){
+  if(value==null)return'<span class="metric na">No data</span>';
+  const bad=inverse?value<threshold:value>threshold;
+  return `<span class="metric ${bad?"bad":"good"}">${formatNum(value)}<small>${unit}</small></span>`;
+}
+function label(health){return health==="OK"?"Already OK":health==="ISSUE"?"Still Issue":health==="VERIFY"?"Need Verification":"Not Analyzed"}
+function resetFilters(){document.getElementById("searchInput").value="";document.getElementById("healthFilter").value="ALL";document.getElementById("regionFilter").value="ALL";render()}
+function getFilteredRows(){
+  const query=document.getElementById("searchInput").value.trim().toUpperCase(),hf=document.getElementById("healthFilter").value,rf=document.getElementById("regionFilter").value;
+  return tickets.map((t,i)=>({t,i})).filter(({t})=>{
+    const h=t.analysis?.health||"PENDING";return(!query||[t.tt,t.siteId,t.siteName,t.roh].some(v=>String(v||"").toUpperCase().includes(query)))&&(hf==="ALL"||h===hf)&&(rf==="ALL"||t.region===rf);
+  });
+}
+function csvCell(value){
+  const text=String(value??"");
+  return /[",\r\n]/.test(text)?`"${text.replace(/"/g,'""')}"`:text;
+}
+function exportFilteredCsv(){
+  const rows=getFilteredRows();
+  if(!rows.length)return notify("No filtered rows to export",true);
+  const headers=["Site Health","Availability 6H Avg (%)","Availability 6H Min (%)","PLR 6H Avg (%)","PLR 6H Peak (%)","Delay 6H Avg (ms)","Delay 6H Peak (ms)","Active Impact Alarm Count","Active Impact Alarms","Total Active Alarm","Impact Alarm History 6H","TT","Open Date","Site ID","Site Name","Region","Aging (Days)","Aging Period","RCA Category","Part Issue","ROH / Owner","Finding","Analysis Reasons","Checked At"];
+  const values=rows.map(({t})=>{const a=t.analysis,h=a?.health||"PENDING";return[
+    label(h),a?.availability??"",a?.availabilityMin??"",a?.plr??"",a?.plrMax??"",a?.delay??"",a?.delayMax??"",
+    a?.activeAlarms?.length??0,(a?.activeAlarms||[]).join(" | "),a?.activeAlarmTotal??0,a?.historyImpactCount??0,
+    t.tt,t.openDate,t.siteId,t.siteName,t.region,t.aging,t.agingPeriod,t.rca,t.partIssue,t.roh,t.founding,(a?.reasons||[]).join(" | "),a?.checkedAt||""
+  ]});
+  const csv="\uFEFF"+[headers,...values].map(row=>row.map(csvCell).join(",")).join("\r\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a"),now=new Date();
+  const stamp=now.getFullYear()+String(now.getMonth()+1).padStart(2,"0")+String(now.getDate()).padStart(2,"0")+"_"+String(now.getHours()).padStart(2,"0")+String(now.getMinutes()).padStart(2,"0");
+  link.href=url;link.download=`CTT_Site_Health_Filtered_${stamp}.csv`;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  notify(`${rows.length} filtered rows exported`);
+}
+function render(){
+  const rows=getFilteredRows();
+  document.getElementById("tableBody").innerHTML=rows.map(({t,i})=>{
+    const a=t.analysis,h=a?.health||"PENDING",hc=h==="ISSUE"?"issue":h.toLowerCase();
+    let alarms='<span class="pending-text">Not checked</span>';
+    if(a){if(a.activeAlarms.length)alarms=`<div class="alarm"><strong>${a.activeAlarms.length} Impact</strong><span>${esc(a.activeAlarms[0])}</span></div>`;
+      else if(a.activeAlarmTotal)alarms=`<div class="alarm nonimpact"><strong>${a.activeAlarmTotal} Active</strong><span>Non-impact alarms</span></div>`;
+      else alarms='<span class="clear">✓ No active alarm</span>'}
+    return `<tr onclick="openDrawer(${i})"><td><span class="health ${hc}">${label(h)}</span></td><td>${metric(a?.availability,"%",CONFIG.AVAIL_MIN,true)}</td>
+      <td>${metric(a?.plr,"%",CONFIG.PLR_MAX)}</td><td>${metric(a?.delay,"ms",CONFIG.DELAY_MAX)}</td><td>${alarms}</td>
+      <td><div class="primary"><strong>${esc(t.tt)}</strong><span>${esc(t.openDate)}</span></div></td><td><div class="primary"><strong>${esc(t.siteId)}</strong><span>${esc(t.siteName)}</span></div></td>
+      <td><span class="tag">${esc(t.region||"—")}</span></td><td><div class="aging"><strong>${esc(t.aging||"—")}d</strong><span>${esc(t.agingPeriod)}</span></div></td>
+      <td><div class="primary"><strong>${esc(t.roh||"Not Found")}</strong><span>${esc(t.escalateTo)}</span></div></td></tr>`;
+  }).join("");
+  document.getElementById("emptyState").style.display=rows.length?"none":"block";document.getElementById("rowCount").textContent=`Showing ${rows.length} of ${tickets.length} open tickets`;
+  document.getElementById("exportBtn").disabled=!rows.length;
+  const analyzed=tickets.filter(t=>t.analysis);document.getElementById("sOpen").textContent=tickets.length;document.getElementById("sOk").textContent=analyzed.filter(t=>t.analysis.health==="OK").length;
+  document.getElementById("sIssue").textContent=analyzed.filter(t=>t.analysis.health==="ISSUE").length;document.getElementById("sVerify").textContent=tickets.filter(t=>!t.analysis||t.analysis.health==="VERIFY").length;
+  document.getElementById("sAlarms").textContent=analyzed.reduce((n,t)=>n+t.analysis.activeAlarms.length,0);document.getElementById("analyzeBtn").disabled=busy||!tickets.length;
+}
+
+function openDrawer(index){
+  selectedIndex=index;const t=tickets[index],a=t.analysis,h=a?.health||"PENDING",hc=h==="ISSUE"?"issue":h.toLowerCase();
+  let alarmHtml='<div class="all-clear">Not analyzed<small>Run Analyze Sites to retrieve OWS alarms.</small></div>';
+  if(a){if(a.activeAlarms.length)alarmHtml=`<div class="alarm-note">${a.activeAlarms.length} impact alarm · ${a.activeAlarmTotal} total active</div>${a.activeAlarms.map(x=>`<div class="alarm-item">! ${esc(x)}</div>`).join("")}${a.nonImpactAlarmCount?`<div class="alarm-note">+ ${a.nonImpactAlarmCount} active non-impact alarm</div>`:""}`;
+    else if(a.activeAlarmTotal)alarmHtml=`<div class="alarm-note">${a.activeAlarmTotal} active alarm detected, but none match enabled impact rules.</div>`;
+    else alarmHtml=`<div class="all-clear">✓ No active alarm<small>${a.historyImpactCount?`${a.historyImpactCount} impact occurrence found within the last 6 hours.`:"No impact occurrence found within the last 6 hours."}</small></div>`}
+  document.getElementById("drawer").innerHTML=`<div class="drawer-head"><div><p class="eyebrow">Site Intelligence</p><h2>${esc(t.siteId)}</h2><p>${esc(t.siteName)}</p></div><button class="close" onclick="closeDrawer()">×</button></div>
+    <div class="verdict ${hc}"><span class="vicon">${h==="OK"?"✓":h==="ISSUE"?"!":"?"}</span><div><small>AI ANALYSIS</small><strong>${label(h)}</strong><p>${esc(a?.reasons?.join(" · ")||"Run analysis to assess site condition.")}</p></div></div>
+    <div class="section-title">Six-hour evidence</div><div class="evidence"><article><small>AVAILABILITY</small>${metric(a?.availability,"%",CONFIG.AVAIL_MIN,true)}<p>Minimum ${a?.availabilityMin==null?"—":formatNum(a.availabilityMin)+"%"}</p></article>
+    <article><small>PACKET LOSS</small>${metric(a?.plr,"%",CONFIG.PLR_MAX)}<p>Peak ${a?.plrMax==null?"—":formatNum(a.plrMax)+"%"}</p></article>
+    <article><small>DELAY</small>${metric(a?.delay,"ms",CONFIG.DELAY_MAX)}<p>Peak ${a?.delayMax==null?"—":formatNum(a.delayMax)+"ms"}</p></article></div>
+    <div class="section-title">Alarm correlation</div><div class="alarm-box">${alarmHtml}</div>
+    <div class="section-title">Ticket context</div><dl><div><dt>TT</dt><dd>${esc(t.tt)}</dd></div><div><dt>Open Date</dt><dd>${esc(t.openDate)}</dd></div>
+    <div><dt>Region</dt><dd>${esc(t.region||"—")}</dd></div><div><dt>Aging</dt><dd>${esc(t.aging||"—")} days</dd></div>
+    <div><dt>RCA Category</dt><dd>${esc(t.rca||"—")}</dd></div><div><dt>Part Issue</dt><dd>${esc(t.partIssue||"—")}</dd></div>
+    <div class="wide"><dt>Finding</dt><dd>${esc(t.founding||"—")}</dd></div><div class="wide"><dt>ROH / Owner</dt><dd>${esc(t.roh||"Not Found")}</dd></div></dl>`;
+  document.getElementById("overlay").classList.add("show");
+}
+function closeDrawer(event){if(event&&event.target!==document.getElementById("overlay"))return;document.getElementById("overlay").classList.remove("show");selectedIndex=-1}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeDrawer()});
+render();
+</script>
+</body>
+</html>
