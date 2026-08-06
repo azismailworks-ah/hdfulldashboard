@@ -2239,6 +2239,19 @@ function splitNeighbors(v){
   return s.split(/[;,|]/g).map(x => clean(x)).filter(Boolean);
 }
 
+function extractRouteSiteIds(row, meValue, lldpValue){
+  const ids = new Set();
+  Object.values(row || {}).forEach(value => {
+    const text = clean(value).toUpperCase();
+    if(!text || text === clean(meValue).toUpperCase() || text === clean(lldpValue).toUpperCase()) return;
+    const matches = text.match(/\b\d{2}[A-Z0-9]{6,10}\b/g) || [];
+    matches.forEach(id => {
+      if(!id.includes('-')) ids.add(id);
+    });
+  });
+  return [...ids];
+}
+
 function distanceKm(lat1, lon1, lat2, lon2){
 
   const R = 6371;
@@ -2447,6 +2460,22 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
   // siteName = database naming metro (site id -> ME name) for topology direct-ME resolution
   // siteMap = site id / site name lookup for display only
   const { siteToMe, meToSites } = buildLookupMap(siteName || []);
+
+  // Enrich site -> ME mapping from the ME route database itself.
+  // NE Name is stored in column A, site IDs/lists in B/C, and LLDP in D.
+  (mwRoute || []).forEach(r => {
+    const headers = Object.keys(r);
+    const meCol = findCol(headers, ['ne name','me name','metro name','ne'], 0);
+    const lldpCol = findCol(headers, ['lldp list','lldp','link','neighbors'], 3);
+    const meName = clean(r[meCol]);
+    if(!meName) return;
+    const routeSites = extractRouteSiteIds(r, meName, r[lldpCol]);
+    routeSites.forEach(siteId => {
+      if(!siteToMe.has(siteId)) siteToMe.set(siteId, meName);
+      if(!meToSites.has(meName)) meToSites.set(meName, new Set());
+      meToSites.get(meName).add(siteId);
+    });
+  });
   const meToSite = new Map();
 
     for(const [siteId, meName] of siteToMe.entries()){
@@ -2485,8 +2514,24 @@ function resolveE2E(siteId, graphs){
   // 2) site reaches ME via MW path
   const directMe = clean(siteToMe.get(siteId) || '');
   let mwPath = [siteId];
-  let meName = directMe;
-  let traceMode = directMe ? 'direct' : 'mw';
+  let meName = '';
+  let traceMode = 'unknown';
+
+  // Prefer the physical MW path whenever the site has an MW adjacency.
+  // Direct-ME is only used when no valid MW landing path can be resolved.
+  if((mwGraph.get(siteId) || new Set()).size){
+    const mwRes = bfs(siteId, mwGraph, node => node !== siteId && siteToMe.has(node));
+    if(mwRes.found && mwRes.path.length > 1){
+      mwPath = mwRes.path;
+      meName = clean(siteToMe.get(mwRes.found) || '');
+      traceMode = meName ? 'mw' : 'unknown';
+    }
+  }
+
+  if(!meName && directMe){
+    meName = directMe;
+    traceMode = 'direct';
+  }
 
   if(!meName){
     const mwRes = bfs(siteId, mwGraph, node => siteToMe.has(node));
