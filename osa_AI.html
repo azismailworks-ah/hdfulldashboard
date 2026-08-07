@@ -3445,6 +3445,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
   // siteName = database naming metro (site id -> ME name) for topology direct-ME resolution
   // siteMap = site id / site name lookup for display only
   const { siteToMe, meToSites } = buildLookupMap(siteName || []);
+  const explicitRouteSiteToMe = new Map();
 
   // Enrich site -> ME mapping from the ME route database itself.
   // The published sheet keeps NE Name in column A, site IDs/lists in B/C,
@@ -3458,6 +3459,9 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
     if(!meName) return;
     const routeSites = extractRouteSiteIds(r, meName, r[lldpCol]);
     routeSites.forEach(siteId => {
+      // This relationship is explicit in the ME Route row (NE in column A,
+      // served site IDs in B/C), so it is stronger than a generic lookup.
+      if(!explicitRouteSiteToMe.has(siteId)) explicitRouteSiteToMe.set(siteId, meName);
       if(!siteToMe.has(siteId)) siteToMe.set(siteId, meName);
       if(!meToSites.has(meName)) meToSites.set(meName, new Set());
       meToSites.get(meName).add(siteId);
@@ -3473,7 +3477,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
 
   const siteLabels = buildLookupMap(siteMap || []);
 
-  return { mwGraph, lldpGraph, siteToMe, meToSites, meToSite, nodeToSite, siteLabels };
+  return { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, meToSites, meToSite, nodeToSite, siteLabels };
 }
 
 function bfs(start, graph, isTarget, blocked = new Set()){
@@ -3494,20 +3498,27 @@ function bfs(start, graph, isTarget, blocked = new Set()){
 }
 
 function resolveE2E(siteId, graphs){
-  const { mwGraph, lldpGraph, siteToMe, nodeToSite, meToSite } = graphs;
+  const { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, nodeToSite, meToSite } = graphs;
 
   // Support both routing models:
   // 1) direct ME mapped from site id
   // 2) site reaches ME via MW path
   const directMe = clean(siteToMe.get(siteId) || '');
+  const explicitDirectMe = clean(explicitRouteSiteToMe?.get(siteId) || '');
   let mwPath = [siteId];
   let meName = '';
   let traceMode = 'unknown';
 
-  // Prefer the physical MW path whenever the site has an MW adjacency.
-  // Direct-ME mapping is only a fallback; otherwise route-database enrichment
-  // can cause a real MW hop to be skipped from the rendered topology.
-  if((mwGraph.get(siteId) || new Set()).size){
+  // An explicit site -> ME relationship in the ME Route database is
+  // authoritative. A MW adjacency may still exist for another purpose and
+  // must not override the site's own direct ME (example: 03SPA0001 -> PAD-RDTO).
+  if(explicitDirectMe){
+    meName=explicitDirectMe;
+    traceMode='direct-explicit';
+  }
+
+  // Only search a MW landing site when no explicit direct ME exists.
+  if(!meName&&(mwGraph.get(siteId) || new Set()).size){
     const mwRes = bfs(siteId, mwGraph, node => node !== siteId && siteToMe.has(node));
     if(mwRes.found && mwRes.path.length > 1){
       mwPath = mwRes.path;
@@ -3577,6 +3588,7 @@ function resolveE2E(siteId, graphs){
       mwPath,
       meName,
       directMe,
+      explicitDirectMe,
       traceMode,
       metroPaths,
       finalNodes,
