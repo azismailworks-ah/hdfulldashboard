@@ -1590,7 +1590,13 @@ tr:hover td{
               <div class="stat"><div class="k">Metro Legs</div><div class="v" id="metroLegs">0</div></div>
               <div class="stat"><div class="k">CN Nodes</div><div class="v" id="cnNodes">0</div></div>
               <div class="stat"><div class="k">Alarm Nodes</div><div class="v" id="alarmNodes">0</div></div>
+              <div class="stat"><div class="k">Viable Paths</div><div class="v" id="cnPaths">0</div></div>
+              <div class="stat"><div class="k">Minimum Cut</div><div class="v" id="minimumCut">-</div></div>
             </div>
+          </div>
+          <div class="mini-card">
+            <h4>Resilience Analysis</h4>
+            <div class="topology-note" id="resilienceNote">Resilience will appear after analysis.</div>
           </div>
           <div class="mini-card">
             <h4>Trace Path</h4>
@@ -2450,8 +2456,10 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
             if(!lldpGraph.has(nb))
                 lldpGraph.set(nb,new Set());
 
+            // Preserve MEROUTE direction: NE Name -> LLDP List.
+            // A synthetic reverse edge makes inbound/downstream branches
+            // appear as if they were valid outbound routes toward CN.
             lldpGraph.get(me).add(nb);
-            lldpGraph.get(nb).add(me);
         });
 
     });
@@ -2460,6 +2468,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
   // siteName = database naming metro (site id -> ME name) for topology direct-ME resolution
   // siteMap = site id / site name lookup for display only
   const { siteToMe, meToSites } = buildLookupMap(siteName || []);
+  const explicitRouteSiteToMe = new Map();
 
   // Enrich site -> ME mapping from the ME route database itself.
   // NE Name is stored in column A, site IDs/lists in B/C, and LLDP in D.
@@ -2471,6 +2480,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
     if(!meName) return;
     const routeSites = extractRouteSiteIds(r, meName, r[lldpCol]);
     routeSites.forEach(siteId => {
+      if(!explicitRouteSiteToMe.has(siteId)) explicitRouteSiteToMe.set(siteId, meName);
       if(!siteToMe.has(siteId)) siteToMe.set(siteId, meName);
       if(!meToSites.has(meName)) meToSites.set(meName, new Set());
       meToSites.get(meName).add(siteId);
@@ -2486,7 +2496,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
 
   const siteLabels = buildLookupMap(siteMap || []);
 
-  return { mwGraph, lldpGraph, siteToMe, meToSites, meToSite, nodeToSite, siteLabels };
+  return { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, meToSites, meToSite, nodeToSite, siteLabels };
 }
 
 function bfs(start, graph, isTarget, blocked = new Set()){
@@ -2506,20 +2516,108 @@ function bfs(start, graph, isTarget, blocked = new Set()){
   return { path:[start], found:null };
 }
 
+function pathEdgeKey(a,b){
+  return [String(a),String(b)].sort().join(' <> ');
+}
+
+function shortestCnPathAvoidingEdges(start,graph,blockedEdges=new Set(),maxDepth=30){
+  if(!start) return null;
+  const queue=[[start]];
+  const seen=new Set([start]);
+  while(queue.length){
+    const path=queue.shift();
+    const node=path[path.length-1];
+    if(node!==start&&isCn(node)) return path;
+    if(path.length>=maxDepth) continue;
+    const neighbors=[...(graph.get(node)||[])].sort();
+    for(const next of neighbors){
+      if(seen.has(next)||blockedEdges.has(pathEdgeKey(node,next))) continue;
+      seen.add(next);
+      queue.push([...path,next]);
+    }
+  }
+  return null;
+}
+
+function enumerateCnPaths(start,graph,maxPaths=4){
+  if(!start) return {paths:[],truncated:false,maxDepth:0,selectionMode:'edge-independent'};
+  const blockedEdges=new Set();
+  const paths=[];
+  for(let index=0;index<maxPaths;index++){
+    const path=shortestCnPathAvoidingEdges(start,graph,blockedEdges,30);
+    if(!path) break;
+    paths.push(path);
+    for(let pos=1;pos<path.length;pos++){
+      blockedEdges.add(pathEdgeKey(path[pos-1],path[pos]));
+    }
+  }
+  return {paths,truncated:paths.length===maxPaths,maxDepth:30,selectionMode:'edge-independent'};
+}
+
+function minimumPathCut(pathSets,maxSize=4){
+  if(!pathSets.length) return {size:0,cut:[]};
+  const ordered=[...pathSets].sort((a,b)=>a.size-b.size);
+  for(let limit=1;limit<=maxSize;limit++){
+    let found=null;
+    function search(remaining,choice){
+      if(found) return;
+      if(!remaining.length){found=[...choice];return;}
+      if(choice.length>=limit) return;
+      for(const item of remaining[0]){
+        search(remaining.filter(set=>!set.has(item)),[...choice,item]);
+        if(found) return;
+      }
+    }
+    search(ordered,[]);
+    if(found) return {size:limit,cut:found};
+  }
+  return {size:`>${maxSize}`,cut:[]};
+}
+
+function analyzePathResilience(start,paths,truncated=false){
+  if(!paths.length) return {pathCount:0,cnCount:0,edgeCutSize:0,nodeCutSize:0,classification:'NO CN PATH',criticalNodes:[],criticalEdges:[],truncated};
+  const edgeSets=paths.map(path=>new Set(path.slice(1).map((node,index)=>pathEdgeKey(path[index],node))));
+  const nodeSets=paths.map(path=>new Set(path.slice(1,-1).filter(node=>node!==start&&!isCn(node))));
+  const edgeCut=minimumPathCut(edgeSets,4);
+  const nodeCut=nodeSets.every(set=>set.size)?minimumPathCut(nodeSets,4):{size:'N/A',cut:[]};
+  const criticalEdges=[...edgeSets[0]].filter(edge=>edgeSets.every(set=>set.has(edge)));
+  const criticalNodes=[...nodeSets[0]].filter(node=>nodeSets.every(set=>set.has(node)));
+  const cutNumber=typeof edgeCut.size==='number'?edgeCut.size:5;
+  const classification=cutNumber<=1?'SPOF / SINGLE CUT':cutNumber===2?'DUAL PATH / DOUBLE CUT':`MULTIPLE PATH / ${edgeCut.size} CUT`;
+  return {
+    pathCount:paths.length,
+    cnCount:new Set(paths.map(path=>path[path.length-1])).size,
+    edgeCutSize:edgeCut.size,
+    nodeCutSize:nodeCut.size,
+    minimumEdgeCut:edgeCut.cut,
+    minimumNodeCut:nodeCut.cut,
+    classification,
+    criticalNodes,
+    criticalEdges,
+    truncated
+  };
+}
+
 function resolveE2E(siteId, graphs){
-  const { mwGraph, lldpGraph, siteToMe, nodeToSite, meToSite } = graphs;
+  const { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, nodeToSite, meToSite } = graphs;
 
   // Support both routing models:
   // 1) direct ME mapped from site id
   // 2) site reaches ME via MW path
   const directMe = clean(siteToMe.get(siteId) || '');
+  const explicitDirectMe = clean(explicitRouteSiteToMe?.get(siteId) || '');
   let mwPath = [siteId];
   let meName = '';
   let traceMode = 'unknown';
 
-  // Prefer the physical MW path whenever the site has an MW adjacency.
-  // Direct-ME is only used when no valid MW landing path can be resolved.
-  if((mwGraph.get(siteId) || new Set()).size){
+  // An explicit site -> ME row in MEROUTE is authoritative and must not be
+  // replaced by an unrelated MW adjacency.
+  if(explicitDirectMe){
+    meName=explicitDirectMe;
+    traceMode='direct-explicit';
+  }
+
+  if(!meName&&(mwGraph.get(siteId) || new Set()).size){
     const mwRes = bfs(siteId, mwGraph, node => node !== siteId && siteToMe.has(node));
     if(mwRes.found && mwRes.path.length > 1){
       mwPath = mwRes.path;
@@ -2541,22 +2639,45 @@ function resolveE2E(siteId, graphs){
     traceMode = meName ? 'mw' : 'unknown';
   }
 
-  const metroPaths = [];
+  let metroPaths=[];
+  let pathEnumeration={paths:[],truncated:false,maxDepth:0};
+  let downstreamBranch=null;
   if(meName){
-    const neighbors = [...(lldpGraph.get(meName) || [])].sort();
-    const seen = new Set();
+    pathEnumeration=enumerateCnPaths(meName,lldpGraph,4);
+    metroPaths=pathEnumeration.paths;
 
-    neighbors.forEach(firstLeg => {
-      const res = bfs(firstLeg, lldpGraph, node => isCn(node), new Set([meName]));
-      if(res.found){
-        const full = [meName].concat(res.path);
-        const key = full.join('>');
-        if(!seen.has(key)){
-          seen.add(key);
-          metroPaths.push(full);
-        }
+    // Keep the common access leg in the E2E cut calculation, but expand the
+    // first downstream ME that owns two independent CN corridors. This makes
+    // cases such as PAD-SINM -> PAD-RDTO show both PAD-RDT2 and PAD-KGBU.
+    if(metroPaths.length===1&&metroPaths[0].length>2){
+      const primary=metroPaths[0];
+      for(let index=1;index<primary.length-1;index++){
+        const branchNode=primary[index];
+        const branchEnumeration=enumerateCnPaths(branchNode,lldpGraph,4);
+        if(branchEnumeration.paths.length<2) continue;
+        const sharedPrefix=primary.slice(0,index);
+        metroPaths=branchEnumeration.paths.map(path=>[...sharedPrefix,...path]);
+        pathEnumeration={...branchEnumeration,paths:metroPaths,sharedAccess:true,branchNode,sharedPrefix};
+        downstreamBranch={
+          node:branchNode,
+          sharedPrefix,
+          resilience:analyzePathResilience(branchNode,branchEnumeration.paths,branchEnumeration.truncated)
+        };
+        break;
       }
-    });
+    }
+  }
+
+  const resilience=analyzePathResilience(meName,metroPaths,pathEnumeration.truncated);
+  if(downstreamBranch&&resilience.edgeCutSize===1&&downstreamBranch.resilience.edgeCutSize>=2){
+    resilience.classification='SINGLE ACCESS / DUAL UPSTREAM';
+    resilience.accessClassification=`SHARED METRO ACCESS TO ${downstreamBranch.node}`;
+    resilience.downstreamBranchNode=downstreamBranch.node;
+    resilience.downstreamPathCount=downstreamBranch.resilience.pathCount;
+    resilience.downstreamEdgeCut=downstreamBranch.resilience.edgeCutSize;
+    resilience.downstreamClassification=downstreamBranch.resilience.classification;
+  }else{
+    resilience.accessClassification=mwPath.length>1?'SINGLE MW ACCESS / ACCESS SPOF':'DIRECT ME ACCESS';
   }
 
   const finalNodes = [];
@@ -2589,8 +2710,10 @@ function resolveE2E(siteId, graphs){
       mwPath,
       meName,
       directMe,
+      explicitDirectMe,
       traceMode,
       metroPaths,
+      resilience,
       finalNodes,
       alarmSiteIds
   };
@@ -3674,6 +3797,22 @@ function buildTopologyNetwork(rows, topo){
 
   const trace = [ ...mwPath, topo.meName ? topo.meName : null, ...(topo.metroPaths || []).map(p => p[p.length - 1]) ].filter(Boolean);
   document.getElementById('tracePath').innerHTML = trace.length ? `<strong>${trace.join(' → ')}</strong>` : 'No topology trace found.';
+  const resilience=topo.resilience||{};
+  document.getElementById('cnPaths').textContent=String(resilience.pathCount||0)+(resilience.truncated?'+':'');
+  document.getElementById('minimumCut').textContent=String(resilience.edgeCutSize??'-');
+
+  const traceRows=(topo.metroPaths||[]).slice(0,8).map((path,index)=>
+    `<div style="margin-bottom:7px"><strong>Path ${index+1}:</strong> ${escapeHtml([...mwPath,...path].filter((node,pos,arr)=>pos===0||node!==arr[pos-1]).join(' -> '))}</div>`
+  );
+  document.getElementById('tracePath').innerHTML=traceRows.length?traceRows.join(''):'No topology trace found.';
+  const criticalNodeText=(resilience.criticalNodes||[]).length?resilience.criticalNodes.join(', '):'none';
+  const criticalEdgeText=(resilience.criticalEdges||[]).length?resilience.criticalEdges.join('; '):'none';
+  document.getElementById('resilienceNote').innerHTML=
+    `<strong>${escapeHtml(resilience.classification||'NO CN PATH')}</strong><br>`+
+    `Access: ${escapeHtml(resilience.accessClassification||'-')}<br>`+
+    `Metro-to-CN: ${escapeHtml(String(resilience.pathCount||0))} displayed E2E path, ${escapeHtml(String(resilience.cnCount||0))} CN, minimum edge cut ${escapeHtml(String(resilience.edgeCutSize??'-'))}, minimum node cut ${escapeHtml(String(resilience.nodeCutSize??'-'))}.<br>`+
+    (resilience.downstreamBranchNode?`After ${escapeHtml(resilience.downstreamBranchNode)}: ${escapeHtml(String(resilience.downstreamPathCount||0))} independent path, minimum edge cut ${escapeHtml(String(resilience.downstreamEdgeCut??'-'))} (${escapeHtml(resilience.downstreamClassification||'-')}).<br>`:'')+
+    `Single critical node: ${escapeHtml(criticalNodeText)}<br>Single critical edge: ${escapeHtml(criticalEdgeText)}`;
   document.getElementById('alarmSnapshot').innerHTML = [...alarmMap.entries()].slice(0, 8).map(([n,c]) => `<span class="pill-mini">${n}: <strong>${c}</strong></span>`).join('') || '<span class="pill-mini">No alarm nodes</span>';
 }
 
