@@ -3556,6 +3556,35 @@ function enumerateCnPaths(start,graph,maxPaths=4){
   };
 }
 
+function collectReachableLldp(start,graph,maxDepth=24,maxNodes=100,maxEdges=180){
+  if(!start) return {nodes:[],edges:[],truncated:false,maxDepth};
+  const nodes=[];
+  const edges=[];
+  const seenNodes=new Set([start]);
+  const seenEdges=new Set();
+  const queue=[[start,0]];
+  let truncated=false;
+  while(queue.length){
+    const [node,depth]=queue.shift();
+    nodes.push(node);
+    if(depth>=maxDepth) continue;
+    for(const next of [...(graph.get(node)||[])].sort()){
+      const edgeId=`${node} -> ${next}`;
+      if(!seenEdges.has(edgeId)){
+        if(edges.length>=maxEdges){truncated=true;continue;}
+        seenEdges.add(edgeId);
+        edges.push({from:node,to:next});
+      }
+      if(!seenNodes.has(next)){
+        if(seenNodes.size>=maxNodes){truncated=true;continue;}
+        seenNodes.add(next);
+        queue.push([next,depth+1]);
+      }
+    }
+  }
+  return {nodes,edges,truncated,maxDepth};
+}
+
 function minimumPathCut(pathSets,maxSize=4){
   if(!pathSets.length) return 0;
   const ordered=[...pathSets].sort((a,b)=>a.size-b.size);
@@ -3649,9 +3678,17 @@ function resolveE2E(siteId, graphs){
   let metroPaths=[];
   let pathEnumeration={paths:[],truncated:false,maxDepth:0};
   let downstreamBranch=null;
+  let diagnosticLldp={nodes:[],edges:[],truncated:false,maxDepth:0};
   if(meName){
     pathEnumeration=enumerateCnPaths(meName,lldpGraph,4);
     metroPaths=pathEnumeration.paths;
+
+    // A valid LLDP component must remain visible even when no CN pattern can
+    // be resolved. Keep it separate from metroPaths so it is diagnostic only:
+    // it must not inflate viable-path or minimum-cut calculations.
+    if(!metroPaths.length){
+      diagnosticLldp=collectReachableLldp(meName,lldpGraph,24,100,180);
+    }
 
     // A site can have one common access leg before reaching an upstream ME
     // which has two or more independent CN corridors. Root-level edge-
@@ -3694,9 +3731,15 @@ function resolveE2E(siteId, graphs){
   }else{
     resilience.accessClassification=mwPath.length>1?'SINGLE MW ACCESS / ACCESS SPOF':'DIRECT ME ACCESS';
   }
+  if(!metroPaths.length&&diagnosticLldp.nodes.length>1){
+    resilience.classification='LLDP CONNECTED / CN UNRESOLVED';
+    resilience.lldpNodeCount=diagnosticLldp.nodes.length;
+    resilience.lldpEdgeCount=diagnosticLldp.edges.length;
+    resilience.lldpTruncated=diagnosticLldp.truncated;
+  }
 
   const finalNodes = [];
-  [...mwPath, meName, ...metroPaths.flat()].forEach(n => {
+  [...mwPath, meName, ...metroPaths.flat(), ...diagnosticLldp.nodes].forEach(n => {
     if(n && !finalNodes.includes(n)) finalNodes.push(n);
   });
 
@@ -3728,6 +3771,7 @@ function resolveE2E(siteId, graphs){
       explicitDirectMe,
       traceMode,
       metroPaths,
+      diagnosticLldp,
       resilience,
       finalNodes,
       alarmSiteIds
@@ -4784,6 +4828,27 @@ function buildTopologyNetwork(rows, topo){
     });
   });
 
+  // Diagnostic LLDP is rendered only when no CN path is resolved. These
+  // edges prove the database adjacency without presenting it as a viable CN
+  // route. Orange dashed styling distinguishes unresolved topology.
+  const diagnostic=topo.diagnosticLldp||{nodes:[],edges:[]};
+  (diagnostic.nodes||[]).forEach(addNode);
+  (diagnostic.edges||[]).forEach(link=>{
+    const edgeKey=pathEdgeKey(link.from,link.to);
+    if(edgeAdded.has(edgeKey)) return;
+    edgeAdded.add(edgeKey);
+    edges.push({
+      from:link.from,
+      to:link.to,
+      arrows:'to',
+      color:{color:'#f59e0b'},
+      width:2.2,
+      dashes:true,
+      title:'LLDP connected; CN route unresolved',
+      smooth:{type:'dynamic'}
+    });
+  });
+
   const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
   const options = {
     autoResize: true,
@@ -4833,6 +4898,9 @@ function buildTopologyNetwork(rows, topo){
   const traceRows=(topo.metroPaths||[]).slice(0,8).map((path,index)=>
     `<div style="margin-bottom:7px"><strong>Path ${index+1}:</strong> ${escapeHtml([...mwPath,...path].filter((node,pos,arr)=>pos===0||node!==arr[pos-1]).join(' → '))}</div>`
   );
+  if(!traceRows.length&&(topo.diagnosticLldp?.nodes||[]).length>1){
+    traceRows.push(`<div><strong>LLDP connected:</strong> ${escapeHtml(String(topo.diagnosticLldp.nodes.length))} nodes, ${escapeHtml(String(topo.diagnosticLldp.edges.length))} links. Jalur menuju CN belum ditemukan.</div>`);
+  }
   if((topo.metroPaths||[]).length>8) traceRows.push(`<div>+ ${(topo.metroPaths||[]).length-8} independent backup paths lainnya ditampilkan pada graph.</div>`);
   document.getElementById('tracePath').innerHTML=traceRows.length?traceRows.join(''):'No topology trace found.';
   const criticalNodeText=(resilience.criticalNodes||[]).length?resilience.criticalNodes.join(', '):'none';
@@ -4841,6 +4909,7 @@ function buildTopologyNetwork(rows, topo){
     `<strong>${escapeHtml(resilience.classification||'NO CN PATH')}</strong><br>`+
     `Access: ${escapeHtml(resilience.accessClassification||'-')}<br>`+
     `Metro-to-CN: ${escapeHtml(String(resilience.pathCount||0))} displayed E2E path, ${escapeHtml(String(resilience.cnCount||0))} CN, minimum edge cut ${escapeHtml(String(resilience.edgeCutSize??'-'))}, minimum node cut ${escapeHtml(String(resilience.nodeCutSize??'-'))}.<br>`+
+    (resilience.lldpNodeCount?`LLDP diagnostic: ${escapeHtml(String(resilience.lldpNodeCount))} connected nodes, ${escapeHtml(String(resilience.lldpEdgeCount||0))} links; belum mencapai pola CN.${resilience.lldpTruncated?' Display dibatasi untuk menjaga performa.':''}<br>`:'')+
     (resilience.downstreamBranchNode?`After ${escapeHtml(resilience.downstreamBranchNode)}: ${escapeHtml(String(resilience.downstreamPathCount||0))} independent path, minimum edge cut ${escapeHtml(String(resilience.downstreamEdgeCut??'-'))} (${escapeHtml(resilience.downstreamClassification||'-')}).<br>`:'')+
     `Single critical node: ${escapeHtml(criticalNodeText)}<br>Single critical edge: ${escapeHtml(criticalEdgeText)}`+
     (resilience.truncated?'<br><span style="color:var(--yellow)">Maksimum 4 jalur independen ditampilkan; jumlah redundansi minimal sudah terkonfirmasi.</span>':'');
