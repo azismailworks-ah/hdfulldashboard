@@ -4341,20 +4341,22 @@ function buildBucketsFromOWS(rows, analyzedSite){
 }
 
 function tableRowsHtml(rows, tableId){
-  const cols = ['No', 'First Occurred On', 'Cleared On', 'Duration','Alarm Name', 'Alarm Source', 'Severity', 'Domain', 'Site ID', 'Site Name', 'Location', 'Ticket ID'];
+  const showDestination = /transport|external/i.test(String(tableId || ''));
+  const cols = ['No', 'First Occurred On', 'Cleared On', 'Duration','Alarm Name', 'Alarm Source', ...(showDestination ? ['Destination'] : []), 'Severity', 'Domain', 'Site ID', 'Site Name', 'Location', 'Ticket ID'];
   return `
     <thead>
       <tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>
     </thead>
     <tbody>
       ${rows.map((r, i) => `
-        <tr data-search="${[r.__firstOcc, r.__alarmName, r.__alarmSrc, r.__severity, r.__domain, r.__siteId, r.__siteName, r.__loc, r.__ticket].join(' ').toLowerCase()}">
+        <tr data-search="${[r.__firstOcc, r.__alarmName, r.__alarmSrc, r.__destination, r.__severity, r.__domain, r.__siteId, r.__siteName, r.__loc, r.__ticket].join(' ').toLowerCase()}">
           <td>${i + 1}</td>
           <td>${r.__firstOcc || '-'}</td>
           <td>${r.__clearTime || '-'}</td>
           <td>${r.__duration || '-'}</td>
           <td>${r.__alarmName || '-'}</td>
           <td>${r.__alarmSrc || '-'}</td>
+          ${showDestination ? `<td>${r.__destination || '-'}</td>` : ''}
           <td><span class="sev ${severityClass(r.__severity)}"><span class="dot" style="background:${severityDot(r.__severity)}"></span>${r.__severity || '-'}</span></td>
           <td>${r.__domain || '-'}</td>
           <td>${r.__siteId || '-'}</td>
