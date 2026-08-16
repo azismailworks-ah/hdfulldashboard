@@ -1,226 +1,472 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>HELPDESK DIOC</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07111f">
+  <title>HELPDESK DIOC</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050b14;
+      --sidebar: rgba(7, 17, 31, .96);
+      --panel: rgba(13, 27, 46, .78);
+      --panel-strong: #0d1b2e;
+      --line: rgba(148, 180, 214, .14);
+      --text: #eef7ff;
+      --muted: #8498ad;
+      --cyan: #2ad4ff;
+      --blue: #527dff;
+      --violet: #8a69ff;
+      --green: #41e4a0;
+      --sidebar-width: 312px;
+    }
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    * { box-sizing: border-box; }
 
-<style>
-body{
-  margin:0;
-  font-family:Segoe UI, Roboto;
-  background:#f4f6f9;
-}
-.wrapper{
-  display:flex;
-  height:100vh;
-}
+    html, body { width: 100%; height: 100%; margin: 0; }
 
-/* ===== SIDEBAR ===== */
-.sidebar{
-  width:240px;
-  background:#0b1c2d;
-  color:#fff;
-  display:flex;
-  flex-direction:column;
-}
-.sidebar .title{
-  padding:16px;
-  font-weight:600;
-  border-bottom:1px solid rgba(255,255,255,.1);
-}
-.sidebar a{
-  padding:12px 16px;
-  color:#cfd8dc;
-  text-decoration:none;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.sidebar a:hover,
-.sidebar a.active{
-  background:#123456;
-  color:#fff;
-}
-.sidebar .footer{
-  margin-top:auto;
-  padding:10px;
-  font-size:12px;
-  text-align:center;
-  color:#90a4ae;
-}
+    body {
+      overflow: hidden;
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(circle at 75% 10%, rgba(42, 212, 255, .10), transparent 28%),
+        radial-gradient(circle at 30% 100%, rgba(138, 105, 255, .11), transparent 30%),
+        var(--bg);
+    }
 
-/* ===== CONTENT ===== */
-.content{
-  flex:1;
-  display:flex;
-  flex-direction:column;
-}
-.header{
-  background:#fff;
-  padding:12px 16px;
-  box-shadow:0 1px 4px rgba(0,0,0,.08);
-  font-weight:600;
-}
-.iframe-wrap{
-  flex:1;
-}
-iframe{
-  width:100%;
-  height:100%;
-  border:none;
-  background:#fff;
-}
-</style>
+    button, a { font: inherit; }
+
+    .app-shell {
+      display: grid;
+      grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+      background:
+        linear-gradient(160deg, rgba(21, 42, 66, .58), transparent 36%),
+        var(--sidebar);
+      box-shadow: 18px 0 55px rgba(0, 0, 0, .32);
+      backdrop-filter: blur(24px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 22px 20px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-mark {
+      position: relative;
+      display: grid;
+      width: 44px;
+      height: 44px;
+      flex: 0 0 44px;
+      place-items: center;
+      border: 1px solid rgba(77, 216, 255, .38);
+      border-radius: 14px;
+      color: #fff;
+      background: linear-gradient(145deg, rgba(42, 212, 255, .30), rgba(82, 125, 255, .55));
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, .28), 0 12px 30px rgba(36, 151, 255, .22);
+    }
+
+    .brand-mark::after {
+      position: absolute;
+      right: -3px;
+      bottom: -3px;
+      width: 11px;
+      height: 11px;
+      content: "";
+      border: 2px solid #07111f;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 14px var(--green);
+    }
+
+    .brand-copy strong { display: block; font-size: 14px; letter-spacing: .08em; }
+    .brand-copy span { color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; }
+
+    .nav-scroll {
+      min-height: 0;
+      flex: 1;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 15px 13px 24px;
+      scrollbar-color: rgba(86, 145, 191, .38) transparent;
+      scrollbar-width: thin;
+    }
+
+    .nav-scroll::-webkit-scrollbar { width: 5px; }
+    .nav-scroll::-webkit-scrollbar-thumb { border-radius: 10px; background: rgba(86, 145, 191, .38); }
+
+    .nav-label {
+      margin: 3px 9px 10px;
+      color: #60768d;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .menu-group { margin-bottom: 8px; }
+
+    .group-trigger {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      border: 1px solid transparent;
+      border-radius: 13px;
+      color: #c5d4e4;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+      transition: .2s ease;
+    }
+
+    .group-trigger:hover,
+    .menu-group.open > .group-trigger {
+      border-color: var(--line);
+      color: #fff;
+      background: linear-gradient(100deg, rgba(42, 212, 255, .10), rgba(82, 125, 255, .06));
+      box-shadow: inset 0 1px rgba(255, 255, 255, .04);
+    }
+
+    .group-icon {
+      display: grid;
+      width: 32px;
+      height: 32px;
+      flex: 0 0 32px;
+      place-items: center;
+      border: 1px solid rgba(130, 167, 204, .14);
+      border-radius: 10px;
+      color: var(--cyan);
+      background: rgba(255, 255, 255, .035);
+      box-shadow: inset 0 1px rgba(255, 255, 255, .07);
+    }
+
+    .group-name { flex: 1; font-size: 13px; font-weight: 650; }
+    .chevron { color: #688096; font-size: 12px; transition: transform .25s ease; }
+    .menu-group.open .chevron { transform: rotate(180deg); }
+
+    .submenu {
+      display: grid;
+      grid-template-rows: 0fr;
+      opacity: 0;
+      transition: grid-template-rows .28s ease, opacity .2s ease;
+    }
+
+    .menu-group.open .submenu { grid-template-rows: 1fr; opacity: 1; }
+    .submenu-inner { min-height: 0; overflow: hidden; }
+
+    .nav-item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 4px 0 4px 16px;
+      padding: 10px 12px 10px 18px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: #8ea2b6;
+      font-size: 12.5px;
+      line-height: 1.25;
+      text-decoration: none;
+      transition: .18s ease;
+    }
+
+    .nav-item::before {
+      position: absolute;
+      left: -2px;
+      width: 1px;
+      height: calc(100% + 9px);
+      content: "";
+      background: var(--line);
+    }
+
+    .nav-item:hover { color: #eaf7ff; transform: translateX(2px); }
+
+    .nav-item.active {
+      border-color: rgba(49, 199, 255, .26);
+      color: #fff;
+      background: linear-gradient(100deg, rgba(42, 212, 255, .16), rgba(82, 125, 255, .12));
+      box-shadow: 0 9px 24px rgba(0, 0, 0, .16), inset 0 1px rgba(255, 255, 255, .07);
+    }
+
+    .nav-item.active::after {
+      position: absolute;
+      left: -3px;
+      width: 3px;
+      height: 22px;
+      content: "";
+      border-radius: 3px;
+      background: var(--cyan);
+      box-shadow: 0 0 12px var(--cyan);
+    }
+
+    .sidebar-footer {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px 19px;
+      border-top: 1px solid var(--line);
+      color: #7890a6;
+      font-size: 11px;
+      background: rgba(3, 10, 19, .42);
+    }
+
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+
+    .main {
+      position: relative;
+      display: flex;
+      min-width: 0;
+      min-height: 0;
+      flex-direction: column;
+      overflow: hidden;
+      background: rgba(4, 12, 22, .78);
+    }
+
+    .topbar {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      min-height: 75px;
+      align-items: center;
+      gap: 15px;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 19, 33, .76);
+      box-shadow: 0 12px 38px rgba(0, 0, 0, .18);
+      backdrop-filter: blur(20px);
+    }
+
+    .mobile-toggle {
+      display: none;
+      width: 40px;
+      height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: #fff;
+      background: var(--panel);
+      cursor: pointer;
+    }
+
+    .page-copy { min-width: 0; flex: 1; }
+    .breadcrumb { margin-bottom: 3px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .page-title { overflow: hidden; margin: 0; font-size: clamp(17px, 2vw, 23px); font-weight: 650; letter-spacing: -.02em; text-overflow: ellipsis; white-space: nowrap; }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid rgba(65, 228, 160, .18);
+      border-radius: 999px;
+      color: #a9bdd0;
+      background: rgba(65, 228, 160, .06);
+      font-size: 11px;
+    }
+
+    .viewport {
+      position: relative;
+      min-height: 0;
+      flex: 1;
+      margin: 14px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: #081321;
+      box-shadow: 0 26px 70px rgba(0, 0, 0, .38), inset 0 1px rgba(255, 255, 255, .04);
+    }
+
+    iframe { display: block; width: 100%; height: 100%; border: 0; background: #081321; }
+
+    .backdrop { display: none; }
+
+    @media (max-width: 860px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { position: fixed; inset: 0 auto 0 0; width: min(88vw, var(--sidebar-width)); transform: translateX(-105%); transition: transform .28s ease; }
+      body.menu-open .sidebar { transform: translateX(0); }
+      .mobile-toggle { display: grid; place-items: center; flex: 0 0 40px; }
+      .topbar { min-height: 68px; padding: 10px 14px; }
+      .viewport { margin: 9px; border-radius: 14px; }
+      .status-pill span:last-child { display: none; }
+      .backdrop { position: fixed; z-index: 15; inset: 0; display: block; visibility: hidden; opacity: 0; background: rgba(0, 5, 12, .7); backdrop-filter: blur(3px); transition: .25s ease; }
+      body.menu-open .backdrop { visibility: visible; opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
 </head>
 <body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigasi utama">
+      <div class="brand">
+        <div class="brand-mark"><i class="bi bi-headset"></i></div>
+        <div class="brand-copy"><strong>HELPDESK DIOC</strong><span>Operations Intelligence</span></div>
+      </div>
 
-<div class="wrapper">
+      <nav class="nav-scroll">
+        <div class="nav-label">Workspace</div>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="title">HELPDESK DIOC</div>
+        <section class="menu-group open">
+          <button class="group-trigger" type="button" aria-expanded="true">
+            <span class="group-icon"><i class="bi bi-grid-1x2"></i></span>
+            <span class="group-name">Tracker Helpdesk</span>
+            <i class="bi bi-chevron-down chevron"></i>
+          </button>
+          <div class="submenu"><div class="submenu-inner">
+            <a class="nav-item active" href="dashboard.html"><i class="bi bi-speedometer2"></i><span>Dashboard</span></a>
+            <a class="nav-item" href="vip.html"><i class="bi bi-star"></i><span>VIP</span></a>
+            <a class="nav-item" href="ctt.html"><i class="bi bi-journal-text"></i><span>CTT</span></a>
+            <a class="nav-item" href="sqdt.html"><i class="bi bi-diagram-3"></i><span>SQDT</span></a>
+            <a class="nav-item" href="traffic degradation.html"><i class="bi bi-graph-down-arrow"></i><span>Traffic Deg</span></a>
+            <a class="nav-item" href="export.html"><i class="bi bi-download"></i><span>Export Data</span></a>
+            <a class="nav-item" href="siteanalysisviptraffic.html"><i class="bi bi-file-earmark-bar-graph"></i><span>Site Analysis VIP &amp; Traffic Deg</span></a>
+            <a class="nav-item" href="siteanalysisctt.html"><i class="bi bi-file-earmark-text"></i><span>Site Analysis CTT</span></a>
+            <a class="nav-item" href="global search.html"><i class="bi bi-search"></i><span>SEARCH</span></a>
+            <a class="nav-item" href="export.html"><i class="bi bi-database-down"></i><span>Export Data</span></a>
+            <a class="nav-item" href="helpdesk copilot.html"><i class="bi bi-robot"></i><span>Helpdesk CoPilot</span></a>
+            <a class="nav-item" href="passwordsiteinfo.html"><i class="bi bi-buildings"></i><span>Site Jabodetabek</span></a>
+          </div></div>
+        </section>
 
-    <a href="#" class="active" onclick="loadPage(this,'dashborad.html')">
-      <i class="bi bi-speedometer2"></i> Dashboard
-    </a>
-    <a href="#" onclick="loadPage(this,'vip.html')">
-      <i class="bi bi-star-fill"></i> VIP
-    </a>
-    <a href="#" onclick="loadPage(this,'ctt.html')">
-      <i class="bi bi-journal-text"></i> CTT
-    </a>
-    <a href="#" onclick="loadPage(this,'sqdt.html')">
-      <i class="bi bi-diagram-3"></i> SQDT
-    </a>
-    <a href="#" onclick="loadPage(this,'traffic degradation.html')">
-      <i class="bi bi-graph-down"></i> Traffic Deg
-    </a>
+        <section class="menu-group">
+          <button class="group-trigger" type="button" aria-expanded="false">
+            <span class="group-icon"><i class="bi bi-map"></i></span>
+            <span class="group-name">Map VIP Analysis</span>
+            <i class="bi bi-chevron-down chevron"></i>
+          </button>
+          <div class="submenu"><div class="submenu-inner">
+            <a class="nav-item" href="map open tt.html"><i class="bi bi-geo-alt"></i><span>Map VIP Open TT Jabodetabek</span></a>
+            <a class="nav-item" href="VIPNational.html"><i class="bi bi-globe-asia-australia"></i><span>Map VIP Nasional</span></a>
+            <a class="nav-item" href="realtimealarmvip.html"><i class="bi bi-broadcast-pin"></i><span>VIP NETDRONE</span></a>
+          </div></div>
+        </section>
 
-    <hr class="text-secondary mx-3">
+        <section class="menu-group">
+          <button class="group-trigger" type="button" aria-expanded="false">
+            <span class="group-icon"><i class="bi bi-bar-chart-line"></i></span>
+            <span class="group-name">KPI Analysis</span>
+            <i class="bi bi-chevron-down chevron"></i>
+          </button>
+          <div class="submenu"><div class="submenu-inner">
+            <a class="nav-item" href="passwordkpianalysis.html"><i class="bi bi-activity"></i><span>KPI Analysis</span></a>
+            <a class="nav-item" href="https://api.azhautomation.com/vip-dashboard"><i class="bi bi-graph-up-arrow"></i><span>VISTA KPI Analysis</span></a>
+          </div></div>
+        </section>
 
-    <a href="#" onclick="loadPage(this,'map open tt.html')">
-      <i class="bi bi-geo-alt-fill"></i> Map VIP Open TT JABODETABEK
-    </a>
-    <a href="#" onclick="loadPage(this,'VIPNational.html')">
-      <i class="bi bi-geo-alt-fill"></i> Map VIP Nasional
-    </a>
-    <a href="#" onclick="loadPage(this,'global search.html')">
-      <i class="bi bi-search"></i> SEARCH
-    </a>
-    <a href="#" onclick="loadPage(this,'realtimealarmvip.html')">
-      <i class="bi bi-activity"></i> VIP NETDRONE
-    </a>
-    </a>
-    <hr class="text-secondary mx-3">
-    
-    <a href="#" onclick="loadPage(this,'helpdesk copilot.html')">
-      <i class="bi bi-robot"></i> Helpdesk CoPilot
-    </a>
-    <a href="#" onclick="loadPage(this,'passwordonestopanalysis.html')">
-      <i class="bi bi-robot"></i> OSA Helpdesk
-    </a>
-    <a href="#" onclick="loadPage(this,'kpicheck.html')">
-      <i class="bi bi-graph-down"></i> SPECTRA
-    </a>
-    <a href="#" onclick="loadPage(this,'MSTAV1.html')">
-      <i class="bi bi-robot"></i> MSTA Helpdesk
-    </a>
-    <a href="#" onclick="loadPage(this,'HCSITEJABO.html')">
-      <i class="bi bi-activity"></i> NOVA HealthCheck
-    </a>
-    <a href="#" onclick="loadPage(this,'passwordkpianalysis.html')">
-      <i class="bi bi-graph-down"></i> KPI Analysis
-    </a>
+        <section class="menu-group">
+          <button class="group-trigger" type="button" aria-expanded="false">
+            <span class="group-icon"><i class="bi bi-tools"></i></span>
+            <span class="group-name">Analysis Tools</span>
+            <i class="bi bi-chevron-down chevron"></i>
+          </button>
+          <div class="submenu"><div class="submenu-inner">
+            <a class="nav-item" href="passwordonestopanalysis.html"><i class="bi bi-layers"></i><span>OSA Helpdesk</span></a>
+            <a class="nav-item" href="kpicheck.html"><i class="bi bi-bezier2"></i><span>SPECTRA</span></a>
+            <a class="nav-item" href="MSTAV1.html"><i class="bi bi-cpu"></i><span>MSTA Helpdesk</span></a>
+            <a class="nav-item" href="HCSITEJABO.html"><i class="bi bi-heart-pulse"></i><span>NOVA HealthCheck</span></a>
+            <a class="nav-item" href="passwordrouteranalysis.html"><i class="bi bi-router"></i><span>Router Analysis</span></a>
+            <a class="nav-item" href="passwordroutinganalysis.html"><i class="bi bi-diagram-2"></i><span>SQDT Site Analysis</span></a>
+          </div></div>
+        </section>
 
-    <a href="#" onclick="loadPage(this,'https://api.azhautomation.com/vip-dashboard')">
-      <i class="bi bi-graph-down"></i> VISTA KPI Analysis
-    </a>    
-    
-    <hr class="text-secondary mx-3">
-    
-    <a href="#" onclick="loadPage(this,'passcttshield.html')">
-      <i class="bi bi-robot"></i> CTT SHIELD - AI (Owner Only)
-    </a>    
-    <a href="#" onclick="loadPage(this,'passspectratd.html')">
-      <i class="bi bi-robot"></i> SPECTRA TD - AI (Owner Only)
-    </a> 
-    <a href="#" onclick="loadPage(this,'passosa_AI.html')">
-      <i class="bi bi-robot"></i> OSA - AI (Owner Only)
-    </a> 
+        <section class="menu-group">
+          <button class="group-trigger" type="button" aria-expanded="false">
+            <span class="group-icon"><i class="bi bi-stars"></i></span>
+            <span class="group-name">AI Analysis</span>
+            <i class="bi bi-chevron-down chevron"></i>
+          </button>
+          <div class="submenu"><div class="submenu-inner">
+            <a class="nav-item" href="passcttshield.html"><i class="bi bi-shield-check"></i><span>CTT SHIELD</span></a>
+            <a class="nav-item" href="passspectratd.html"><i class="bi bi-lightning-charge"></i><span>SPECTRA TD</span></a>
+            <a class="nav-item" href="passosa_AI.html"><i class="bi bi-robot"></i><span>OSA - AI</span></a>
+          </div></div>
+        </section>
+      </nav>
 
-    <hr class="text-secondary mx-3">
+      <div class="sidebar-footer"><span class="pulse"></span><span>System Operational</span><span style="margin-left:auto">AZH Prod</span></div>
+    </aside>
 
-    <a href="#" onclick="loadPage(this,'passwordrouteranalysis.html')">
-      <i class="bi bi-bezier"></i> Router Analysis
-    </a>
-    <a href="#" onclick="loadPage(this,'passwordroutinganalysis.html')">
-      <i class="bi bi-bezier2"></i> SQDT Site Analysis
-    </a>
-    <a href="#" onclick="loadPage(this,'siteanalysisviptraffic.html')">
-      <i class="bi bi-journal-text"></i> Site Analysis VIP & Traffic Deg
-    </a>
-    <a href="#" onclick="loadPage(this,'siteanalysisctt.html')">
-      <i class="bi bi-journal-text"></i> Site Analysis CTT
-    </a>
-
-    <hr class="text-secondary mx-3">
-
-    <a href="#" onclick="loadPage(this,'export.html')">
-      <i class="bi bi-download"></i> Export Data
-    </a>
-    <a href="#" onclick="loadPage(this,'passwordsiteinfo.html')">
-      <i class="bi bi-download"></i> Site JABODETABEK
-    </a>
-
-
-    <div class="footer">AZH Prod</div>
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-toggle" type="button" aria-label="Buka menu"><i class="bi bi-list"></i></button>
+        <div class="page-copy">
+          <div class="breadcrumb" id="pageGroup">Tracker Helpdesk</div>
+          <h1 class="page-title" id="pageTitle">Dashboard</h1>
+        </div>
+        <div class="status-pill"><span class="pulse"></span><span>All systems online</span></div>
+      </header>
+      <div class="viewport">
+        <iframe id="mainFrame" name="mainFrame" src="dashboard.html" title="Dashboard Helpdesk"></iframe>
+      </div>
+    </main>
   </div>
+  <button class="backdrop" type="button" aria-label="Tutup menu"></button>
 
-  <!-- CONTENT -->
-  <div class="content">
-    <div class="header" id="pageTitle">Dashboard</div>
-    <div class="iframe-wrap">
-      <iframe id="mainFrame" src="dashboard.html"></iframe>
-    </div>
-  </div>
+  <script>
+    const groups = document.querySelectorAll('.menu-group');
+    const navItems = document.querySelectorAll('.nav-item');
+    const frame = document.getElementById('mainFrame');
+    const title = document.getElementById('pageTitle');
+    const groupTitle = document.getElementById('pageGroup');
+    const mobileToggle = document.querySelector('.mobile-toggle');
+    const backdrop = document.querySelector('.backdrop');
 
-</div>
+    groups.forEach((group) => {
+      const trigger = group.querySelector('.group-trigger');
+      trigger.addEventListener('click', () => {
+        const willOpen = !group.classList.contains('open');
+        groups.forEach((item) => {
+          item.classList.remove('open');
+          item.querySelector('.group-trigger').setAttribute('aria-expanded', 'false');
+        });
+        if (willOpen) {
+          group.classList.add('open');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+    });
 
-<script>
-function loadPage(el, url){
-  document.querySelectorAll('.sidebar a').forEach(a=>a.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('mainFrame').src = url;
-  document.getElementById('pageTitle').innerText = el.innerText.trim();
-}
+    navItems.forEach((item) => {
+      item.addEventListener('click', (event) => {
+        event.preventDefault();
+        navItems.forEach((link) => link.classList.remove('active'));
+        item.classList.add('active');
+        frame.src = item.getAttribute('href');
+        title.textContent = item.textContent.trim();
+        groupTitle.textContent = item.closest('.menu-group').querySelector('.group-name').textContent.trim();
+        frame.title = item.textContent.trim();
+        document.body.classList.remove('menu-open');
+      });
+    });
 
-</script>
-
+    mobileToggle.addEventListener('click', () => document.body.classList.toggle('menu-open'));
+    backdrop.addEventListener('click', () => document.body.classList.remove('menu-open'));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') document.body.classList.remove('menu-open');
+    });
+  </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
