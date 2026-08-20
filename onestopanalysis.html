@@ -2468,6 +2468,10 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
   // siteName = database naming metro (site id -> ME name) for topology direct-ME resolution
   // siteMap = site id / site name lookup for display only
   const { siteToMe, meToSites } = buildLookupMap(siteName || []);
+  // Preserve the authoritative direct/landing relationship before enriching
+  // `siteToMe` with the broader downstream membership listed in RME Route.
+  // Downstream members must not be mistaken for direct physical ME access.
+  const directSiteToMe = new Map(siteToMe);
   const explicitRouteSiteToMe = new Map();
 
   // Enrich site -> ME mapping from the ME route database itself.
@@ -2496,7 +2500,7 @@ function buildGraphs({ mwRoute, mwLinks, siteMap, siteName }){
 
   const siteLabels = buildLookupMap(siteMap || []);
 
-  return { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, meToSites, meToSite, nodeToSite, siteLabels };
+  return { mwGraph, lldpGraph, siteToMe, directSiteToMe, explicitRouteSiteToMe, meToSites, meToSite, nodeToSite, siteLabels };
 }
 
 function bfs(start, graph, isTarget, blocked = new Set()){
@@ -2599,31 +2603,40 @@ function analyzePathResilience(start,paths,truncated=false){
 }
 
 function resolveE2E(siteId, graphs){
-  const { mwGraph, lldpGraph, siteToMe, explicitRouteSiteToMe, nodeToSite, meToSite } = graphs;
+  const { mwGraph, lldpGraph, siteToMe, directSiteToMe, explicitRouteSiteToMe, nodeToSite, meToSite } = graphs;
 
   // Support both routing models:
   // 1) direct ME mapped from site id
   // 2) site reaches ME via MW path
   const directMe = clean(siteToMe.get(siteId) || '');
+  const authoritativeDirectMe = clean(directSiteToMe?.get(siteId) || '');
   const explicitDirectMe = clean(explicitRouteSiteToMe?.get(siteId) || '');
   let mwPath = [siteId];
   let meName = '';
   let traceMode = 'unknown';
 
-  // An explicit site -> ME row in MEROUTE is authoritative and must not be
-  // replaced by an unrelated MW adjacency.
-  if(explicitDirectMe){
-    meName=explicitDirectMe;
+  // Only the authoritative SITE_NAME mapping may declare direct ME access.
+  // RME Route can list all sites behind one ME and is therefore not sufficient
+  // evidence to skip the physical MW chain.
+  if(authoritativeDirectMe){
+    meName=authoritativeDirectMe;
     traceMode='direct-explicit';
   }
 
   if(!meName&&(mwGraph.get(siteId) || new Set()).size){
-    const mwRes = bfs(siteId, mwGraph, node => node !== siteId && siteToMe.has(node));
+    const mwRes = bfs(siteId, mwGraph, node => node !== siteId && directSiteToMe?.has(node));
     if(mwRes.found && mwRes.path.length > 1){
       mwPath = mwRes.path;
-      meName = clean(siteToMe.get(mwRes.found) || '');
+      meName = clean(directSiteToMe.get(mwRes.found) || '');
       traceMode = meName ? 'mw' : 'unknown';
     }
+  }
+
+  // Compatibility fallback for a true direct site that is absent from the
+  // authoritative lookup and also has no MW adjacency to traverse.
+  if(!meName&&explicitDirectMe&&!(mwGraph.get(siteId) || new Set()).size){
+    meName=explicitDirectMe;
+    traceMode='direct-route-fallback';
   }
 
   if(!meName && directMe){
