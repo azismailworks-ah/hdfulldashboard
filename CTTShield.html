@@ -29,6 +29,8 @@
       background:var(--panel2);color:var(--text);font-weight:750;display:inline-flex;align-items:center;gap:8px}
     .btn:hover{border-color:#3a5577}.btn.primary{background:#0f8c69;border-color:#18a47d;color:#fff}
     .btn.primary:hover{background:#10a078}.btn.ghost{background:transparent;color:var(--muted)}
+    .btn.selected{background:#173454;border-color:#2f5f8d;color:#8fcaff}
+    .row-check{width:15px;height:15px;accent-color:var(--green);cursor:pointer}
     .spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
     .summary{display:grid;grid-template-columns:repeat(5,minmax(145px,1fr));gap:10px;margin-bottom:14px}
     .stat{background:linear-gradient(145deg,rgba(16,32,52,.98),rgba(9,21,37,.98));
@@ -60,7 +62,7 @@
     tbody tr{transition:.15s;cursor:pointer}tbody tr:hover{background:#0e2137}
     .health{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:6px 8px;font-size:9px;font-weight:850;white-space:nowrap}
     .health:before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
-    .health.ok{background:var(--green2);color:var(--green)}.health.issue{background:var(--red2);color:var(--red)}
+    .health.ok{background:var(--green2);color:var(--green)}.health.ok_warning{background:#183a4d;color:#65c7ff}.health.issue{background:var(--red2);color:var(--red)}
     .health.verify{background:var(--amber2);color:var(--amber)}.health.pending{background:#1b2a3d;color:#91a2b7}
     .metric{font-weight:800;white-space:nowrap}.metric small{font-size:8px;margin-left:2px}.metric.good{color:var(--green)}.metric.bad{color:var(--red)}.metric.na{color:#687d95;font-size:9px;font-weight:600}
     .primary strong{display:block;font-size:10px;white-space:nowrap}.primary span{display:block;margin-top:3px;color:var(--muted);font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
@@ -75,7 +77,7 @@
     @keyframes slide{from{transform:translateX(35px);opacity:.6}}
     .drawer-head{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:1px solid var(--line)}
     .drawer-head h2{font-size:26px;margin:0}.drawer-head p{margin:5px 0 0;color:var(--muted)}.close{border:1px solid var(--line);background:#102036;color:var(--text);width:34px;height:34px;border-radius:9px;font-size:18px}
-    .verdict{margin:17px 0;border:1px solid;border-radius:12px;padding:15px;display:flex;gap:12px}.verdict.issue{border-color:#6e3040;background:#321a26}.verdict.ok{border-color:#1b6150;background:#0c332e}.verdict.verify,.verdict.pending{border-color:#67512a;background:#312817}
+    .verdict{margin:17px 0;border:1px solid;border-radius:12px;padding:15px;display:flex;gap:12px}.verdict.issue{border-color:#6e3040;background:#321a26}.verdict.ok{border-color:#1b6150;background:#0c332e}.verdict.ok_warning{border-color:#29607c;background:#102c3c}.verdict.verify,.verdict.pending{border-color:#67512a;background:#312817}
     .vicon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.09);display:grid;place-items:center;font-weight:900;flex:0 0 auto}
     .verdict small{font-size:8px;letter-spacing:.12em;font-weight:900}.verdict strong{font-size:20px;display:block;margin:2px 0}.verdict p{font-size:9px;color:#b3c0cd;margin:0;line-height:1.5}
     .section-title{font-size:9px;color:#8ca0b7;letter-spacing:.12em;text-transform:uppercase;margin:20px 0 9px}
@@ -97,12 +99,13 @@
   <section class="top">
     <div>
       <p class="eyebrow">CTT - Service Health Intelligence & Event Logic Dashboard</p>
-      <h1>CTT - SHIELD AI ANALYSIS</h1>
+      <h1>CTT - SHIELD</h1>
       <p class="subtitle">Open-ticket intelligence using the latest available six-hour KPI, realtime TWAMP, and impact-alarm correlation.</p>
     </div>
     <div class="actions">
       <button class="btn" id="syncBtn" onclick="loadTickets()"><span>↻</span> Check Open TT</button>
       <button class="btn primary" id="analyzeBtn" onclick="analyzeAll()"><span>✦</span> Analyze Sites</button>
+      <button class="btn selected" id="analyzeSelectedBtn" onclick="analyzeSelected()" disabled><span>✓</span> Analyze Selected <b id="selectedCount">0</b></button>
     </div>
   </section>
 
@@ -125,14 +128,14 @@
     </div>
     <div class="filters">
       <label class="search"><span>⌕</span><input id="searchInput" placeholder="Search TT, Site ID, Site Name, or ROH…" oninput="render()"></label>
-      <select id="healthFilter" onchange="render()"><option value="ALL">All Health</option><option value="OK">Already OK</option><option value="ISSUE">Still Issue</option><option value="VERIFY">Need Verification</option><option value="PENDING">Not Analyzed</option></select>
+      <select id="healthFilter" onchange="render()"><option value="ALL">All Health</option><option value="OK">Already OK</option><option value="OK_WARNING">OK with Warning</option><option value="ISSUE">Still Issue</option><option value="VERIFY">Need Verification</option><option value="PENDING">Not Analyzed</option></select>
       <select id="regionFilter" onchange="render()"><option value="ALL">All Regions</option></select>
       <button class="btn ghost" onclick="resetFilters()">Reset</button>
       <button class="btn" id="exportBtn" onclick="exportFilteredCsv()" disabled><span>⇩</span> Export CSV</button>
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>SITE HEALTH</th><th>AVAIL 6H</th><th>PLR 6H</th><th>DELAY 6H</th><th>ACTIVE ALARM SIA</th><th>TT / OPEN DATE</th><th>SITE</th><th>REGION</th><th>AGING</th><th>OWNER</th></tr></thead>
+        <thead><tr><th><input class="row-check" id="selectAllCheck" type="checkbox" onclick="toggleAllFiltered(this.checked)" aria-label="Select all filtered rows"></th><th>SITE HEALTH</th><th>AVAIL 6H</th><th>PLR 6H</th><th>DELAY 6H</th><th>ACTIVE ALARM SIA</th><th>TT / OPEN DATE</th><th>SITE</th><th>REGION</th><th>AGING</th><th>OWNER</th></tr></thead>
         <tbody id="tableBody"></tbody>
       </table>
       <div class="empty" id="emptyState"><strong>No ticket loaded</strong>Synchronize open TT from the bot sheet.</div>
@@ -153,10 +156,10 @@ const CONFIG = Object.freeze({
   API_BASE: "https://api.azhautomation.com",
   BOT_CSV: "https://docs.google.com/spreadsheets/d/11TckLhhJYst44004cOKequgsZHRC2N4pG05o4OjdGPQ/export?format=csv&gid=448941783",
   IMPACT_RULES_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3Pbba7AX8zdtoEYcqrOjkQlkJEWuagDXggAtB7CL8Mu6qv8i2HoCYsMcNbBP3X5TJPJzuGqtaVOii/pub?output=csv",
-  HOURS: 6, AVAIL_MIN: 99, PLR_MAX: 1, DELAY_MAX: 10, KPI_CONCURRENCY: 8
+  HOURS: 6, AVAIL_MIN: 99, PLR_MAX: 1, DELAY_MAX: 10, KPI_CONCURRENCY: 3
 });
 
-let tickets = [], rules = null, selectedIndex = -1, busy = false;
+let tickets = [], rules = null, selectedIndex = -1, busy = false, selectedTickets = new Set();
 
 function esc(value) {
   return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -176,6 +179,70 @@ function parseApiTime(value){
   if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(raw))return new Date(raw.replace(" ","T")+":00+07:00").getTime();
   if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw))return new Date(raw.replace(" ","T")+"+07:00").getTime();
   return new Date(raw).getTime();
+}
+function parseOpenDate(value){
+  const raw=String(value||"").trim();if(!raw)return NaN;
+  const m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return new Date(`${m[3]}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}T00:00:00+07:00`).getTime();
+  return parseApiTime(raw);
+}
+function percentileMax(rows,field){const values=rows.map(r=>num(r[field])).filter(v=>v!==null);return values.length?Math.max(...values):null}
+function percentileMin(rows,field){let values=rows.map(r=>num(r[field])).filter(v=>v!==null);if(field==="availability"&&values.length&&Math.max(...values.map(Math.abs))<=1)values=values.map(v=>v*100);return values.length?Math.min(...values):null}
+function percentile(rows,field,p){let values=rows.map(r=>num(r[field])).filter(v=>v!==null).sort((a,b)=>a-b);if(field==="availability"&&values.length&&Math.max(...values.map(Math.abs))<=1)values=values.map(v=>v*100).sort((a,b)=>a-b);if(!values.length)return null;const index=(values.length-1)*p,lower=Math.floor(index),upper=Math.ceil(index);return values[lower]+(values[upper]-values[lower])*(index-lower)}
+function medianValues(values){const sorted=[...values].sort((a,b)=>a-b);if(!sorted.length)return null;const middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:(sorted[middle-1]+sorted[middle])/2}
+function bestStableDailyAvailability(rows){
+  const source=rows.map(r=>({date:String(r.time||"").slice(0,10),value:num(r.availability)})).filter(r=>r.date&&r.value!==null);
+  if(!source.length)return{value:null,date:null,samples:0,method:"NO_DATA"};
+  if(Math.max(...source.map(r=>Math.abs(r.value)))<=1)source.forEach(r=>r.value*=100);
+  const groups={};source.forEach(r=>(groups[r.date]??=[]).push(r.value));
+  const stableDays=Object.entries(groups).filter(([,values])=>values.length>=6).map(([date,values])=>({date,samples:values.length,value:medianValues(values)}));
+  if(stableDays.length){
+    stableDays.sort((a,b)=>b.value-a.value||a.date.localeCompare(b.date));
+    return{...stableDays[0],method:"BEST_STABLE_DAILY_MEDIAN",validDays:stableDays.length};
+  }
+  return{value:percentile(rows,"availability",.9),date:null,samples:source.length,method:"WINDOW_P90_FALLBACK",validDays:0};
+}
+function identifyMainIssues(ticket){
+  const finding=String(ticket.founding||"").toUpperCase(),fallback=[ticket.rca,ticket.partIssue].join(" ").toUpperCase(),issues=new Set();
+  const performanceFinding=/\b(PLR|PACKET LOSS|LOSS|TWAMP|DELAY|LATENCY|JITTER|TRAFFIC DEGRAD|TRAFFIC DROP|TRAFFIC DECREASE)\b/.test(finding);
+  if(performanceFinding){
+    if(/\b(PLR|PACKET LOSS|LOSS|TWAMP|TRAFFIC DEGRAD|TRAFFIC DROP|TRAFFIC DECREASE)\b/.test(finding))issues.add("plr");
+    if(/\b(DELAY|LATENCY|JITTER|TWAMP|TRAFFIC DEGRAD|TRAFFIC DROP|TRAFFIC DECREASE)\b/.test(finding))issues.add("delay");
+    return issues;
+  }
+  if(/\b(AVAIL|AVAILABILITY|SITE DOWN|UNAVAILABLE|NO CONNECTION|POWER|PSU|RESET|BATTERY)\b/.test(finding))issues.add("availability");
+  // Jika Finding sudah menyebut KPI problem secara eksplisit, RCA generik
+  // (mis. Power) tidak menambah dimensi lain yang bukan fokus TT.
+  if(issues.size)return issues;
+  if(/\b(AVAIL|AVAILABILITY|SITE DOWN|UNAVAILABLE|NO CONNECTION|POWER|PSU|RESET|BATTERY)\b/.test(fallback))issues.add("availability");
+  if(/\b(PLR|PACKET LOSS|LOSS|TWAMP)\b/.test(fallback))issues.add("plr");
+  if(/\b(DELAY|LATENCY|JITTER|TWAMP)\b/.test(fallback))issues.add("delay");
+  return issues.size?issues:new Set(["availability","plr","delay"]);
+}
+function alarmDimensions(name){
+  const n=normalizeAlarm(name),dims=new Set();
+  if(/UNAVAILABLE| DOWN|DISCONNECT|NO CONNECTION|POWER|BATTERY|PSU|RESET|CELL/.test(n))dims.add("availability");
+  if(/PACKET| LOSS|RSL| LOF|TRANSPORT|TRANSMISSION|MICROWAVE| MW |LINK/.test(` ${n} `)){dims.add("plr");dims.add("delay")}
+  if(/DELAY|LATENCY|JITTER/.test(n))dims.add("delay");
+  return dims;
+}
+function alarmFirstTime(alarm){for(const k of ["first_occurrence","firstOccurred","first_occurred","start_time"]){const t=parseApiTime(alarm?.[k]);if(Number.isFinite(t))return t}return NaN}
+function metricState(dimension,current,baseline,incident){
+  const config={availability:{current:current.availabilityMin,baseline:baseline.availabilityMin,healthy:v=>v>=CONFIG.AVAIL_MIN,tolerance:0.5},plr:{current:current.plrMax,baseline:baseline.plrMax,healthy:v=>v<=CONFIG.PLR_MAX,tolerance:0.2},delay:{current:current.delayMax,baseline:baseline.delayMax,healthy:v=>v<=CONFIG.DELAY_MAX,tolerance:2}}[dimension];
+  if(config.current==null)return{state:"missing"};
+  if(config.healthy(config.current))return{state:"healthy"};
+  if(config.baseline!=null&&!config.healthy(config.baseline)){
+    const returned=dimension==="availability"?config.current>=config.baseline-config.tolerance:config.current<=config.baseline+config.tolerance;
+    if(returned)return{state:"baseline_bad",current:config.current,baseline:config.baseline};
+  }
+  const incidentValue=dimension==="availability"?incident?.availabilityMin:dimension==="plr"?incident?.plrMax:incident?.delayMax;
+  const currentAverage=dimension==="plr"?current.plr:dimension==="delay"?current.delay:current.availability;
+  // Untuk PLR/Delay, main incident dianggap pulih bila magnitudonya turun
+  // minimal 80% dari kondisi sekitar Open Date dan rata-rata terbaru sudah
+  // kembali ke operating range. Peak tetap dicatat sebagai warning intermittent.
+  if(dimension==="plr"&&incidentValue>CONFIG.PLR_MAX&&config.current<=incidentValue*.2&&currentAverage!=null&&currentAverage<=CONFIG.PLR_MAX)return{state:"incident_recovered",current:config.current,incident:incidentValue};
+  if(dimension==="delay"&&incidentValue>20&&config.current<=incidentValue*.2&&currentAverage!=null&&currentAverage<=20)return{state:"incident_recovered",current:config.current,incident:incidentValue};
+  return{state:"bad",current:config.current,baseline:config.baseline};
 }
 
 function parseCsv(text) {
@@ -225,6 +292,7 @@ function notify(message,error=false){
 }
 function setBusy(state,type=""){
   busy=state;document.getElementById("syncBtn").disabled=state;document.getElementById("analyzeBtn").disabled=state||!tickets.length;
+  document.getElementById("analyzeSelectedBtn").disabled=state||!selectedTickets.size;
   document.getElementById("syncBtn").innerHTML=state&&type==="sync"?'<span class="spin">↻</span> Synchronizing…':'<span>↻</span> Check Open TT';
   document.getElementById("analyzeBtn").innerHTML=state&&type==="analyze"?'<span class="spin">✦</span> Analyzing…':'<span>✦</span> Analyze Sites';
 }
@@ -240,7 +308,7 @@ async function loadTickets(){
   try{
     const text=await fetchText(CONFIG.BOT_CSV), rows=parseCsv(text), headers=rows.shift()||[], map=new Map(headers.map((h,i)=>[key(h),i]));
     const get=(row,...names)=>{for(const name of names){const i=map.get(key(name));if(i!==undefined)return String(row[i]||"").trim()}return""};
-    tickets=rows.map(row=>({
+    selectedTickets.clear();tickets=rows.map(row=>({
       tt:get(row,"TT"),openDate:get(row,"Open Date MM/DD/YYYY","Open Date"),siteId:cleanSite(get(row,"Site Id","Site ID")),
       siteName:get(row,"Sitename","Site Name"),region:get(row,"Region"),agingPeriod:get(row,"Aging Periode"),
       founding:get(row,"Founding"),rca:get(row,"RCA Category"),partIssue:get(row,"Part Issue"),roh:get(row,"ROH"),
@@ -295,22 +363,24 @@ function isImpact(name,ruleset){
 }
 
 async function getHistories(siteIds){
-  const output=Object.fromEntries(siteIds.map(id=>[id,[]])), now=Date.now(), start=now-CONFIG.HOURS*3600000;
+  const output=Object.fromEntries(siteIds.map(id=>[id,[]])),errors=[],now=Date.now(), start=now-CONFIG.HOURS*3600000;
   for(let cursor=start;cursor<now;cursor+=2*3600000){
     const end=Math.min(cursor+2*3600000,now);
-    const response=await fetchJsonRetry(CONFIG.API_BASE+"/api/ows/history",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({site_ids:siteIds,start:bangkokStamp(cursor),end:bangkokStamp(end)})
-    },180000,1);
-    if(!response.success)throw new Error(response.error||"OWS history failed");
-    siteIds.forEach(id=>{if(Array.isArray(response.data?.[id]))output[id].push(...response.data[id])});
+    try{
+      const response=await fetchJsonRetry(CONFIG.API_BASE+"/api/ows/history",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({site_ids:siteIds,start:bangkokStamp(cursor),end:bangkokStamp(end)})
+      },120000,0);
+      if(!response.success)throw new Error(response.error||"OWS history failed");
+      siteIds.forEach(id=>{if(Array.isArray(response.data?.[id]))output[id].push(...response.data[id])});
+    }catch(error){errors.push(`${bangkokStamp(cursor)}: ${error.message}`)}
   }
-  return output;
+  return {data:output,errors};
 }
 
-async function analyzeKpi(siteId){
+async function analyzeKpi(siteId,days){
   const [kpiState,twampState]=await Promise.allSettled([
-    fetchJson(`${CONFIG.API_BASE}/api/kpi?site_id=${encodeURIComponent(siteId)}&days=1`,{},60000),
+    fetchJson(`${CONFIG.API_BASE}/api/kpi?site_id=${encodeURIComponent(siteId)}&days=${Math.max(1,Math.min(60,days||1))}`,{},180000),
     fetchJson(`${CONFIG.API_BASE}/api/twamp/realtime?site_id=${encodeURIComponent(siteId)}&hours=${CONFIG.HOURS}`,{},60000)
   ]);
   const errors=[],kpi=kpiState.status==="fulfilled"?kpiState.value:null,twamp=twampState.status==="fulfilled"?twampState.value:null;
@@ -328,49 +398,115 @@ async function analyzeKpi(siteId){
   const latest=[kRows.at(-1)?.time,twamp?.latest_time].map(parseApiTime).filter(Number.isFinite);
   return {availability:round(avg(av)),availabilityMin:av.length?round(Math.min(...av)):null,plr:round(avg(plr)),plrMax:plr.length?round(Math.max(...plr)):null,
     delay:round(avg(delay)),delayMax:delay.length?round(Math.max(...delay)):null,dataFresh:latest.length>=2&&latest.every(t=>t>=Date.now()-2*3600000),
-    complete:av.length>0&&plr.length>0&&delay.length>0,errors};
+    complete:av.length>0&&plr.length>0&&delay.length>0,errors,allKpiRows};
 }
 
-async function analyzeAll(){
-  if(busy||!tickets.length)return;setBusy(true,"analyze");progress(2,"Loading impact-alarm rules…");
+function ticketKey(ticket){return `${ticket.tt}||${ticket.siteId}`}
+function analyzeSelected(){
+  if(!selectedTickets.size)return notify("Select at least one TT first",true);
+  return analyzeAll(true);
+}
+async function analyzeAll(selectedOnly=false){
+  const selectedSiteIds=new Set(tickets.filter(t=>selectedTickets.has(ticketKey(t))).map(t=>t.siteId));
+  // Satu Site ID dapat mempunyai beberapa TT. Retry satu baris harus
+  // memperbarui seluruh TT pada site tersebut agar tidak ada hasil lama.
+  const targetTickets=selectedOnly?tickets.filter(t=>selectedSiteIds.has(t.siteId)):tickets;
+  if(busy||!targetTickets.length)return;setBusy(true,"analyze");progress(2,"Loading impact-alarm rules…");
   try{
-    const ruleset=await loadRules(),siteIds=[...new Set(tickets.map(t=>t.siteId))];
+    const ruleset=await loadRules(),siteIds=[...new Set(targetTickets.map(t=>t.siteId))];
     progress(8,"Checking active alarms for all sites…");
-    const activeResponse=await fetchJsonRetry(
-      CONFIG.API_BASE+"/api/ows/multi",
-      {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site_ids:siteIds})},
-      180000,
-      1
-    );
-    if(!activeResponse.success)throw new Error(activeResponse.error||"Active alarm check failed");
+    let activeResponse={success:false,data:{}},activeAlarmError="";
+    try{
+      activeResponse=await fetchJsonRetry(
+        CONFIG.API_BASE+"/api/ows/multi",
+        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({site_ids:siteIds})},
+        180000,
+        0
+      );
+      if(!activeResponse.success)throw new Error(activeResponse.error||"Active alarm check failed");
+    }catch(error){activeAlarmError=error.message;activeResponse={success:false,data:{}}}
     progress(18,"Loading six-hour alarm history in 2-hour windows…");
-    const histories=await getHistories(siteIds),kpiBySite={};
+    const historyResult=await getHistories(siteIds),histories=historyResult.data,kpiBySite={},lookbackBySite={},siteAnchorOpen={};
+    siteIds.forEach(siteId=>{
+      const opens=targetTickets.filter(t=>t.siteId===siteId).map(t=>parseOpenDate(t.openDate)).filter(Number.isFinite);
+      const earliest=opens.length?Math.min(...opens):Date.now()-86400000;
+      siteAnchorOpen[siteId]=earliest;
+      lookbackBySite[siteId]=Math.min(60,Math.max(1,Math.ceil((Date.now()-earliest)/86400000)+15));
+    });
     for(let i=0;i<siteIds.length;i+=CONFIG.KPI_CONCURRENCY){
-      const batch=siteIds.slice(i,i+CONFIG.KPI_CONCURRENCY),results=await Promise.all(batch.map(analyzeKpi));
+      const batch=siteIds.slice(i,i+CONFIG.KPI_CONCURRENCY),results=await Promise.all(batch.map(id=>analyzeKpi(id,lookbackBySite[id])));
       batch.forEach((id,index)=>kpiBySite[id]=results[index]);
-      progress(25+65*Math.min(1,(i+batch.length)/siteIds.length),`Analyzing KPI & TWAMP · ${Math.min(i+batch.length,siteIds.length)} / ${siteIds.length} sites`);
+      progress(25+65*Math.min(1,(i+batch.length)/siteIds.length),`Loading current + baseline KPI · ${Math.min(i+batch.length,siteIds.length)} / ${siteIds.length} sites`);
     }
-    tickets.forEach(ticket=>{
+    targetTickets.forEach(ticket=>{
       const allActive=Array.isArray(activeResponse.data?.[ticket.siteId])?activeResponse.data[ticket.siteId]:[];
       const activeImpact=allActive.filter(a=>isImpact(alarmName(a),ruleset)),uniqueActive=[...new Set(activeImpact.map(alarmName))];
       const history=histories[ticket.siteId]||[],historyImpact=history.filter(a=>isImpact(alarmName(a),ruleset));
-      const k=kpiBySite[ticket.siteId],reasons=[];
-      if(k.availabilityMin!=null&&k.availabilityMin<CONFIG.AVAIL_MIN)reasons.push(`Availability minimum ${formatNum(k.availabilityMin)}%`);
-      if(k.plrMax!=null&&k.plrMax>CONFIG.PLR_MAX)reasons.push(`PLR peak ${formatNum(k.plrMax)}% > ${CONFIG.PLR_MAX}%`);
-      if(k.delayMax!=null&&k.delayMax>CONFIG.DELAY_MAX)reasons.push(`Delay peak ${formatNum(k.delayMax)}ms > ${CONFIG.DELAY_MAX}ms`);
-      if(uniqueActive.length)reasons.push(`${uniqueActive.length} active impact alarm`);
-      if(!uniqueActive.length&&historyImpact.length)reasons.push(`${historyImpact.length} impact alarm occurrence within 6H`);
-      // Source KPI hourly dan TWAMP 15-menit memiliki delay ingestion yang
-      // berbeda. Keputusan memakai window relatif terhadap data terbaru dari
-      // masing-masing source, bukan relatif terhadap jam saat analisis.
-      let health=reasons.length?"ISSUE":(!k.complete||k.errors.length?"VERIFY":"OK");
-      if(health==="OK")reasons.push("KPI healthy and no impact alarm within 6H");
-      if(!k.complete)reasons.push("Six-hour KPI evidence incomplete");reasons.push(...k.errors);
-      ticket.analysis={...k,health,reasons:[...new Set(reasons)],activeAlarms:uniqueActive,activeAlarmTotal:allActive.length,
+      const k=kpiBySite[ticket.siteId],reasons=[],warnings=[],blockers=[],mainIssues=identifyMainIssues(ticket),openTime=parseOpenDate(ticket.openDate),baselineAnchor=siteAnchorOpen[ticket.siteId];
+      const historical=Array.isArray(k.allKpiRows)?k.allKpiRows:[];
+      // Semua TT aktif pada Site ID yang sama memakai baseline sebelum TT
+      // paling awal. TT kedua tidak boleh menjadikan kondisi degradasi yang
+      // sudah berjalan sebagai baseline normal baru.
+      const baselineRows=Number.isFinite(baselineAnchor)?historical.filter(r=>{const t=parseApiTime(r.time);return t>=baselineAnchor-14*86400000&&t<baselineAnchor-6*3600000}):[];
+      const incidentRows=Number.isFinite(openTime)?historical.filter(r=>{const t=parseApiTime(r.time);return t>=openTime-6*3600000&&t<=openTime+6*3600000}):[];
+      // Availability mencari hari stabil terbaik, bukan satu titik maksimum
+      // dan bukan median seluruh 14 hari. PLR/Delay tetap memakai P90 agar
+      // pola intermittent terwakili tanpa dikuasai satu outlier ekstrem.
+      const availabilityBaseline=bestStableDailyAvailability(baselineRows);
+      const baseline={availabilityMin:round(availabilityBaseline.value),availabilityDate:availabilityBaseline.date,availabilitySamples:availabilityBaseline.samples,availabilityMethod:availabilityBaseline.method,validAvailabilityDays:availabilityBaseline.validDays||0,plrMax:round(percentile(baselineRows,"plr",.9)),delayMax:round(percentile(baselineRows,"delay",.9))};
+      const incident={availabilityMin:round(percentileMin(incidentRows,"availability")),plrMax:round(percentileMax(incidentRows,"plr")),delayMax:round(percentileMax(incidentRows,"delay"))};
+      const states={availability:metricState("availability",k,baseline,incident),plr:metricState("plr",k,baseline,incident),delay:metricState("delay",k,baseline,incident)};
+      if(baseline.availabilityMin!=null)reasons.push(`Normal Availability baseline ${formatNum(baseline.availabilityMin)}%${baseline.availabilityDate?` demonstrated on ${baseline.availabilityDate}`:" (P90 fallback)"}`);
+      for(const dimension of ["availability","plr","delay"]){
+        const state=states[dimension],title=dimension==="availability"?"Availability":dimension==="plr"?"PLR":"Delay",isMain=mainIssues.has(dimension);
+        if(state.state==="bad"&&isMain)blockers.push(`${title} current condition is still degraded (main issue)`);
+        else if(state.state==="bad")warnings.push(`${title} has a separate current anomaly outside the TT main issue`);
+        else if(state.state==="baseline_bad")warnings.push(`${title} remains at pre-TT degraded baseline (${formatNum(state.current)} vs baseline ${formatNum(state.baseline)})`);
+        else if(state.state==="incident_recovered"){reasons.push(`${title} main incident recovered >80% from Open Date`);warnings.push(`${title} still has intermittent peak ${formatNum(state.current)}${dimension==="delay"?"ms":"%"}; validate as warning`) }
+        else if(state.state==="healthy"&&isMain)reasons.push(`${title} main issue has recovered`);
+        const incidentValue=dimension==="availability"?incident.availabilityMin:dimension==="plr"?incident.plrMax:incident.delayMax;
+        if(isMain&&incidentValue!=null)reasons.push(`${title} incident evidence near Open Date: ${formatNum(incidentValue)}${dimension==="delay"?"ms":"%"}`);
+      }
+      const blockingAlarms=[],warningAlarms=[];
+      activeImpact.forEach(alarm=>{
+        const name=alarmName(alarm),dims=alarmDimensions(name),related=[...dims].some(d=>mainIssues.has(d)),first=alarmFirstTime(alarm),preExisting=Number.isFinite(first)&&Number.isFinite(openTime)&&first<openTime;
+        const nearIncident=Number.isFinite(first)&&Number.isFinite(openTime)&&Math.abs(first-openTime)<=48*3600000;
+        const mainStillBad=[...mainIssues].some(d=>states[d]?.state==="bad");
+        if(!related||preExisting||(related&&!nearIncident&&!mainStillBad))warningAlarms.push(name);
+        else blockingAlarms.push(name);
+      });
+      if(blockingAlarms.length)blockers.push(`${[...new Set(blockingAlarms)].length} active impact alarm related/new to TT`);
+      if(warningAlarms.length)warnings.push(`${[...new Set(warningAlarms)].length} pre-existing impact alarm retained as warning`);
+      if(!uniqueActive.length&&historyImpact.length)warnings.push(`${historyImpact.length} impact alarm occurrence within latest 6H, currently clear`);
+      if(!baselineRows.length)warnings.push("Pre-TT baseline unavailable; absolute thresholds used");
+      if(activeAlarmError)warnings.push("Active alarm check timed out; KPI decision retained with alarm verification warning");
+      if(historyResult.errors.length)warnings.push("Some alarm-history windows timed out; partial history used");
+      let health=blockers.length?"ISSUE":(!k.complete||k.errors.length?"VERIFY":warnings.length?"OK_WARNING":"OK");
+      if(health==="OK")reasons.push("Main issue recovered; KPI and related alarms are clear");
+      if(health==="OK_WARNING")reasons.push("Main TT issue recovered; ticket can be closed with baseline warning");
+      if(!k.complete)reasons.push("Six-hour KPI evidence incomplete");reasons.push(...blockers,...warnings,...k.errors);
+      ticket.analysis={...k,health,reasons:[...new Set(reasons)],warnings:[...new Set(warnings)],blockers:[...new Set(blockers)],mainIssues:[...mainIssues],baseline,incident,
+        baselineAnchor:new Date(baselineAnchor).toISOString(),siteBlockingDimensions:[...mainIssues].filter(d=>states[d]?.state==="bad"),
+        activeAlarms:[...new Set(blockingAlarms)],warningAlarms:[...new Set(warningAlarms)],activeAlarmTotal:allActive.length,
         nonImpactAlarmCount:Math.max(0,allActive.length-activeImpact.length),historyImpactCount:historyImpact.length,checkedAt:new Date().toISOString()};
+      if(health==="VERIFY"||k.errors.length||activeAlarmError)selectedTickets.add(ticketKey(ticket));
+      else if(selectedOnly)selectedTickets.delete(ticketKey(ticket));
+    });
+    // Site Health harus konsisten untuk duplicate open TT. Jika salah satu TT
+    // membuktikan dimensi main issue site masih buruk, seluruh TT aktif pada
+    // Site ID tersebut tidak boleh ditandai closable.
+    siteIds.forEach(siteId=>{
+      const sameSite=targetTickets.filter(t=>t.siteId===siteId&&t.analysis),blocking=[...new Set(sameSite.flatMap(t=>t.analysis.siteBlockingDimensions||[]))];
+      if(!blocking.length)return;
+      sameSite.forEach(ticket=>{
+        ticket.analysis.health="ISSUE";
+        const message=`Site-level blocker shared across duplicate TT: ${blocking.map(d=>d==="availability"?"Availability":d==="plr"?"PLR":"Delay").join(", ")}`;
+        ticket.analysis.blockers=[...new Set([...(ticket.analysis.blockers||[]),message])];
+        ticket.analysis.reasons=[...new Set([...(ticket.analysis.reasons||[]),message])];
+      });
     });
     progress(100,"Analysis complete");render();document.getElementById("lastUpdated").textContent=formatTime();
-    document.getElementById("statusText").textContent=`Analysis completed for ${siteIds.length} unique sites.`;notify("Site health analysis completed");
+    document.getElementById("statusText").textContent=`Analysis completed for ${siteIds.length} unique sites${selectedOnly?" (selected retry)":""}.`;notify(`${siteIds.length} site analysis completed`);
   }catch(error){progress(101,"Analysis failed");document.getElementById("statusText").textContent="Analysis could not be completed.";notify(error.message,true)}
   finally{setBusy(false)}
 }
@@ -380,8 +516,10 @@ function metric(value,unit,threshold,inverse=false){
   const bad=inverse?value<threshold:value>threshold;
   return `<span class="metric ${bad?"bad":"good"}">${formatNum(value)}<small>${unit}</small></span>`;
 }
-function label(health){return health==="OK"?"Already OK":health==="ISSUE"?"Still Issue":health==="VERIFY"?"Need Verification":"Not Analyzed"}
+function label(health){return health==="OK"?"Already OK":health==="OK_WARNING"?"OK with Warning":health==="ISSUE"?"Still Issue":health==="VERIFY"?"Need Verification":"Not Analyzed"}
 function resetFilters(){document.getElementById("searchInput").value="";document.getElementById("healthFilter").value="ALL";document.getElementById("regionFilter").value="ALL";render()}
+function toggleTicket(index,checked){const id=ticketKey(tickets[index]);checked?selectedTickets.add(id):selectedTickets.delete(id);render()}
+function toggleAllFiltered(checked){getFilteredRows().forEach(({t})=>checked?selectedTickets.add(ticketKey(t)):selectedTickets.delete(ticketKey(t)));render()}
 function getFilteredRows(){
   const query=document.getElementById("searchInput").value.trim().toUpperCase(),hf=document.getElementById("healthFilter").value,rf=document.getElementById("regionFilter").value;
   return tickets.map((t,i)=>({t,i})).filter(({t})=>{
@@ -395,11 +533,11 @@ function csvCell(value){
 function exportFilteredCsv(){
   const rows=getFilteredRows();
   if(!rows.length)return notify("No filtered rows to export",true);
-  const headers=["Site Health","Availability 6H Avg (%)","Availability 6H Min (%)","PLR 6H Avg (%)","PLR 6H Peak (%)","Delay 6H Avg (ms)","Delay 6H Peak (ms)","Active Impact Alarm Count","Active Impact Alarms","Total Active Alarm","Impact Alarm History 6H","TT","Open Date","Site ID","Site Name","Region","Aging (Days)","Aging Period","RCA Category","Part Issue","ROH / Owner","Finding","Analysis Reasons","Checked At"];
+  const headers=["Site Health","Main Issues","Availability 6H Avg (%)","Availability 6H Min (%)","Best Stable Daily Availability 14D (%)","Availability Baseline Date","Availability Baseline Samples","PLR 6H Avg (%)","PLR 6H Peak (%)","Baseline PLR P90 14D (%)","Delay 6H Avg (ms)","Delay 6H Peak (ms)","Baseline Delay P90 14D (ms)","Blocking Impact Alarm Count","Blocking Impact Alarms","Warning Alarms","Total Active Alarm","Impact Alarm History 6H","TT","Open Date","Site ID","Site Name","Region","Aging (Days)","Aging Period","RCA Category","Part Issue","ROH / Owner","Finding","Closure Warnings","Analysis Reasons","Checked At"];
   const values=rows.map(({t})=>{const a=t.analysis,h=a?.health||"PENDING";return[
-    label(h),a?.availability??"",a?.availabilityMin??"",a?.plr??"",a?.plrMax??"",a?.delay??"",a?.delayMax??"",
-    a?.activeAlarms?.length??0,(a?.activeAlarms||[]).join(" | "),a?.activeAlarmTotal??0,a?.historyImpactCount??0,
-    t.tt,t.openDate,t.siteId,t.siteName,t.region,t.aging,t.agingPeriod,t.rca,t.partIssue,t.roh,t.founding,(a?.reasons||[]).join(" | "),a?.checkedAt||""
+    label(h),(a?.mainIssues||[]).join(" | "),a?.availability??"",a?.availabilityMin??"",a?.baseline?.availabilityMin??"",a?.baseline?.availabilityDate??"",a?.baseline?.availabilitySamples??"",a?.plr??"",a?.plrMax??"",a?.baseline?.plrMax??"",a?.delay??"",a?.delayMax??"",a?.baseline?.delayMax??"",
+    a?.activeAlarms?.length??0,(a?.activeAlarms||[]).join(" | "),(a?.warningAlarms||[]).join(" | "),a?.activeAlarmTotal??0,a?.historyImpactCount??0,
+    t.tt,t.openDate,t.siteId,t.siteName,t.region,t.aging,t.agingPeriod,t.rca,t.partIssue,t.roh,t.founding,(a?.warnings||[]).join(" | "),(a?.reasons||[]).join(" | "),a?.checkedAt||""
   ]});
   const csv="\uFEFF"+[headers,...values].map(row=>row.map(csvCell).join(",")).join("\r\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a"),now=new Date();
@@ -412,10 +550,11 @@ function render(){
   document.getElementById("tableBody").innerHTML=rows.map(({t,i})=>{
     const a=t.analysis,h=a?.health||"PENDING",hc=h==="ISSUE"?"issue":h.toLowerCase();
     let alarms='<span class="pending-text">Not checked</span>';
-    if(a){if(a.activeAlarms.length)alarms=`<div class="alarm"><strong>${a.activeAlarms.length} Impact</strong><span>${esc(a.activeAlarms[0])}</span></div>`;
+    if(a){if(a.activeAlarms.length)alarms=`<div class="alarm"><strong>${a.activeAlarms.length} Blocking</strong><span>${esc(a.activeAlarms[0])}</span></div>`;
+      else if(a.warningAlarms?.length)alarms=`<div class="alarm nonimpact"><strong>${a.warningAlarms.length} Baseline Warning</strong><span>${esc(a.warningAlarms[0])}</span></div>`;
       else if(a.activeAlarmTotal)alarms=`<div class="alarm nonimpact"><strong>${a.activeAlarmTotal} Active</strong><span>Non-impact alarms</span></div>`;
       else alarms='<span class="clear">✓ No active alarm</span>'}
-    return `<tr onclick="openDrawer(${i})"><td><span class="health ${hc}">${label(h)}</span></td><td>${metric(a?.availability,"%",CONFIG.AVAIL_MIN,true)}</td>
+    return `<tr onclick="openDrawer(${i})"><td onclick="event.stopPropagation()"><input class="row-check" type="checkbox" ${selectedTickets.has(ticketKey(t))?"checked":""} onchange="toggleTicket(${i},this.checked)" aria-label="Select ${esc(t.siteId)}"></td><td><span class="health ${hc}">${label(h)}</span></td><td>${metric(a?.availability,"%",CONFIG.AVAIL_MIN,true)}</td>
       <td>${metric(a?.plr,"%",CONFIG.PLR_MAX)}</td><td>${metric(a?.delay,"ms",CONFIG.DELAY_MAX)}</td><td>${alarms}</td>
       <td><div class="primary"><strong>${esc(t.tt)}</strong><span>${esc(t.openDate)}</span></div></td><td><div class="primary"><strong>${esc(t.siteId)}</strong><span>${esc(t.siteName)}</span></div></td>
       <td><span class="tag">${esc(t.region||"—")}</span></td><td><div class="aging"><strong>${esc(t.aging||"—")}d</strong><span>${esc(t.agingPeriod)}</span></div></td>
@@ -423,7 +562,10 @@ function render(){
   }).join("");
   document.getElementById("emptyState").style.display=rows.length?"none":"block";document.getElementById("rowCount").textContent=`Showing ${rows.length} of ${tickets.length} open tickets`;
   document.getElementById("exportBtn").disabled=!rows.length;
-  const analyzed=tickets.filter(t=>t.analysis);document.getElementById("sOpen").textContent=tickets.length;document.getElementById("sOk").textContent=analyzed.filter(t=>t.analysis.health==="OK").length;
+  const allVisibleSelected=rows.length&&rows.every(({t})=>selectedTickets.has(ticketKey(t))),someVisibleSelected=rows.some(({t})=>selectedTickets.has(ticketKey(t))),selectAll=document.getElementById("selectAllCheck");
+  selectAll.checked=!!allVisibleSelected;selectAll.indeterminate=!allVisibleSelected&&someVisibleSelected;
+  document.getElementById("selectedCount").textContent=selectedTickets.size;document.getElementById("analyzeSelectedBtn").disabled=busy||!selectedTickets.size;
+  const analyzed=tickets.filter(t=>t.analysis);document.getElementById("sOpen").textContent=tickets.length;document.getElementById("sOk").textContent=analyzed.filter(t=>["OK","OK_WARNING"].includes(t.analysis.health)).length;
   document.getElementById("sIssue").textContent=analyzed.filter(t=>t.analysis.health==="ISSUE").length;document.getElementById("sVerify").textContent=tickets.filter(t=>!t.analysis||t.analysis.health==="VERIFY").length;
   document.getElementById("sAlarms").textContent=analyzed.reduce((n,t)=>n+t.analysis.activeAlarms.length,0);document.getElementById("analyzeBtn").disabled=busy||!tickets.length;
 }
@@ -431,14 +573,18 @@ function render(){
 function openDrawer(index){
   selectedIndex=index;const t=tickets[index],a=t.analysis,h=a?.health||"PENDING",hc=h==="ISSUE"?"issue":h.toLowerCase();
   let alarmHtml='<div class="all-clear">Not analyzed<small>Run Analyze Sites to retrieve OWS alarms.</small></div>';
-  if(a){if(a.activeAlarms.length)alarmHtml=`<div class="alarm-note">${a.activeAlarms.length} impact alarm · ${a.activeAlarmTotal} total active</div>${a.activeAlarms.map(x=>`<div class="alarm-item">! ${esc(x)}</div>`).join("")}${a.nonImpactAlarmCount?`<div class="alarm-note">+ ${a.nonImpactAlarmCount} active non-impact alarm</div>`:""}`;
+  if(a){if(a.activeAlarms.length)alarmHtml=`<div class="alarm-note">${a.activeAlarms.length} closure-blocking alarm · ${a.activeAlarmTotal} total active</div>${a.activeAlarms.map(x=>`<div class="alarm-item">! ${esc(x)}</div>`).join("")}${a.warningAlarms?.length?`<div class="alarm-note">Baseline warning: ${a.warningAlarms.map(esc).join(" | ")}</div>`:""}${a.nonImpactAlarmCount?`<div class="alarm-note">+ ${a.nonImpactAlarmCount} active non-impact alarm</div>`:""}`;
+    else if(a.warningAlarms?.length)alarmHtml=`<div class="alarm-note">Pre-existing alarm warning (does not block closure)</div>${a.warningAlarms.map(x=>`<div class="alarm-note">⚠ ${esc(x)}</div>`).join("")}`;
     else if(a.activeAlarmTotal)alarmHtml=`<div class="alarm-note">${a.activeAlarmTotal} active alarm detected, but none match enabled impact rules.</div>`;
     else alarmHtml=`<div class="all-clear">✓ No active alarm<small>${a.historyImpactCount?`${a.historyImpactCount} impact occurrence found within the last 6 hours.`:"No impact occurrence found within the last 6 hours."}</small></div>`}
   document.getElementById("drawer").innerHTML=`<div class="drawer-head"><div><p class="eyebrow">Site Intelligence</p><h2>${esc(t.siteId)}</h2><p>${esc(t.siteName)}</p></div><button class="close" onclick="closeDrawer()">×</button></div>
-    <div class="verdict ${hc}"><span class="vicon">${h==="OK"?"✓":h==="ISSUE"?"!":"?"}</span><div><small>AI ANALYSIS</small><strong>${label(h)}</strong><p>${esc(a?.reasons?.join(" · ")||"Run analysis to assess site condition.")}</p></div></div>
+    <div class="verdict ${hc}"><span class="vicon">${["OK","OK_WARNING"].includes(h)?"✓":h==="ISSUE"?"!":"?"}</span><div><small>AI ANALYSIS</small><strong>${label(h)}</strong><p>${esc(a?.reasons?.join(" · ")||"Run analysis to assess site condition.")}</p></div></div>
     <div class="section-title">Six-hour evidence</div><div class="evidence"><article><small>AVAILABILITY</small>${metric(a?.availability,"%",CONFIG.AVAIL_MIN,true)}<p>Minimum ${a?.availabilityMin==null?"—":formatNum(a.availabilityMin)+"%"}</p></article>
     <article><small>PACKET LOSS</small>${metric(a?.plr,"%",CONFIG.PLR_MAX)}<p>Peak ${a?.plrMax==null?"—":formatNum(a.plrMax)+"%"}</p></article>
     <article><small>DELAY</small>${metric(a?.delay,"ms",CONFIG.DELAY_MAX)}<p>Peak ${a?.delayMax==null?"—":formatNum(a.delayMax)+"ms"}</p></article></div>
+    <div class="section-title">Site baseline before earliest open TT (14 days)</div><div class="evidence"><article><small>BEST STABLE DAILY AVAIL</small><span class="metric">${a?.baseline?.availabilityMin==null?"No data":formatNum(a.baseline.availabilityMin)+"%"}</span><p>${a?.baseline?.availabilityDate?`${esc(a.baseline.availabilityDate)} · ${a.baseline.availabilitySamples} hourly samples`:"P90 fallback · insufficient full-day samples"}</p></article>
+    <article><small>PLR P90</small><span class="metric">${a?.baseline?.plrMax==null?"No data":formatNum(a.baseline.plrMax)+"%"}</span><p>${a?.mainIssues?.includes("plr")?"Main issue dimension":"Context only"}</p></article>
+    <article><small>DELAY P90</small><span class="metric">${a?.baseline?.delayMax==null?"No data":formatNum(a.baseline.delayMax)+"ms"}</span><p>${a?.mainIssues?.includes("delay")?"Main issue dimension":"Context only"}</p></article></div>
     <div class="section-title">Alarm correlation</div><div class="alarm-box">${alarmHtml}</div>
     <div class="section-title">Ticket context</div><dl><div><dt>TT</dt><dd>${esc(t.tt)}</dd></div><div><dt>Open Date</dt><dd>${esc(t.openDate)}</dd></div>
     <div><dt>Region</dt><dd>${esc(t.region||"—")}</dd></div><div><dt>Aging</dt><dd>${esc(t.aging||"—")} days</dd></div>
