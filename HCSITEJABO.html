@@ -1,518 +1,312 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
 <meta charset="UTF-8">
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NOVA — NOC HD Health Intelligence</title>
 
 <style>
-
-body{
-font-family:Arial;
-background:#f4f6f9;
-padding:40px;
-}
-
-.container{
-max-width:900px;
-margin:auto;
-background:white;
-padding:30px;
-border-radius:10px;
-}
-
-textarea{
-width:100%;
-height:120px;
-padding:10px;
-}
-
-.result{
-background:#111;
-color:#00ff90;
-padding:20px;
-white-space:pre-wrap;
-margin-top:20px;
-font-family:Consolas;
-}
-
-button{
-padding:10px 20px;
-margin-top:10px;
-}
-
-.brand{
-font-size:13px;
-color:#888;
-margin-top:4px;
-margin-bottom:20px;
-font-weight:500;
-letter-spacing:2px;
-}
-
+*{box-sizing:border-box}
+body{font-family:Arial,sans-serif;background:#f4f6f9;padding:40px;color:#172033}
+.container{max-width:900px;margin:auto;background:#fff;padding:30px;border-radius:10px;box-shadow:0 8px 30px rgba(20,30,50,.08)}
+h2{margin:0;font-size:22px}
+.brand{font-size:13px;color:#7c8799;margin:6px 0 20px;font-weight:600;letter-spacing:2px}
+textarea{width:100%;height:120px;padding:12px;border:1px solid #aeb7c5;border-radius:5px;resize:vertical;font-family:Consolas,monospace}
+button{padding:10px 20px;margin-top:10px;border:1px solid #8d98aa;border-radius:4px;cursor:pointer;font-weight:600}
+button:hover{background:#e8edf4}
+.result{background:#111;color:#00ff90;padding:20px;white-space:pre-wrap;margin-top:20px;font:14px/1.45 Consolas,monospace;border-radius:5px;min-height:80px;overflow-wrap:anywhere}
 </style>
-
 </head>
 
 <body>
-
 <div class="container">
+  <h2>Network Operations Validation &amp; Analysis</h2>
+  <div class="brand">NOVA</div>
 
-<h2>Network Operations Validation & Analysis</h2>
-<div class="brand"> NOVA </div>
-
-<textarea id="sites"></textarea>
-
-<br>
-
-<button onclick="run()">ANALYSIS</button>
-<button onclick="copy()">COPY</button>
-
-<div id="result" class="result"></div>
-
+  <textarea id="sites" placeholder="Input Site ID, one per line"></textarea>
+  <br>
+  <button onclick="run()">ANALYSIS</button>
+  <button onclick="copyResult()">COPY</button>
+  <div id="result" class="result"></div>
 </div>
 
 <script>
+const RAN_DOMAINS = new Set(["RAN", "RAN-2G", "RAN-3G", "RAN-4G", "RAN-5G"]);
 
-const RAN_DOMAINS = new Set([
-  "RAN",
-  "RAN-2G",
-  "RAN-3G",
-  "RAN-4G",
-  "RAN-5G"
-]);
-
+const KPI_CONFIG = {
+  availability: { label: "Availability", unit: "%", target: "100%", pass: value => value >= 100 },
+  plr:          { label: "Packet Loss (PLR)", unit: "%", target: "≤ 1%", pass: value => value <= 1 },
+  delay:        { label: "Latency", unit: "ms", target: "≤ 10 ms", pass: value => value <= 10 },
+  s1sr:         { label: "S1 Success Rate (S1SR)", unit: "%", target: "100%", pass: value => value >= 100 },
+  prb:          { label: "PRB Utilization", unit: "%", target: "≤ 90%", pass: value => value <= 90 }
+};
 
 function normalizeText(value){
-  return String(value ?? "")
-    .trim()
-    .toUpperCase();
+  return String(value ?? "").trim().toUpperCase();
 }
 
-
 function normalizeOwsRows(rows){
-
-  if(!Array.isArray(rows)){
-
-    console.error(
-      "normalizeOwsRows menerima data bukan array:",
-      rows
-    );
-
-    return [];
-  }
+  if(!Array.isArray(rows)) return [];
 
   return rows.map((r, idx) => ({
-
     __idx: idx,
-
-    __firstOcc:
-      r.first_occurrence ||
-      r.first_occurred ||
-      r.start_time ||
-      r["First Occurred (NT)"] ||
-      "-",
-
-    __clearTime:
-      r.clear_time ||
-      r.cleared_time ||
-      "-",
-
-    __duration:
-      r.duration ||
-      "-",
-
-    __alarmName:
-      r.alarm_name ||
-      r.name ||
-      r["Name"] ||
-      "-",
-
-    __alarmSrc:
-      r.alarm_source ||
-      r.source_name ||
-      r["Alarm Source"] ||
-      "-",
-
-    __severity:
-      r.severity ||
-      r["Severity"] ||
-      "-",
-
-    __domain:
-      r.domain ||
-      r["Domain"] ||
-      "-",
-
-    __siteId:
-      r.site_id ||
-      r.siteId ||
-      r.site_code ||
-      r["Site ID"] ||
-      "-",
-
-    __siteName:
-      r.site_name ||
-      r.siteName ||
-      r["Site Name"] ||
-      "-",
-
-    __loc:
-      r.location ||
-      r.location_information ||
-      r["Location Information"] ||
-      "-",
-
-    __ticket:
-      r.ticket_id ||
-      r.ticketId ||
-      r["Ticket ID"] ||
-      "-"
+    __firstOcc: r.first_occurrence || r.first_occurred || r.start_time || r["First Occurred (NT)"] || "-",
+    __clearTime: r.clear_time || r.cleared_time || "-",
+    __duration: r.duration || "-",
+    __alarmName: r.alarm_name || r.name || r["Name"] || "-",
+    __alarmSrc: r.alarm_source || r.source_name || r["Alarm Source"] || "-",
+    __severity: r.severity || r["Severity"] || "-",
+    __domain: r.domain || r["Domain"] || "-",
+    __siteId: r.site_id || r.siteId || r.site_code || r["Site ID"] || "-",
+    __siteName: r.site_name || r.siteName || r["Site Name"] || "-",
+    __loc: r.location || r.location_information || r["Location Information"] || "-",
+    __ticket: r.ticket_id || r.ticketId || r["Ticket ID"] || "-"
   }));
 }
 
-
 function extractOwsRows(payload){
+  if(!payload) return [];
+  if(Array.isArray(payload)) return payload;
 
-  if(!payload){
-    return [];
+  const direct = [payload.result, payload.data, payload.alarms, payload.active, payload.rows, payload.items];
+  for(const candidate of direct){
+    if(Array.isArray(candidate)) return candidate;
   }
 
-  if(Array.isArray(payload)){
-    return payload;
-  }
-
-  const directCandidates = [
-    payload.result,
-    payload.data,
-    payload.alarms,
-    payload.active,
-    payload.rows,
-    payload.items
-  ];
-
-  for(const candidate of directCandidates){
-
-    if(Array.isArray(candidate)){
-      return candidate;
+  for(const container of [payload.result, payload.data]){
+    if(!container || typeof container !== "object") continue;
+    for(const candidate of [container.alarms, container.active, container.rows, container.items, container.result, container.data]){
+      if(Array.isArray(candidate)) return candidate;
     }
   }
 
-  const nestedContainers = [
-    payload.result,
-    payload.data
-  ];
-
-  for(const container of nestedContainers){
-
-    if(!container || typeof container !== "object"){
-      continue;
-    }
-
-    const nestedCandidates = [
-      container.alarms,
-      container.active,
-      container.rows,
-      container.items,
-      container.result,
-      container.data
-    ];
-
-    for(const candidate of nestedCandidates){
-
-      if(Array.isArray(candidate)){
-        return candidate;
-      }
-    }
-  }
-
-  /*
-    Fallback dua tingkat untuk response dengan key per site.
-    Contoh:
-    {
-      "02PYB0001": [...],
-      "21MTW0020": [...]
-    }
-  */
-  const collectedRows = [];
-
+  const collected = [];
   for(const value of Object.values(payload)){
-
-    if(Array.isArray(value)){
-      collectedRows.push(...value);
-      continue;
-    }
-
-    if(value && typeof value === "object"){
-
-      for(const nestedValue of Object.values(value)){
-
-        if(Array.isArray(nestedValue)){
-          collectedRows.push(...nestedValue);
-        }
+    if(Array.isArray(value)) collected.push(...value);
+    else if(value && typeof value === "object"){
+      for(const nested of Object.values(value)){
+        if(Array.isArray(nested)) collected.push(...nested);
       }
     }
   }
-
-  if(collectedRows.length > 0){
-    return collectedRows;
-  }
-
-  console.error(
-    "Tidak menemukan array alarm pada response OWS:",
-    payload
-  );
-
-  return [];
+  return collected;
 }
 
-
-function getRanAlarmsBySite(owsRows, siteId){
-
+function getRanAlarmsBySite(rows, siteId){
   const requestedSite = normalizeText(siteId);
-
-  return owsRows.filter(a => {
-
-    const alarmSite = normalizeText(a.__siteId);
-    const alarmDomain = normalizeText(a.__domain);
-
-    return (
-      alarmSite === requestedSite &&
-      RAN_DOMAINS.has(alarmDomain)
-    );
-  });
+  return rows.filter(a => normalizeText(a.__siteId) === requestedSite && RAN_DOMAINS.has(normalizeText(a.__domain)));
 }
 
+function firstValue(source, keys){
+  for(const key of keys){
+    const value = source?.[key];
+    if(value !== undefined && value !== null && String(value).trim() !== "") return value;
+  }
+  return null;
+}
 
-function formatSiaMainAlarm(ranAlarms){
+function parseKpi(raw){
+  if(raw === null || raw === undefined) return { raw: "", value: null, time: "", apiIssue: false };
 
-  if(ranAlarms.length === 0){
-    return "✅ SIA Status";
+  if(typeof raw === "object"){
+    const actual = firstValue(raw, ["value", "actual", "current", "minimum", "maximum", "min", "max", "percentage"]);
+    const time = firstValue(raw, ["timestamp", "time", "worst_time", "occurred_at", "datetime"]);
+    const status = normalizeText(firstValue(raw, ["status", "state", "health"]) || "");
+    const nested = parseKpi(actual);
+    return {
+      raw: JSON.stringify(raw),
+      value: nested.value,
+      time: time ? String(time) : nested.time,
+      apiIssue: /WARN|ISSUE|CRITICAL|FAIL|NOK/.test(status) || nested.apiIssue
+    };
   }
 
-  return `❌ SIA Status (${ranAlarms[0].__alarmName})`;
+  const text = String(raw).trim();
+  const timeMatch = text.match(/\b\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}\b/);
+  const withoutTime = timeMatch ? text.replace(timeMatch[0], " ") : text;
+  const numberMatch = withoutTime.match(/-?\d+(?:[.,]\d+)?/);
+
+  return {
+    raw: text,
+    value: numberMatch ? Number(numberMatch[0].replace(",", ".")) : null,
+    time: timeMatch ? timeMatch[0].replace("T", " ") : "",
+    apiIssue: /⚠|❌|🔴|WARN|ISSUE|CRITICAL|FAIL|NOK/i.test(text)
+  };
 }
 
+function displayNumber(value){
+  return Number(value).toLocaleString("en-US", { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+}
+
+function formatKpi(raw, key){
+  const config = KPI_CONFIG[key];
+
+  // Preferred contract from the improved /api/noc/healthcheck endpoint.
+  if(raw && typeof raw === "object" && ("average" in raw || raw.status === "no_data")){
+    if(raw.status === "no_data"){
+      return {
+        line: `⚪ ${config.label} : Data unavailable | Target ${config.target}`,
+        passed: false
+      };
+    }
+
+    const passed = raw.status === "normal";
+    const unit = config.unit === "%" ? "%" : " ms";
+    const parts = [];
+    if(raw.average !== null && raw.average !== undefined) parts.push(`Average ${displayNumber(raw.average)}${unit}`);
+    if(raw.current !== null && raw.current !== undefined) parts.push(`Current ${displayNumber(raw.current)}${unit}`);
+    if(raw.lowest !== null && raw.lowest !== undefined) parts.push(`Lowest ${displayNumber(raw.lowest)}${unit}`);
+    if(raw.highest !== null && raw.highest !== undefined) parts.push(`Highest ${displayNumber(raw.highest)}${unit}`);
+
+    let line = `${passed ? "✅" : "⚠️"} ${config.label} : ${parts.join(" | ")} | Target ${config.target}`;
+    if(!passed && raw.worst_time) line += `\n   Worst Time : ${String(raw.worst_time).replace("T", " ")}`;
+    return { line, passed };
+  }
+
+  const parsed = parseKpi(raw);
+  const passed = parsed.value === null ? !parsed.apiIssue : config.pass(parsed.value);
+  const icon = passed ? "✅" : "⚠️";
+
+  let detail;
+  if(parsed.value !== null){
+    const qualifier = key === "availability" || key === "s1sr" ? "Lowest" : "Peak";
+    detail = `${qualifier} ${displayNumber(parsed.value)}${config.unit === "%" ? "%" : " ms"}`;
+  }else if(passed){
+    detail = `Target maintained`;
+  }else{
+    detail = `Issue detected — value unavailable`;
+  }
+
+  let line = `${icon} ${config.label} : ${detail} | Target ${config.target}`;
+  if(parsed.time) line += `\n   Worst Time : ${parsed.time}`;
+  return { line, passed };
+}
+
+function buildKpiLines(site){
+  const values = {
+    availability: firstValue(site, ["availability_value", "availability_actual", "availability"]),
+    plr: firstValue(site, ["plr_value", "plr_actual", "packet_loss", "plr"]),
+    delay: firstValue(site, ["delay_value", "latency_value", "delay_actual", "latency", "delay"]),
+    s1sr: firstValue(site, ["s1sr_value", "s1sr_actual", "s1_success_rate", "s1sr"]),
+    prb: firstValue(site, ["prb_value", "prb_actual", "prb_highest", "prb_max", "prb"])
+  };
+
+  const rows = [
+    formatKpi(values.availability, "availability"),
+    formatKpi(values.plr, "plr"),
+    formatKpi(values.delay, "delay"),
+    formatKpi(values.s1sr, "s1sr"),
+    formatKpi(values.prb, "prb")
+  ];
+
+  return { text: rows.map(row => row.line).join("\n"), healthy: rows.every(row => row.passed) };
+}
+
+function formatGeneratedAt(date = new Date()){
+  const pad = value => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
 
 async function run(){
-
-  const resultElement =
-    document.getElementById("result");
-
-  let sites = document
-    .getElementById("sites")
-    .value
-    .split(/[\n,;]+/)
-    .map(x => normalizeText(x))
-    .filter(x => x !== "");
-
+  const resultElement = document.getElementById("result");
+  let sites = document.getElementById("sites").value
+    .split(/[\n,;]+/).map(normalizeText).filter(Boolean);
   sites = [...new Set(sites)];
 
-  if(sites.length === 0){
-
-    resultElement.innerText =
-      "Silakan input Site ID terlebih dahulu.";
-
+  if(!sites.length){
+    resultElement.innerText = "Silakan input Site ID terlebih dahulu.";
     return;
   }
 
-  resultElement.innerText =
-    "Sedang melakukan analysis...";
+  resultElement.innerText = "Sedang melakukan analysis...";
 
   try{
-
-    const kpiUrl =
-      "https://api.azhautomation.com" +
-      "/api/noc/healthcheck?sites=" +
-      encodeURIComponent(sites.join(","));
-
+    const kpiUrl = "https://api.azhautomation.com/api/noc/healthcheck?sites=" + encodeURIComponent(sites.join(","));
     const [kpiRes, owsRes] = await Promise.all([
-
       fetch(kpiUrl),
-
-      fetch(
-        "https://api.azhautomation.com/api/ows/multi",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            site_ids: sites
-          })
-        }
-      )
+      fetch("https://api.azhautomation.com/api/ows/multi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ site_ids: sites })
+      })
     ]);
 
-    if(!kpiRes.ok){
-
-      const errorText = await kpiRes.text();
-
-      throw new Error(
-        `KPI API error ${kpiRes.status}: ${errorText}`
-      );
-    }
-
-    if(!owsRes.ok){
-
-      const errorText = await owsRes.text();
-
-      throw new Error(
-        `OWS API error ${owsRes.status}: ${errorText}`
-      );
-    }
+    if(!kpiRes.ok) throw new Error(`KPI API error ${kpiRes.status}: ${await kpiRes.text()}`);
+    if(!owsRes.ok) throw new Error(`OWS API error ${owsRes.status}: ${await owsRes.text()}`);
 
     const kpiJson = await kpiRes.json();
     const owsJson = await owsRes.json();
+    const owsRows = normalizeOwsRows(extractOwsRows(owsJson));
+    const kpiResults = Array.isArray(kpiJson.result) ? kpiJson.result : [];
 
-    console.log("KPI RESPONSE:", kpiJson);
-    console.log("OWS RESPONSE:", owsJson);
-
-    const rawOwsRows = extractOwsRows(owsJson);
-
-    console.log("RAW OWS ROWS:", rawOwsRows);
-
-    const owsRows =
-      normalizeOwsRows(rawOwsRows);
-
-    console.log(
-      "NORMALIZED OWS ROWS:",
-      owsRows
-    );
-
-    const kpiResults = Array.isArray(kpiJson.result)
-      ? kpiJson.result
-      : [];
-
-    if(kpiResults.length === 0){
-
-      resultElement.innerText =
-        "KPI API tidak mengembalikan result.";
-
+    if(!kpiResults.length){
+      resultElement.innerText = "KPI API tidak mengembalikan result.";
       return;
     }
 
-    let text = "";
+    let text =
+`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOVA — QUICK HEALTH CHECK ANALYSIS
+Analysis Period : Last 24 Hours
+Generated At    : ${formatGeneratedAt()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-    kpiResults.forEach(s => {
+`;
 
-      const ranAlarms =
-        getRanAlarmsBySite(
-          owsRows,
-          s.site_id
-        );
-
-      const siaText =
-        formatSiaMainAlarm(ranAlarms);
+    kpiResults.forEach(site => {
+      const ranAlarms = getRanAlarmsBySite(owsRows, site.site_id);
+      const kpi = buildKpiLines(site);
+      const siteHealthy = ranAlarms.length === 0 && kpi.healthy;
 
       text +=
-`━━━━━━━━━━━━━━━━━━━━
-SITE : ${s.site_id}
-SITE NAME : ${s.site_name}
+`SITE ID        : ${site.site_id || "-"}
+SITE NAME      : ${site.site_name || "-"}
+OVERALL STATUS : ${siteHealthy ? "✅ NORMAL" : "⚠️ ATTENTION REQUIRED"}
 
-${siaText}
+SIA ANALYSIS
+${ranAlarms.length ? `❌ Issue Detected (${ranAlarms[0].__alarmName})` : "✅ Normal — No active RAN alarm detected"}
 `;
 
-      if(ranAlarms.length > 0){
-
-        text += `
-Detected RAN Alarms :
-`;
-
+      if(ranAlarms.length){
+        text += `\nDETECTED RAN ALARMS\n`;
         ranAlarms.forEach(a => {
-
-          text +=
-`• ${a.__alarmName} | ${a.__severity} | ${a.__domain} | ${a.__firstOcc} | ${a.__duration}
-`;
+          text += `• ${a.__alarmName} | ${a.__severity} | ${a.__domain} | ${a.__firstOcc} | ${a.__duration}\n`;
         });
       }
 
-      /*
-        Suspect dan Action hanya ditampilkan
-        ketika memang dikirim oleh Healthcheck API.
-      */
-      if(
-        s.suspect &&
-        String(s.suspect).trim() !== ""
-      ){
-
-        text += `
-Suspect Cause :
-${s.suspect}
-`;
+      if(site.suspect && String(site.suspect).trim()){
+        text += `\nSUSPECTED CAUSE\n${site.suspect}\n`;
       }
 
-      if(
-        s.action &&
-        String(s.action).trim() !== ""
-      ){
-
-        text += `
-Action Needed :
-${s.action}
-`;
+      if(site.action && String(site.action).trim()){
+        text += `\nRECOMMENDED ACTION\n${site.action}\n`;
       }
 
-      text += `
-
-KPI HEALTHCHECK
-${s.availability} Availability Status
-${s.plr} PLR Status
-${s.delay} DELAY Status
-${s.traffic} Traffic Status
-${s.s1sr} S1SR Status
-
-`;
+      text += `\nKPI PERFORMANCE SUMMARY\n${kpi.text}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
     });
 
-    resultElement.innerText = text;
-
+    resultElement.innerText = text.trim();
   }catch(error){
-
-    console.error(
-      "HEALTHCHECK ERROR:",
-      error
-    );
-
-    resultElement.innerText =
-      "Analysis gagal:\n" +
-      error.message;
+    console.error("HEALTHCHECK ERROR:", error);
+    resultElement.innerText = "Analysis gagal:\n" + error.message;
   }
 }
 
-
-async function copy(){
-
-  const text =
-    document.getElementById("result").innerText;
-
+async function copyResult(){
+  const text = document.getElementById("result").innerText;
   if(!text.trim()){
     alert("Belum ada result untuk disalin.");
     return;
   }
 
   try{
-
     await navigator.clipboard.writeText(text);
-
-    alert("Copied");
-
+    alert("Result berhasil disalin.");
   }catch(error){
-
-    console.error(
-      "COPY ERROR:",
-      error
-    );
-
-    alert(
-      "Gagal copy. Silakan salin secara manual."
-    );
+    console.error("COPY ERROR:", error);
+    alert("Gagal copy. Silakan salin secara manual.");
   }
 }
-
 </script>
-
 </body>
 </html>
