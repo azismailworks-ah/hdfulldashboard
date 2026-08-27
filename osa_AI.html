@@ -585,6 +585,25 @@ body::before{
   flex-direction:column;
   gap:12px;
 }
+#topologyWorkspace:fullscreen{
+  width:100vw;
+  height:100vh;
+  padding:12px;
+  box-sizing:border-box;
+  background:#050b16;
+  grid-template-columns:minmax(0,1fr) minmax(290px,360px);
+}
+#topologyWorkspace:fullscreen .topology-box{
+  min-height:0;
+  height:calc(100vh - 24px);
+}
+#topologyWorkspace:fullscreen .topology-canvas{
+  height:calc(100vh - 88px);
+}
+#topologyWorkspace:fullscreen .topology-sidebar{
+  min-height:0;
+  overflow:auto;
+}
 .mini-card{
   border:1px solid var(--line);
   border-radius:18px;
@@ -1629,7 +1648,7 @@ tr:hover td{
       <div class="meta">MW = circle · ME = box · CN = star · edge colors follow your routing logic</div>
     </div>
     <div class="section-body">
-      <div class="topology-layout">
+      <div class="topology-layout" id="topologyWorkspace">
         <div class="topology-box">
           <div class="topology-head">
             <div class="title" id="topologyTitle">Topology dari Transport yang sudah kita buat</div>
@@ -1638,6 +1657,8 @@ tr:hover td{
               <button class="button ghost" id="btnZoomIn">Zoom +</button>
               <button class="button ghost" id="btnZoomOut">Zoom -</button>
               <button class="button ghost" id="btnResetTopo">Reset</button>
+              <button class="button ghost" id="btnTopologyFullscreen" title="Open topology and summary in fullscreen">Full Screen</button>
+              <button class="button ghost" id="btnTopologyPng" title="Download the current arranged and zoomed topology view">Download PNG</button>
             </div>
           </div>
           <div id="topologyCanvas" class="topology-canvas"></div>
@@ -3511,6 +3532,34 @@ function bfs(start, graph, isTarget, blocked = new Set()){
   return { path:[start], found:null };
 }
 
+// Fallback only: preserve observed MW links without inventing a ME/CN endpoint.
+function collectUnresolvedMw(start, graph, maxNodes=100, maxEdges=180){
+  const nodes=[start], edges=[], seen=new Set(nodes), edgeKeys=new Set();
+  let truncated=false;
+  for(let i=0;i<nodes.length;i++){
+    const from=nodes[i];
+    for(const to of [...(graph.get(from)||[])].sort()){
+      if(to===from) continue;
+      const key=pathEdgeKey(from,to);
+      if(edgeKeys.has(key)) continue;
+      if(edges.length>=maxEdges||(!seen.has(to)&&nodes.length>=maxNodes)){
+        truncated=true;continue;
+      }
+      if(!seen.has(to)){seen.add(to);nodes.push(to);}
+      edgeKeys.add(key);edges.push({from,to});
+    }
+  }
+  // Only unambiguous hops enter mwPath; branches remain separate evidence.
+  const path=[start], pathSeen=new Set(path);
+  while(path.length<nodes.length){
+    const current=path[path.length-1], previous=path[path.length-2];
+    const next=[...(graph.get(current)||[])].filter(n=>n!==previous&&n!==current);
+    if(next.length!==1||pathSeen.has(next[0])||!seen.has(next[0])) break;
+    path.push(next[0]);pathSeen.add(next[0]);
+  }
+  return {nodes,edges,path,truncated};
+}
+
 function pathEdgeKey(a,b){
   return [String(a),String(b)].sort().join(' <> ');
 }
@@ -3689,6 +3738,13 @@ function resolveE2E(siteId, graphs){
     traceMode = meName ? 'mw' : 'unknown';
   }
 
+  let unresolvedMw=null;
+  if(!meName&&(mwGraph.get(siteId)||new Set()).size){
+    unresolvedMw=collectUnresolvedMw(siteId,mwGraph);
+    mwPath=unresolvedMw.path;
+    traceMode='mw-unresolved';
+  }
+
   let metroPaths=[];
   let pathEnumeration={paths:[],truncated:false,maxDepth:0};
   let downstreamBranch=null;
@@ -3752,8 +3808,15 @@ function resolveE2E(siteId, graphs){
     resilience.lldpTruncated=diagnosticLldp.truncated;
   }
 
+  if(unresolvedMw){
+    resilience.classification='MW CONNECTED / ME-CN UNRESOLVED';
+    resilience.accessClassification='MW links observed; upstream handoff not mapped';
+    resilience.edgeCutSize='N/A';
+    resilience.nodeCutSize='N/A';
+  }
+
   const finalNodes = [];
-  [...mwPath, meName, ...metroPaths.flat(), ...diagnosticLldp.nodes].forEach(n => {
+  [...mwPath, ...(unresolvedMw?.nodes||[]), meName, ...metroPaths.flat(), ...diagnosticLldp.nodes].forEach(n => {
     if(n && !finalNodes.includes(n)) finalNodes.push(n);
   });
 
@@ -3780,6 +3843,7 @@ function resolveE2E(siteId, graphs){
   return {
       siteId,
       mwPath,
+      unresolvedMw,
       meName,
       directMe,
       explicitDirectMe,
@@ -4712,6 +4776,7 @@ function nodeTypeOf(node, topo){
   if(isCn(node)) return 'CN';
   if(topo && topo.meName && node === topo.meName) return 'ME';
   if(topo && topo.mwPath && topo.mwPath.includes(node)) return 'MW';
+  if(topo?.unresolvedMw?.nodes.includes(node)) return 'MW';
   return 'OTHER';
 }
 
@@ -4802,6 +4867,14 @@ function buildTopologyNetwork(rows, topo){
         smooth: { type: 'dynamic' }
       });
     }
+  });
+
+  const mwPrefixEdges=new Set(mwPath.slice(1).map((n,i)=>pathEdgeKey(mwPath[i],n)));
+  (topo.unresolvedMw?.nodes||[]).forEach(addNode);
+  (topo.unresolvedMw?.edges||[]).forEach(link=>{
+    if(mwPrefixEdges.has(pathEdgeKey(link.from,link.to))) return;
+    edges.push({from:link.from,to:link.to,color:{color:'#2f80ff'},width:2.8,
+      title:'Observed MW link; upstream direction unverified',smooth:{type:'dynamic'}});
   });
 
   if(topo.meName){
@@ -4914,6 +4987,9 @@ function buildTopologyNetwork(rows, topo){
   const traceRows=(topo.metroPaths||[]).slice(0,8).map((path,index)=>
     `<div style="margin-bottom:7px"><strong>Path ${index+1}:</strong> ${escapeHtml([...mwPath,...path].filter((node,pos,arr)=>pos===0||node!==arr[pos-1]).join(' → '))}</div>`
   );
+  if(topo.unresolvedMw){
+    traceRows.push(`<div><strong>Observed MW:</strong> ${escapeHtml(mwPath.join(' → '))}</div><div>${topo.unresolvedMw.nodes.length} nodes / ${topo.unresolvedMw.edges.length} links. ME/CN belum terpetakan; handoff leased line/3rd party perlu data referensi. Cabang pada graph bukan jalur CN terverifikasi.${topo.unresolvedMw.truncated?' Tampilan dibatasi; inventory belum seluruhnya ditampilkan.':''}</div>`);
+  }
   if(!traceRows.length&&(topo.diagnosticLldp?.nodes||[]).length>1){
     traceRows.push(`<div><strong>LLDP connected:</strong> ${escapeHtml(String(topo.diagnosticLldp.nodes.length))} nodes, ${escapeHtml(String(topo.diagnosticLldp.edges.length))} links. Jalur menuju CN belum ditemukan.</div>`);
   }
@@ -5108,6 +5184,69 @@ async function exportVipReport(){
     button.disabled = false;
     button.textContent = originalButtonText;
   }
+}
+
+async function toggleTopologyFullscreen(){
+  const workspace=document.getElementById('topologyWorkspace');
+  if(!workspace) return;
+  try{
+    if(document.fullscreenElement===workspace){
+      await document.exitFullscreen?.();
+    }else{
+      await workspace.requestFullscreen?.();
+    }
+  }catch(error){
+    console.error('Topology fullscreen failed',error);
+    alert('Fullscreen topology tidak dapat dibuka oleh browser ini.');
+  }
+}
+
+async function exportTopologyPng(){
+  const target=document.getElementById('topologyWorkspace');
+  const button=document.getElementById('btnTopologyPng');
+  if(!target||!window.html2canvas) return;
+  const tools=[...target.querySelectorAll('.tools')];
+  const previous=tools.map(el=>el.style.visibility);
+  const originalText=button.textContent;
+  button.disabled=true;
+  button.textContent='Preparing PNG...';
+  try{
+    tools.forEach(el=>{el.style.visibility='hidden';});
+    state.topology?.redraw();
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const canvas=await html2canvas(target,{
+      scale:Math.max(2,window.devicePixelRatio||1),
+      useCORS:true,
+      allowTaint:false,
+      backgroundColor:'#050b16',
+      logging:false,
+      width:target.scrollWidth,
+      height:target.scrollHeight,
+      windowWidth:target.scrollWidth,
+      windowHeight:target.scrollHeight
+    });
+    const site=(document.getElementById('siteId')?.value||'site').trim().replace(/[^a-z0-9_-]+/gi,'_');
+    const link=document.createElement('a');
+    link.download=`Topology_${site}_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+    link.href=canvas.toDataURL('image/png',1);
+    link.click();
+  }catch(error){
+    console.error('Topology PNG export failed',error);
+    alert('Screenshot topology gagal dibuat. Silakan coba kembali setelah graph selesai dirender.');
+  }finally{
+    tools.forEach((el,index)=>{el.style.visibility=previous[index];});
+    button.disabled=false;
+    button.textContent=originalText;
+  }
+}
+
+function handleTopologyFullscreenChange(){
+  const workspace=document.getElementById('topologyWorkspace');
+  const button=document.getElementById('btnTopologyFullscreen');
+  if(button) button.textContent=document.fullscreenElement===workspace?'Exit Full Screen':'Full Screen';
+  setTimeout(()=>{
+    try{state.topology?.setSize('100%','100%');state.topology?.redraw();}catch(error){}
+  },100);
 }
 
 function toggleFullscreen(){
@@ -6462,6 +6601,9 @@ searchHistoryAlarm
 });
 
 document.getElementById('btnFit').addEventListener('click', () => state.topology?.fit({ animation:{ duration:300, easingFunction:'easeInOutQuad' } }));
+document.getElementById('btnTopologyFullscreen').addEventListener('click',toggleTopologyFullscreen);
+document.getElementById('btnTopologyPng').addEventListener('click',exportTopologyPng);
+document.addEventListener('fullscreenchange',handleTopologyFullscreenChange);
 document.getElementById('btnZoomIn').addEventListener('click', () => {
   if(!state.topology) return;
   const scale = state.topology.getScale();
