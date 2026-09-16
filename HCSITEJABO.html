@@ -3,41 +3,86 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NOVA — NOC HD Health Intelligence</title>
+<title>NOVA — NOC HD Health Intelligence V2</title>
 
 <style>
+:root{--navy:#0b1739;--navy2:#132758;--blue:#3168ff;--cyan:#19b8dc;--green:#16a36a;--amber:#e48a08;--red:#d9465f;--ink:#15213b;--muted:#66738e;--line:#dce3ef;--surface:#fff;--soft:#f5f8fd}
 *{box-sizing:border-box}
-body{font-family:Arial,sans-serif;background:#f4f6f9;padding:40px;color:#172033}
-.container{max-width:900px;margin:auto;background:#fff;padding:30px;border-radius:10px;box-shadow:0 8px 30px rgba(20,30,50,.08)}
-h2{margin:0;font-size:22px}
-.brand{font-size:13px;color:#7c8799;margin:6px 0 20px;font-weight:600;letter-spacing:2px}
-textarea{width:100%;height:120px;padding:12px;border:1px solid #aeb7c5;border-radius:5px;resize:vertical;font-family:Consolas,monospace}
-button{padding:10px 20px;margin-top:10px;border:1px solid #8d98aa;border-radius:4px;cursor:pointer;font-weight:600}
-button:hover{background:#e8edf4}
-.result{background:#111;color:#00ff90;padding:20px;white-space:pre-wrap;margin-top:20px;font:14px/1.45 Consolas,monospace;border-radius:5px;min-height:80px;overflow-wrap:anywhere}
+body{margin:0;min-height:100vh;font-family:Inter,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at 15% 0%,#dce9ff 0,transparent 28%),linear-gradient(135deg,#f6f8fc,#eef3fb);color:var(--ink)}
+.app{max-width:1180px;margin:0 auto;padding:32px 22px 60px}
+.topbar{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-radius:22px;padding:26px 28px;box-shadow:0 18px 50px rgba(18,39,88,.22);display:flex;justify-content:space-between;gap:20px;align-items:center;overflow:hidden;position:relative}
+.topbar:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-90px;top:-145px;background:rgba(49,104,255,.25)}
+.brandline{position:relative;z-index:1}.eyebrow{font-size:12px;letter-spacing:3px;color:#79dff1;font-weight:700;margin-bottom:8px}.topbar h1{font-size:24px;margin:0 0 7px}.subtitle{color:#bdc9e8;font-size:14px}.live{position:relative;z-index:1;display:flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.08);font-size:12px;white-space:nowrap}.dot{width:8px;height:8px;border-radius:50%;background:#35e59a;box-shadow:0 0 0 5px rgba(53,229,154,.13);animation:pulse 2s infinite}
+.panel{background:var(--surface);border:1px solid rgba(206,216,232,.75);border-radius:18px;box-shadow:0 12px 34px rgba(26,49,88,.09);padding:22px;margin-top:20px}.panel-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:13px}.panel-title{font-weight:750;font-size:16px}.panel-help{font-size:12px;color:var(--muted);margin-top:4px}
+textarea{width:100%;height:128px;padding:14px 16px;border:1px solid #cbd5e6;border-radius:12px;resize:vertical;font:14px/1.45 Consolas,monospace;color:var(--ink);background:#fbfcff;transition:.2s}textarea:focus{outline:3px solid rgba(49,104,255,.15);border-color:var(--blue)}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:13px}.btn{border:0;border-radius:10px;padding:11px 17px;font-weight:700;cursor:pointer;transition:transform .18s,box-shadow .18s,background .18s}.btn:hover{transform:translateY(-1px)}.btn-primary{color:#fff;background:linear-gradient(135deg,var(--blue),#234fd0);box-shadow:0 8px 18px rgba(49,104,255,.25)}.btn-secondary{color:#26365b;background:#edf2fa}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}.btn-copy-ok{background:#dcf7ea;color:#087448}
+.status{display:none;margin-top:14px;border-radius:11px;padding:12px 14px;font-size:13px}.status.show{display:block}.status.loading{background:#eef4ff;color:#244eb1}.status.error{background:#fff0f2;color:#a7283d}.loader{display:inline-block;width:14px;height:14px;border:2px solid #9fb8ee;border-top-color:#2f66ed;border-radius:50%;animation:spin .7s linear infinite;vertical-align:-2px;margin-right:8px}
+#dashboard{display:none}#dashboard.show{display:block;animation:rise .38s ease-out}.overview{display:grid;grid-template-columns:1.25fr repeat(3,1fr);gap:14px;margin-top:20px}.metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 8px 22px rgba(26,49,88,.07)}.metric.primary{background:linear-gradient(140deg,#edf3ff,#f9fbff);border-color:#c9d8ff}.metric-label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.7px}.metric-value{font-size:28px;font-weight:800;margin-top:7px}.metric-context{font-size:12px;color:var(--muted);margin-top:4px}.progress-track{height:8px;background:#dfe7f5;border-radius:99px;overflow:hidden;margin-top:14px}.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:99px;transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.issue-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}.issue-chip{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}.issue-name{font-size:12px;color:var(--muted);font-weight:700}.issue-count{font-size:19px;font-weight:800}.issue-count.zero{color:var(--green)}.issue-count.has{color:var(--amber)}
+.report-bar{display:flex;justify-content:space-between;align-items:center;gap:14px;margin:24px 0 12px}.report-title{font-size:18px;font-weight:800}.filters{display:flex;gap:7px;flex-wrap:wrap}.filter{border:1px solid var(--line);background:#fff;color:#53617a;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}.filter.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.site-list{display:grid;gap:12px}.site-card{background:#fff;border:1px solid var(--line);border-left:5px solid var(--green);border-radius:15px;box-shadow:0 7px 22px rgba(26,49,88,.06);overflow:hidden;animation:rise .35s both}.site-card.issue{border-left-color:var(--amber)}.site-card[hidden]{display:none}.site-summary{list-style:none;cursor:pointer;padding:17px 19px;display:flex;align-items:center;justify-content:space-between;gap:16px}.site-summary::-webkit-details-marker{display:none}.site-id{font-weight:800}.site-name{color:var(--muted);font-size:12px;margin-top:3px;overflow-wrap:anywhere}.site-state{font-size:11px;font-weight:800;padding:6px 9px;border-radius:999px;background:#e7f8f0;color:#087448;white-space:nowrap}.site-card.issue .site-state{background:#fff2de;color:#9a5b00}.site-body{border-top:1px solid #edf1f7;padding:18px 19px}.section-label{font-size:11px;letter-spacing:.8px;text-transform:uppercase;font-weight:800;color:#6a7690;margin-bottom:9px}.sia-row{padding:11px 13px;border-radius:10px;background:#eff9f4;color:#087448;font-size:13px;font-weight:700}.sia-row.issue{background:#fff2e5;color:#9b5600}.alarm-list,.recommend-list{margin:10px 0 18px;padding-left:20px;color:#44516b;font-size:13px;line-height:1.55}.kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi-item{border:1px solid #e3e9f2;border-radius:11px;padding:12px;background:#fbfcfe}.kpi-item.issue{border-color:#f2cf9d;background:#fffaf3}.kpi-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;font-weight:750}.kpi-status{color:var(--green)}.kpi-item.issue .kpi-status{color:var(--amber)}.kpi-detail{font-size:12px;color:#65718a;line-height:1.45;margin-top:6px;overflow-wrap:anywhere}
+.wa-preview{display:none;background:#10251c;color:#dff9eb;border-radius:14px;padding:18px;white-space:pre-wrap;font:13px/1.5 Consolas,monospace;margin-top:14px;max-height:520px;overflow:auto}.wa-preview.show{display:block}.char-info{font-size:12px;color:var(--muted);align-self:center}.empty{padding:28px;text-align:center;color:var(--muted)}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{50%{opacity:.45;transform:scale(.85)}}@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(max-width:850px){.overview{grid-template-columns:repeat(2,1fr)}.issue-strip{grid-template-columns:repeat(3,1fr)}.kpi-grid{grid-template-columns:1fr}}@media(max-width:560px){.app{padding:14px 12px 36px}.topbar{padding:21px;border-radius:16px}.topbar h1{font-size:19px}.live{display:none}.panel{padding:16px}.overview{grid-template-columns:1fr 1fr}.metric.primary{grid-column:1/-1}.issue-strip{grid-template-columns:1fr 1fr}.report-bar{align-items:flex-start;flex-direction:column}.site-summary{align-items:flex-start}.site-state{white-space:normal}.actions .btn{flex:1}.metric-value{font-size:23px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 
 <body>
-<div class="container">
-  <h2>Network Operations Validation &amp; Analysis</h2>
-  <div class="brand">NOVA</div>
+<main class="app">
+  <header class="topbar">
+    <div class="brandline">
+      <div class="eyebrow">NOVA · NOC INTELLIGENCE</div>
+      <h1>Network Operations Validation &amp; Analysis - V2</h1>
+      <div class="subtitle">24-hour site health, KPI validation, and alarm intelligence</div>
+    </div>
+    <div class="live"><span class="dot"></span> Analysis workspace ready</div>
+  </header>
 
-  <textarea id="sites" placeholder="Input Site ID, one per line"></textarea>
-  <br>
-  <button onclick="run()">ANALYSIS</button>
-  <button onclick="copyResult()">COPY</button>
-  <div id="result" class="result"></div>
-</div>
+  <section class="panel">
+    <div class="panel-head">
+      <div><div class="panel-title">Site analysis</div><div class="panel-help">Paste Site IDs separated by line, comma, or semicolon.</div></div>
+      <div class="char-info" id="siteCount">0 sites</div>
+    </div>
+    <textarea id="sites" aria-label="Site IDs" placeholder="Example:&#10;11TGX0039&#10;12JKP0242"></textarea>
+    <div class="actions">
+      <button class="btn btn-primary" id="analysisBtn" onclick="run()">Run Analysis</button>
+      <button class="btn btn-secondary" id="copySummaryBtn" onclick="copyReport('summary')" disabled>Copy Summary</button>
+      <button class="btn btn-secondary" id="copyIssuesBtn" onclick="copyReport('issues')" disabled>Copy Issues Only</button>
+      <button class="btn btn-secondary" id="copyFullBtn" onclick="copyReport('full')" disabled>Copy Full Report</button>
+      <button class="btn btn-secondary" id="previewBtn" onclick="toggleWhatsAppPreview()" disabled>WhatsApp Preview</button>
+    </div>
+    <div id="status" class="status" aria-live="polite"></div>
+  </section>
+
+  <section id="dashboard" aria-live="polite">
+    <div class="overview" id="overview"></div>
+    <div class="issue-strip" id="issueStrip"></div>
+    <div class="panel" id="previewPanel" hidden>
+      <div class="panel-head"><div><div class="panel-title">WhatsApp-safe preview</div><div class="panel-help">This exact plain text is copied; no spacing-based columns are used.</div></div><div class="char-info" id="reportLength"></div></div>
+      <pre id="waPreview" class="wa-preview"></pre>
+    </div>
+    <div class="report-bar">
+      <div><div class="report-title">Site details</div><div class="panel-help" id="visibleCount"></div></div>
+      <div class="filters" aria-label="Filter sites">
+        <button class="filter active" data-filter="all" onclick="filterSites('all',this)">All</button>
+        <button class="filter" data-filter="clear" onclick="filterSites('clear',this)">Clear</button>
+        <button class="filter" data-filter="issue" onclick="filterSites('issue',this)">Needs attention</button>
+      </div>
+    </div>
+    <div class="site-list" id="siteList"></div>
+  </section>
+</main>
 
 <script>
 const RAN_DOMAINS = new Set(["RAN", "RAN-2G", "RAN-3G", "RAN-4G", "RAN-5G"]);
+const API_BASE = "https://api.azhautomation.com";
 
 const KPI_CONFIG = {
-  availability: { label: "Availability", unit: "%", target: "100%", pass: value => value >= 100 },
-  plr:          { label: "Packet Loss (PLR)", unit: "%", target: "≤ 1%", pass: value => value <= 1 },
+  availability: { label: "Availability", unit: "%", target: "100% (Current)", pass: value => value === 100 },
+  plr:          { label: "Packet Loss (PLR)", unit: "%", target: "< 1%", pass: value => value < 1 },
   delay:        { label: "Latency", unit: "ms", target: "≤ 10 ms", pass: value => value <= 10 },
-  s1sr:         { label: "S1 Success Rate (S1SR)", unit: "%", target: "100%", pass: value => value >= 100 },
+  s1sr:         { label: "S1 Success Rate (S1SR)", unit: "%", target: "≥ 95%", pass: value => value >= 95 },
   prb:          { label: "PRB Utilization", unit: "%", target: "≤ 90%", pass: value => value <= 90 }
 };
 
@@ -92,9 +137,31 @@ function extractOwsRows(payload){
   return collected;
 }
 
-function getRanAlarmsBySite(rows, siteId){
+function normalizeAlarmName(value){
+  return normalizeText(value).replace(/\s+/g, " ");
+}
+
+function buildAlarmRuleMap(payload){
+  const rules = Array.isArray(payload?.rules) ? payload.rules : [];
+  return new Map(
+    rules
+      .filter(rule => rule?.alarm_name)
+      .map(rule => [normalizeAlarmName(rule.alarm_name), rule])
+  );
+}
+
+function getRanAlarmsBySite(rows, siteId, alarmRuleMap){
   const requestedSite = normalizeText(siteId);
-  return rows.filter(a => normalizeText(a.__siteId) === requestedSite && RAN_DOMAINS.has(normalizeText(a.__domain)));
+  return rows
+    .filter(a =>
+      normalizeText(a.__siteId) === requestedSite &&
+      RAN_DOMAINS.has(normalizeText(a.__domain)) &&
+      alarmRuleMap.has(normalizeAlarmName(a.__alarmName))
+    )
+    .map(a => ({
+      ...a,
+      __rule: alarmRuleMap.get(normalizeAlarmName(a.__alarmName))
+    }));
 }
 
 function firstValue(source, keys){
@@ -199,7 +266,26 @@ function buildKpiLines(site){
     formatKpi(values.prb, "prb")
   ];
 
-  return { text: rows.map(row => row.line).join("\n"), healthy: rows.every(row => row.passed) };
+  return {
+    text: rows.map(row => row.line).join("\n"),
+    healthy: rows.every(row => row.passed),
+    results: {
+      availability: rows[0],
+      plr: rows[1],
+      delay: rows[2],
+      s1sr: rows[3],
+      prb: rows[4]
+    }
+  };
+}
+
+function getNocGrade(clearSites, totalSites){
+  const score = totalSites ? (clearSites / totalSites) * 100 : 0;
+  if(score >= 95) return { score, grade: "A", label: "Excellent" };
+  if(score >= 90) return { score, grade: "B", label: "Good" };
+  if(score >= 80) return { score, grade: "C", label: "Watch" };
+  if(score >= 70) return { score, grade: "D", label: "Poor" };
+  return { score, grade: "E", label: "Critical" };
 }
 
 function formatGeneratedAt(date = new Date()){
@@ -207,106 +293,252 @@ function formatGeneratedAt(date = new Date()){
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-async function run(){
-  const resultElement = document.getElementById("result");
-  let sites = document.getElementById("sites").value
-    .split(/[\n,;]+/).map(normalizeText).filter(Boolean);
-  sites = [...new Set(sites)];
+let whatsappSummaryText = "";
+let whatsappIssuesText = "";
+let whatsappFullText = "";
+let currentAnalyses = [];
 
-  if(!sites.length){
-    resultElement.innerText = "Silakan input Site ID terlebih dahulu.";
-    return;
+function escapeHtml(value){
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;"
+  })[char]);
+}
+
+function setStatus(message, type){
+  const element = document.getElementById("status");
+  element.className = `status show ${type || ""}`;
+  element.innerHTML = type === "loading" ? `<span class="loader"></span>${escapeHtml(message)}` : escapeHtml(message);
+}
+
+function clearStatus(){
+  const element = document.getElementById("status");
+  element.className = "status";
+  element.textContent = "";
+}
+
+function getRecommendations(ranAlarms){
+  const result = [];
+  const seen = new Set();
+  ranAlarms.forEach(alarm => {
+    const recommendation = String(alarm.__rule?.recommendation || "").trim();
+    if(recommendation && !seen.has(recommendation)){
+      seen.add(recommendation);
+      result.push({ alarm: alarm.__alarmName, recommendation });
+    }
+  });
+  return result;
+}
+
+function getMetricView(site, key){
+  const aliases = {
+    availability: ["availability_value", "availability_actual", "availability"],
+    plr: ["plr_value", "plr_actual", "packet_loss", "plr"],
+    delay: ["delay_value", "latency_value", "delay_actual", "latency", "delay"],
+    s1sr: ["s1sr_value", "s1sr_actual", "s1_success_rate", "s1sr"],
+    prb: ["prb_value", "prb_actual", "prb_highest", "prb_max", "prb"]
+  };
+  const raw = firstValue(site, aliases[key]);
+  const formatted = formatKpi(raw, key);
+  const config = KPI_CONFIG[key];
+  const parts = [];
+
+  if(raw && typeof raw === "object"){
+    const unit = config.unit === "%" ? "%" : " ms";
+    if(raw.average != null) parts.push(`Average ${displayNumber(raw.average)}${unit}`);
+    if(raw.current != null) parts.push(`Current ${displayNumber(raw.current)}${unit}`);
+    if(raw.lowest != null) parts.push(`Lowest ${displayNumber(raw.lowest)}${unit}`);
+    if(raw.highest != null) parts.push(`Highest ${displayNumber(raw.highest)}${unit}`);
+    parts.push(`Target ${config.target}`);
+    if(!formatted.passed && raw.worst_time) parts.push(`Worst ${String(raw.worst_time).replace("T", " ")}`);
+  }else{
+    parts.push(formatted.line.replace(/^[✅⚠️⚪]\s*/u, ""));
   }
 
-  resultElement.innerText = "Sedang melakukan analysis...";
+  return { key, label: config.label, passed: formatted.passed, detail: parts.join(" · "), report: formatted.line };
+}
 
-  try{
-    const kpiUrl = "https://api.azhautomation.com/api/noc/healthcheck?sites=" + encodeURIComponent(sites.join(","));
-    const [kpiRes, owsRes] = await Promise.all([
-      fetch(kpiUrl),
-      fetch("https://api.azhautomation.com/api/ows/multi", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_ids: sites })
-      })
-    ]);
+function buildReportTexts(analyses, summary, generatedAt){
+  const compliance = summary.total ? (summary.clear / summary.total) * 100 : 0;
+  const header =
+`*NOVA — QUICK HEALTH CHECK ANALYSIS*
+_Period: Last 24 Hours_
+_Generated: ${generatedAt}_
 
-    if(!kpiRes.ok) throw new Error(`KPI API error ${kpiRes.status}: ${await kpiRes.text()}`);
-    if(!owsRes.ok) throw new Error(`OWS API error ${owsRes.status}: ${await owsRes.text()}`);
+*SITE HEALTH SUMMARY*
+• Total Sites: ${summary.total}
+• Hygiene Clear: ${summary.clear}
+• Needs Attention: ${summary.issue}
+• Site Hygiene Compliance: ${displayNumber(compliance)}% (${summary.clear}/${summary.total})
 
-    const kpiJson = await kpiRes.json();
-    const owsJson = await owsRes.json();
-    const owsRows = normalizeOwsRows(extractOwsRows(owsJson));
-    const kpiResults = Array.isArray(kpiJson.result) ? kpiJson.result : [];
+*ISSUE BREAKDOWN*
+• SIA: ${summary.sia} site(s)
+• Availability: ${summary.availability} site(s)
+• PLR / Latency: ${summary.plrDelay} site(s)
+• S1SR: ${summary.s1sr} site(s)
+• High PRB: ${summary.prb} site(s)
 
-    if(!kpiResults.length){
-      resultElement.innerText = "KPI API tidak mengembalikan result.";
-      return;
+_A site may appear in more than one issue category._`;
+
+  const sections = analyses.map(({ site, ranAlarms, metrics }, index) => {
+    const recommendations = getRecommendations(ranAlarms);
+    let block =
+`*SITE ${index + 1}/${analyses.length} — ${site.site_id || "-"}*
+Site Name: \`${site.site_name || "-"}\`
+
+*SIA Analysis*
+${ranAlarms.length ? `❌ Issue detected: ${ranAlarms[0].__alarmName}` : "✅ Normal — No active RAN alarm detected"}`;
+
+    if(ranAlarms.length){
+      block += `\n\n*Detected RAN Alarms*\n` + ranAlarms.map(alarm =>
+        `• ${alarm.__alarmName} | ${alarm.__severity} | ${alarm.__domain} | ${alarm.__firstOcc}`
+      ).join("\n");
     }
 
-    let text =
-`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-NOVA — QUICK HEALTH CHECK ANALYSIS
-Analysis Period : Last 24 Hours
-Generated At    : ${formatGeneratedAt()}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if(recommendations.length){
+      block += `\n\n*Recommended Action*\n` + recommendations.map(item =>
+        `• ${item.alarm}: ${item.recommendation}`
+      ).join("\n");
+    }
 
-`;
+    block += `\n\n*KPI Performance Summary*\n` + metrics.map(metric =>
+      metric.report.replace(/\n\s*Worst Time\s*:/g, "\n↳ Worst Time:")
+    ).join("\n");
+    return block;
+  });
 
-    kpiResults.forEach(site => {
-      const ranAlarms = getRanAlarmsBySite(owsRows, site.site_id);
-      const kpi = buildKpiLines(site);
-      const siteHealthy = ranAlarms.length === 0 && kpi.healthy;
-
-      text +=
-`SITE ID        : ${site.site_id || "-"}
-SITE NAME      : ${site.site_name || "-"}
-OVERALL STATUS : ${siteHealthy ? "✅ NORMAL" : "⚠️ ATTENTION REQUIRED"}
-
-SIA ANALYSIS
-${ranAlarms.length ? `❌ Issue Detected (${ranAlarms[0].__alarmName})` : "✅ Normal — No active RAN alarm detected"}
-`;
-
-      if(ranAlarms.length){
-        text += `\nDETECTED RAN ALARMS\n`;
-        ranAlarms.forEach(a => {
-          text += `• ${a.__alarmName} | ${a.__severity} | ${a.__domain} | ${a.__firstOcc} | ${a.__duration}\n`;
-        });
-      }
-
-      if(site.suspect && String(site.suspect).trim()){
-        text += `\nSUSPECTED CAUSE\n${site.suspect}\n`;
-      }
-
-      if(site.action && String(site.action).trim()){
-        text += `\nRECOMMENDED ACTION\n${site.action}\n`;
-      }
-
-      text += `\nKPI PERFORMANCE SUMMARY\n${kpi.text}\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-    });
-
-    resultElement.innerText = text.trim();
-  }catch(error){
-    console.error("HEALTHCHECK ERROR:", error);
-    resultElement.innerText = "Analysis gagal:\n" + error.message;
-  }
+  whatsappSummaryText = header.trim();
+  const issueSections = sections.filter((_, index) => analyses[index].hygieneIssue);
+  whatsappIssuesText = `${header}\n\n━━━━━━━━━━━━\n\n${issueSections.length ? issueSections.join("\n\n━━━━━━━━━━━━\n\n") : "✅ No site issues detected."}`.trim();
+  whatsappFullText = `${header}\n\n━━━━━━━━━━━━\n\n${sections.join("\n\n━━━━━━━━━━━━\n\n")}`.trim();
 }
 
-async function copyResult(){
-  const text = document.getElementById("result").innerText;
-  if(!text.trim()){
-    alert("Belum ada result untuk disalin.");
-    return;
-  }
+function renderDashboard(analyses, summary){
+  const compliance = summary.total ? (summary.clear / summary.total) * 100 : 0;
+  document.getElementById("overview").innerHTML = `
+    <article class="metric primary"><div class="metric-label">Site Hygiene Compliance</div><div class="metric-value">${displayNumber(compliance)}%</div><div class="metric-context">${summary.clear} of ${summary.total} sites are clear</div><div class="progress-track"><div class="progress-fill" id="complianceBar"></div></div></article>
+    <article class="metric"><div class="metric-label">Total Sites</div><div class="metric-value">${summary.total}</div><div class="metric-context">Analyzed in the last 24 hours</div></article>
+    <article class="metric"><div class="metric-label">Hygiene Clear</div><div class="metric-value" style="color:var(--green)">${summary.clear}</div><div class="metric-context">No active SIA or KPI issue</div></article>
+    <article class="metric"><div class="metric-label">Needs Attention</div><div class="metric-value" style="color:var(--amber)">${summary.issue}</div><div class="metric-context">At least one issue detected</div></article>`;
+
+  const issues = [
+    ["SIA", summary.sia], ["Availability", summary.availability], ["PLR / Latency", summary.plrDelay],
+    ["S1SR", summary.s1sr], ["High PRB", summary.prb]
+  ];
+  document.getElementById("issueStrip").innerHTML = issues.map(([label,value]) =>
+    `<div class="issue-chip"><span class="issue-name">${escapeHtml(label)}</span><span class="issue-count ${value ? "has" : "zero"}">${value}</span></div>`
+  ).join("");
+
+  document.getElementById("siteList").innerHTML = analyses.map((item, index) => {
+    const { site, ranAlarms, metrics, hygieneIssue } = item;
+    const recommendations = getRecommendations(ranAlarms);
+    const alarmHtml = ranAlarms.length ? `<div class="section-label" style="margin-top:16px">Detected RAN alarms</div><ul class="alarm-list">${ranAlarms.map(a => `<li><strong>${escapeHtml(a.__alarmName)}</strong> · ${escapeHtml(a.__severity)} · ${escapeHtml(a.__domain)} · ${escapeHtml(a.__firstOcc)}</li>`).join("")}</ul>` : "";
+    const recHtml = recommendations.length ? `<div class="section-label">Recommended action</div><ul class="recommend-list">${recommendations.map(r => `<li><strong>${escapeHtml(r.alarm)}:</strong> ${escapeHtml(r.recommendation)}</li>`).join("")}</ul>` : "";
+    const kpiHtml = metrics.map(metric => `<div class="kpi-item ${metric.passed ? "" : "issue"}"><div class="kpi-top"><span>${escapeHtml(metric.label)}</span><span class="kpi-status">${metric.passed ? "✓ Normal" : "! Issue"}</span></div><div class="kpi-detail">${escapeHtml(metric.detail)}</div></div>`).join("");
+    return `<details class="site-card ${hygieneIssue ? "issue" : ""}" data-state="${hygieneIssue ? "issue" : "clear"}" ${hygieneIssue ? "open" : ""} style="animation-delay:${Math.min(index * 25,300)}ms"><summary class="site-summary"><div><div class="site-id">${escapeHtml(site.site_id || "-")}</div><div class="site-name">${escapeHtml(site.site_name || "-")}</div></div><span class="site-state">${hygieneIssue ? "Needs attention" : "Hygiene clear"}</span></summary><div class="site-body"><div class="section-label">SIA analysis</div><div class="sia-row ${ranAlarms.length ? "issue" : ""}">${ranAlarms.length ? `⚠ Issue detected — ${escapeHtml(ranAlarms[0].__alarmName)}` : "✓ Normal — No active RAN alarm detected"}</div>${alarmHtml}${recHtml}<div class="section-label">KPI performance</div><div class="kpi-grid">${kpiHtml}</div></div></details>`;
+  }).join("");
+
+  document.getElementById("dashboard").classList.add("show");
+  document.getElementById("visibleCount").textContent = `${analyses.length} sites shown`;
+  document.getElementById("waPreview").textContent = whatsappFullText;
+  document.getElementById("reportLength").textContent = `${whatsappFullText.length.toLocaleString()} characters`;
+  requestAnimationFrame(() => document.getElementById("complianceBar").style.width = `${Math.min(compliance,100)}%`);
+}
+
+async function run(){
+  let sites = document.getElementById("sites").value.split(/[\n,;]+/).map(normalizeText).filter(Boolean);
+  sites = [...new Set(sites)];
+  if(!sites.length){ setStatus("Silakan input Site ID terlebih dahulu.", "error"); return; }
+
+  const analysisBtn = document.getElementById("analysisBtn");
+  analysisBtn.disabled = true;
+  setStatus(`Analyzing ${sites.length} site(s), KPI, and active alarms...`, "loading");
 
   try{
-    await navigator.clipboard.writeText(text);
-    alert("Result berhasil disalin.");
+    const kpiUrl = API_BASE + "/api/noc/healthcheck?sites=" + encodeURIComponent(sites.join(","));
+    const [kpiRes, owsRes, alarmRulesRes] = await Promise.all([
+      fetch(kpiUrl),
+      fetch(API_BASE + "/api/ows/multi", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({site_ids:sites}) }),
+      fetch(API_BASE + "/api/noc/alarm-rules")
+    ]);
+    if(!kpiRes.ok) throw new Error(`KPI API error ${kpiRes.status}: ${await kpiRes.text()}`);
+    if(!owsRes.ok) throw new Error(`OWS API error ${owsRes.status}: ${await owsRes.text()}`);
+    if(!alarmRulesRes.ok) throw new Error(`Alarm Rule API error ${alarmRulesRes.status}: ${await alarmRulesRes.text()}`);
+
+    const [kpiJson, owsJson, alarmRulesJson] = await Promise.all([kpiRes.json(), owsRes.json(), alarmRulesRes.json()]);
+    const owsRows = normalizeOwsRows(extractOwsRows(owsJson));
+    const alarmRuleMap = buildAlarmRuleMap(alarmRulesJson);
+    const kpiResults = Array.isArray(kpiJson.result) ? kpiJson.result : [];
+    if(!kpiResults.length) throw new Error("KPI API tidak mengembalikan result.");
+
+    currentAnalyses = kpiResults.map(site => {
+      const ranAlarms = getRanAlarmsBySite(owsRows, site.site_id, alarmRuleMap);
+      const kpi = buildKpiLines(site);
+      const metrics = ["availability","plr","delay","s1sr","prb"].map(key => getMetricView(site,key));
+      const issue = { sia:ranAlarms.length>0, availability:!kpi.results.availability.passed, plrDelay:!kpi.results.plr.passed||!kpi.results.delay.passed, s1sr:!kpi.results.s1sr.passed, prb:!kpi.results.prb.passed };
+      return { site, ranAlarms, kpi, metrics, issue, hygieneIssue:Object.values(issue).some(Boolean) };
+    });
+
+    const summary = {
+      total:currentAnalyses.length,
+      issue:currentAnalyses.filter(x=>x.hygieneIssue).length,
+      sia:currentAnalyses.filter(x=>x.issue.sia).length,
+      availability:currentAnalyses.filter(x=>x.issue.availability).length,
+      plrDelay:currentAnalyses.filter(x=>x.issue.plrDelay).length,
+      s1sr:currentAnalyses.filter(x=>x.issue.s1sr).length,
+      prb:currentAnalyses.filter(x=>x.issue.prb).length
+    };
+    summary.clear = summary.total - summary.issue;
+    buildReportTexts(currentAnalyses, summary, formatGeneratedAt());
+    renderDashboard(currentAnalyses, summary);
+    ["copySummaryBtn","copyIssuesBtn","copyFullBtn","previewBtn"].forEach(id => document.getElementById(id).disabled = false);
+    clearStatus();
   }catch(error){
-    console.error("COPY ERROR:", error);
-    alert("Gagal copy. Silakan salin secara manual.");
+    console.error("HEALTHCHECK ERROR:", error);
+    setStatus("Analysis gagal: " + error.message, "error");
+  }finally{
+    analysisBtn.disabled = false;
   }
 }
+
+async function copyReport(type){
+  const text = type === "summary" ? whatsappSummaryText : type === "issues" ? whatsappIssuesText : whatsappFullText;
+  if(!text){ setStatus("Belum ada report untuk disalin.", "error"); return; }
+  try{
+    await navigator.clipboard.writeText(text);
+    const button = document.getElementById(type === "summary" ? "copySummaryBtn" : type === "issues" ? "copyIssuesBtn" : "copyFullBtn");
+    const original = button.textContent;
+    button.textContent = "✓ Copied";
+    button.classList.add("btn-copy-ok");
+    setTimeout(() => { button.textContent = original; button.classList.remove("btn-copy-ok"); }, 1600);
+  }catch(error){
+    setStatus("Copy gagal. Buka WhatsApp Preview lalu salin secara manual.", "error");
+  }
+}
+
+function toggleWhatsAppPreview(){
+  const panel = document.getElementById("previewPanel");
+  const preview = document.getElementById("waPreview");
+  panel.hidden = !panel.hidden;
+  preview.classList.toggle("show", !panel.hidden);
+  document.getElementById("previewBtn").textContent = panel.hidden ? "WhatsApp Preview" : "Hide Preview";
+}
+
+function filterSites(filter, button){
+  document.querySelectorAll(".filter").forEach(item => item.classList.remove("active"));
+  button.classList.add("active");
+  let visible = 0;
+  document.querySelectorAll(".site-card").forEach(card => {
+    const show = filter === "all" || card.dataset.state === filter;
+    card.hidden = !show;
+    if(show) visible++;
+  });
+  document.getElementById("visibleCount").textContent = `${visible} sites shown`;
+}
+
+document.getElementById("sites").addEventListener("input", event => {
+  const count = new Set(event.target.value.split(/[\n,;]+/).map(normalizeText).filter(Boolean)).size;
+  document.getElementById("siteCount").textContent = `${count} site${count === 1 ? "" : "s"}`;
+});
 </script>
 </body>
 </html>
