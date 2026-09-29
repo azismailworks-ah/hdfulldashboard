@@ -694,6 +694,36 @@ body::before{
   font-size:.86rem;
   line-height:1.45;
 }
+.topology-popup{
+  position:fixed;
+  z-index:12000;
+  display:none;
+  min-width:300px;
+  max-width:min(560px,calc(100vw - 24px));
+  max-height:min(70vh,600px);
+  overflow:auto;
+  padding:14px 16px;
+  border:1px solid rgba(103,217,255,.42);
+  border-radius:14px;
+  background:rgba(7,17,31,.97);
+  box-shadow:0 18px 48px rgba(0,0,0,.68);
+  color:var(--text);
+}
+.topology-popup.open{display:block;}
+.topology-popup h3{font-size:14px;color:#7ddcff;margin:0 28px 10px 0;}
+.topology-popup .close{
+  position:sticky;float:right;right:0;top:0;border:0;background:#07111f;
+  color:#b9c8e5;font-size:20px;line-height:1;cursor:pointer;
+}
+.topology-popup .alarm-head{color:#eef4ff;font-weight:800;margin:9px 0 5px;overflow-wrap:anywhere;}
+.topology-popup .alarm-label{color:#9aa9c7;font-size:11px;text-transform:uppercase;margin:7px 0 4px;}
+.topology-popup .alarm-line{padding:6px 8px;margin:4px 0;border-left:3px solid #ff6575;background:rgba(255,255,255,.035);line-height:1.45;overflow-wrap:anywhere;}
+.topology-popup .alarm-time{color:#a9bad8;}
+.topology-popup .alarm-meta{color:#8fa3c4;font-size:11px;margin-top:3px;}
+.topology-popup .alarm-sep{border-top:1px solid var(--line);margin:11px 0;}
+@media(max-width:680px){
+  .topology-popup{min-width:0;width:calc(100vw - 20px);left:10px!important;right:10px;max-height:65vh;}
+}
 .overview-badges{
   display:flex;
   gap:8px;
@@ -1742,9 +1772,13 @@ tr:hover td{
           <div class="mini-card">
             <h4>Notes</h4>
             <div class="topology-note">
-              Nodes are colored by alarm status. Shapes Information: circle (MW), box (ME), star (CN). The topology is rendered with vis-network, topology base on Last LLDP List Database. Please Contact Aziz Husen If Any Not Correct Topology.
+              Nodes use operational symbols: tower (input site), microwave dish (MW), router (all Metro/ME nodes), and star (CN). Microwave nodes use alarms from domains 104, MW, and Transmission; Metro nodes use IP and DWDM. A Metro node directly connected to MW may show both groups. MW–MW and MW–Metro links keep their normal color. A Metro link is highlighted red only when an IP/DWDM alarm Source and Destination match its two endpoints. All OSA topology nodes remain displayed individually; no cloud or collapsed group is used.
             </div>
           </div>
+        </div>
+        <div id="topologyPopup" class="topology-popup" role="dialog" aria-live="polite">
+          <button id="topologyPopupClose" class="close" type="button" aria-label="Close">×</button>
+          <div id="topologyPopupBody"></div>
         </div>
       </div>
     </div>
@@ -4897,10 +4931,167 @@ function buildNodeAlarmMap(rows, topo){
   return map;
 }
 
+function topologySeverityRank(value){
+  return ({critical:4,major:3,minor:2,warning:1})[clean(value).toLowerCase()] || 0;
+}
+
+function topologySymbolIcon(type, color, alarm=false){
+  const stroke='#fff';
+  const fill=alarm?'#ff4d4d':color;
+  const body=type==='SITE'
+    ? `<path d="M32 7 20 55h24L32 7Zm0 12-7 29h14L32 19Zm-17 36h34M32 7v48M22 29h20"/><path d="M16 14a23 23 0 0 1 32 0M22 20a14 14 0 0 1 20 0"/>`
+    : type==='MW'
+    ? `<path d="M14 44c18 8 36-9 31-27-19 0-34 10-31 27Z"/><path d="m30 31 18-9M27 34l-8 20M13 55h24"/><path d="M48 14c7 5 9 11 8 18M43 19c4 3 5 7 5 11"/>`
+    : type==='ME'
+    ? `<ellipse cx="32" cy="17" rx="24" ry="10"/><path d="M8 17v27c0 6 48 6 48 0V17M8 31c0 6 48 6 48 0"/><path d="m22 18 7-4v3h7v-3l7 4-7 4v-3h-7v3l-7-4Z"/>`
+    : type==='CN'
+    ? `<path d="m32 6 7 17h18L43 34l5 19-16-11-16 11 5-19L7 23h18Z"/>`
+    : `<rect x="8" y="15" width="48" height="34" rx="7"/><path d="M17 26h30M17 38h30M22 22v8M32 22v8M42 22v8M22 34v8M32 34v8M42 34v8"/>`;
+  const halo=alarm
+    ? '<circle cx="32" cy="32" r="29" fill="none" stroke="#ff4d4d" stroke-width="4"/><circle cx="32" cy="32" r="24" fill="none" stroke="#ffb3b355" stroke-width="2"/>'
+    : '';
+  return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">${halo}<g fill="${fill}" stroke="${stroke}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round">${body}</g></svg>`);
+}
+
+function buildTopologyAlarmDetailMap(rows, topo){
+  const map=new Map();
+  const nodes=topo?.finalNodes || [];
+  (rows || []).forEach(row => {
+    const explicit=clean(row['Topology Node'] || row.__topologyNode || '');
+    const matched=[];
+    if(explicit) matched.push(explicit);
+    else{
+      const joined=Object.values(row).map(clean).join(' | ').toLowerCase();
+      nodes.forEach(node => {
+        if(node && joined.includes(String(node).toLowerCase())) matched.push(node);
+      });
+    }
+    [...new Set(matched)].forEach(node => {
+      if(!map.has(node)) map.set(node,[]);
+      map.get(node).push(row);
+    });
+  });
+  return map;
+}
+
+function topologyDisplayedNeighborMap(topo){
+  const map=new Map();
+  const connect=(from,to) => {
+    from=clean(from); to=clean(to);
+    if(!from || !to || from===to) return;
+    if(!map.has(from)) map.set(from,new Set());
+    if(!map.has(to)) map.set(to,new Set());
+    map.get(from).add(to);
+    map.get(to).add(from);
+  };
+  const connectPath=path => (path || []).forEach((node,index) => {
+    if(index) connect(path[index-1],node);
+  });
+  connectPath(topo?.mwPath);
+  if(topo?.meName && topo?.mwPath?.length) connect(topo.mwPath[topo.mwPath.length-1],topo.meName);
+  (topo?.metroPaths || []).forEach(connectPath);
+  (topo?.unresolvedMw?.edges || []).forEach(edge => connect(edge.from,edge.to));
+  (topo?.diagnosticLldp?.edges || []).forEach(edge => connect(edge.from,edge.to));
+  return map;
+}
+
+function topologyIsMicrowaveAlarmDomain(domain){
+  return ['104','MW','TRANSMISSION'].includes(clean(domain).toUpperCase());
+}
+
+function topologyIsMetroAlarmDomain(domain){
+  return ['IP','DWDM'].includes(clean(domain).toUpperCase());
+}
+
+function topologyIsRanAlarmDomain(domain){
+  const value=clean(domain).toUpperCase();
+  return value==='RAN' || /^RAN[-_ ]/.test(value);
+}
+
+function filterTopologyNodeAlarmDetails(detailMap, topo){
+  const filtered=new Map();
+  const neighbors=topologyDisplayedNeighborMap(topo);
+  for(const [node,items] of detailMap.entries()){
+    const type=nodeTypeOf(node,topo);
+    const isAnalyzedSite=clean(node)===clean(topo?.siteId);
+    const hasDisplayedMwNeighbor=[...(neighbors.get(node)||[])].some(neighbor => nodeTypeOf(neighbor,topo)==='MW');
+    const accepted=(items || []).filter(row => {
+      const domain=clean(row.__domain).toUpperCase();
+      if(topologyIsRanAlarmDomain(domain)){
+        return isAnalyzedSite && clean(row.__siteId)===clean(topo?.siteId);
+      }
+      if(type==='MW') return topologyIsMicrowaveAlarmDomain(domain);
+      if(type==='ME' || type==='OTHER'){
+        if(topologyIsMetroAlarmDomain(domain)) return true;
+        return hasDisplayedMwNeighbor && topologyIsMicrowaveAlarmDomain(domain);
+      }
+      return true;
+    });
+    if(accepted.length) filtered.set(node,accepted);
+  }
+  return filtered;
+}
+
+function topologyAlarmValueMatchesNode(value, node){
+  const alarmValue=clean(value).toUpperCase();
+  const nodeName=clean(node).toUpperCase();
+  if(!alarmValue || !nodeName) return false;
+  return alarmValue.includes(nodeName);
+}
+
+function topologyIsMetroNode(node, topo){
+  const type=nodeTypeOf(node, topo);
+  return type==='ME' || type==='OTHER';
+}
+
+function topologyLinkAlarmRows(rows, edge, topo){
+  if(!topologyIsMetroNode(edge.from, topo) || !topologyIsMetroNode(edge.to, topo)) return [];
+  return (rows || []).filter(row => {
+    if(!topologyIsMetroAlarmDomain(row.__domain)) return false;
+    const source=clean(row.__alarmSrc);
+    const destination=clean(row.__destination);
+    if(!source || !destination || destination==='-') return false;
+    return (
+      topologyAlarmValueMatchesNode(source, edge.from) &&
+      topologyAlarmValueMatchesNode(destination, edge.to)
+    ) || (
+      topologyAlarmValueMatchesNode(source, edge.to) &&
+      topologyAlarmValueMatchesNode(destination, edge.from)
+    );
+  });
+}
+
+function closeTopologyAlarmPopup(){
+  document.getElementById('topologyPopup')?.classList.remove('open');
+}
+
+function showTopologyAlarmPopup(kind, label, items, clientX, clientY){
+  if(!items?.length) return;
+  const body=document.getElementById('topologyPopupBody');
+  const popup=document.getElementById('topologyPopup');
+  if(!body || !popup) return;
+  const sorted=[...items].sort((a,b)=>topologySeverityRank(b.__severity)-topologySeverityRank(a.__severity));
+  body.innerHTML=`<h3>${kind==='link'?'Link Alarm Detail':'Node Alarm Detail'}</h3>`+
+    `<div class="alarm-head">${escapeHtml(label)}</div><div class="alarm-label">Alarm:</div>`+
+    sorted.map(row => {
+      const clear=clean(row.__clearTime)==='-' || !clean(row.__clearTime) ? 'Till now' : clean(row.__clearTime);
+      const destination=clean(row.__destination) || '-';
+      return `<div class="alarm-line"><span class="alarm-time">${escapeHtml(row.__firstOcc||'-')} - ${escapeHtml(clear)}</span> : ${escapeHtml(row.__alarmName||'-')}<div class="alarm-meta">${escapeHtml(row.__severity||'-')} · Source: ${escapeHtml(row.__alarmSrc||'-')} · Destination: ${escapeHtml(destination)}</div></div>`;
+    }).join('');
+  popup.classList.add('open');
+  const pad=12;
+  const width=Math.min(560,window.innerWidth-pad*2);
+  popup.style.width=width+'px';
+  popup.style.left=Math.min(Math.max(pad,(clientX||window.innerWidth/2)+12),window.innerWidth-width-pad)+'px';
+  popup.style.top=Math.min(Math.max(pad,(clientY||window.innerHeight/2)+12),window.innerHeight-Math.min(500,popup.scrollHeight||300)-pad)+'px';
+}
+
 function buildTopologyNetwork(rows, topo){
+  closeTopologyAlarmPopup();
   const container = document.getElementById('topologyCanvas');
   container.innerHTML = '';
-  const alarmMap = buildNodeAlarmMap(rows, topo);
+  const alarmDetailMap = filterTopologyNodeAlarmDetails(buildTopologyAlarmDetailMap(rows, topo),topo);
+  const alarmMap = new Map([...alarmDetailMap.entries()].map(([node,items]) => [node,items.length]));
   const nodes = [];
   const edges = [];
   const added = new Set();
@@ -4930,6 +5121,7 @@ function buildTopologyNetwork(rows, topo){
     if(!node || added.has(node)) return;
     added.add(node);
     const type = nodeTypeOf(node, topo);
+    const visualType = node === topo.siteId ? 'SITE' : (type === 'OTHER' ? 'ME' : type);
     const nodeSiteId = getNodeSiteId(node);
 
     const label =
@@ -4940,15 +5132,17 @@ function buildTopologyNetwork(rows, topo){
           : type === 'CN'
           ? `CN | ${getNodeSiteId(node) || ''} | ${node}`
           : metroLabel(node);
+    const hasAlarm=alarmMap.has(node);
+    const typeColor=visualType==='SITE'?'#2f80ff':visualType==='MW'?'#16c6d8':visualType==='ME'?'#26a269':visualType==='CN'?'#b56cff':'#74839b';
     nodes.push({
       id: node,
       label,
-      shape: nodeShape(type),
-      color: { background: statusColor(node), border: colorForNodeType(type), highlight: statusColor(node) },
-      borderWidth: 3,
-      font: { color: '#eef4ff', size: 16, face: 'Inter', multi: 'html' },
-      size: type === 'CN' ? 34 : type === 'ME' ? 30 : 28,
-      margin: 8
+      shape:'image',
+      image:topologySymbolIcon(visualType,typeColor,hasAlarm),
+      size:visualType==='CN'?36:visualType==='SITE'?34:visualType==='ME'?32:30,
+      font:{color:'#eef4ff',size:14,face:'Inter',vadjust:6,strokeWidth:3,strokeColor:'#050b16'},
+      shadow:hasAlarm?{enabled:true,color:'#ff4d4d',size:20,x:0,y:0}:false,
+      title:`Type: ${visualType}${nodeSiteId?`\nSite ID: ${nodeSiteId}`:''}${hasAlarm?`\n${alarmMap.get(node)} alarm detected · click for detail`:''}`
     });
   }
 
@@ -5037,6 +5231,29 @@ function buildTopologyNetwork(rows, topo){
     });
   });
 
+  const edgeAlarmMap=new Map();
+  edges.forEach((edge,index) => {
+    edge.id=edge.id || `osa-topology-edge-${index}`;
+    const details=topologyLinkAlarmRows(rows,edge,topo);
+    const unique=[];
+    const seen=new Set();
+    details.forEach(row => {
+      const key=[row.__firstOcc,row.__alarmName,row.__alarmSrc,row.__destination].map(clean).join('|');
+      if(!seen.has(key)){seen.add(key);unique.push(row);}
+    });
+    edgeAlarmMap.set(edge.id,unique);
+    const baseColor=edge.color?.color || '#26d37c';
+    edge.color={
+      color:unique.length?'#ff4d4d':baseColor,
+      highlight:unique.length?'#ff8585':'#fbbf24',
+      hover:unique.length?'#ff8585':'#63e6a4'
+    };
+    edge.width=unique.length?Math.max(5,edge.width||2):edge.width;
+    edge.selectionWidth=unique.length?2:1.5;
+    edge.shadow=unique.length?{enabled:true,color:'#ff4d4d88',size:12,x:0,y:0}:false;
+    if(unique.length) edge.title='Alarm-affected link · click for detail';
+  });
+
   const data = { nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges) };
   const options = {
     autoResize: true,
@@ -5064,6 +5281,23 @@ function buildTopologyNetwork(rows, topo){
     }
   };
   state.topology = new vis.Network(container, data, options);
+  state.topology.on('click', params => {
+    const nodeId=params.nodes?.[0];
+    const edgeId=params.edges?.[0];
+    const event=params.event?.srcEvent;
+    const x=event?.clientX || window.innerWidth/2;
+    const y=event?.clientY || window.innerHeight/2;
+    if(nodeId && alarmDetailMap.get(nodeId)?.length){
+      showTopologyAlarmPopup('node',`Node: ${nodeId}`,alarmDetailMap.get(nodeId),x,y);
+      return;
+    }
+    if(edgeId && edgeAlarmMap.get(edgeId)?.length){
+      const edge=data.edges.get(edgeId);
+      showTopologyAlarmPopup('link',`Link: ${edge.from} ↔ ${edge.to}`,edgeAlarmMap.get(edgeId),x,y);
+      return;
+    }
+    closeTopologyAlarmPopup();
+  });
   state.topology.once('stabilizationIterationsDone', () => {
     try {
       state.topology.stopSimulation();
@@ -6754,6 +6988,10 @@ document.getElementById('btnZoomOut').addEventListener('click', () => {
 document.getElementById('btnResetTopo').addEventListener('click', () => {
   if(!state.topology) return;
   state.topology.moveTo({ scale: 1, position: { x: 0, y: 0 }, animation: { duration: 250, easingFunction: 'easeInOutQuad' }});
+});
+document.getElementById('topologyPopupClose').addEventListener('click', event => {
+  event.stopPropagation();
+  closeTopologyAlarmPopup();
 });
 
 document.getElementById('days').addEventListener('change', () => {
