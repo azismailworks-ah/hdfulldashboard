@@ -472,7 +472,7 @@ body::before{
 .chart-card.chart-expanded{
   position:fixed;
   inset:14px;
-  z-index:10050;
+  z-index:2147483647;
   display:flex;
   flex-direction:column;
   padding:16px;
@@ -493,7 +493,7 @@ body.chart-expanded-open::after{
   content:"";
   position:fixed;
   inset:0;
-  z-index:10040;
+  z-index:2147483646;
   background:rgba(0,4,10,.78);
   backdrop-filter:blur(4px);
 }
@@ -4674,6 +4674,7 @@ function destroyCharts(){
     card.removeAttribute('title');
   });
   document.body.classList.remove('chart-expanded-open');
+  restoreChartSuppressedOverlays();
 }
 
 function chartOptions(){
@@ -4748,12 +4749,35 @@ function closeExpandedChart(card, chart){
   if(!card?.classList.contains('chart-expanded')) return;
   card.classList.remove('chart-expanded');
   document.body.classList.remove('chart-expanded-open');
+  restoreChartSuppressedOverlays();
   const button = card.querySelector('[data-chart-expand]');
   if(button){
     button.textContent = '⛶ Perbesar';
     button.setAttribute('aria-label', 'Perbesar graph');
   }
   resizeChartAfterLayout(chart);
+}
+
+function suppressOverlaysBehindExpandedChart(card){
+  document.querySelectorAll('body *').forEach(element => {
+    if(element === card || card.contains(element) || element.contains(card)) return;
+    const style = getComputedStyle(element);
+    const zIndex = Number.parseInt(style.zIndex, 10);
+    if(style.position !== 'fixed' || !Number.isFinite(zIndex) || zIndex < 10000) return;
+    element.dataset.chartPreviousVisibility = element.style.visibility || '';
+    element.dataset.chartOverlaySuppressed = '1';
+    element.style.setProperty('visibility', 'hidden', 'important');
+  });
+}
+
+function restoreChartSuppressedOverlays(){
+  document.querySelectorAll('[data-chart-overlay-suppressed="1"]').forEach(element => {
+    const previous = element.dataset.chartPreviousVisibility || '';
+    if(previous) element.style.visibility = previous;
+    else element.style.removeProperty('visibility');
+    delete element.dataset.chartPreviousVisibility;
+    delete element.dataset.chartOverlaySuppressed;
+  });
 }
 
 function installChartControls(chart){
@@ -4787,10 +4811,18 @@ function installChartControls(chart){
   expandButton.addEventListener('click', () => {
     const opening = !card.classList.contains('chart-expanded');
     document.querySelectorAll('.chart-card.chart-expanded').forEach(other => {
-      if(other !== card) other.classList.remove('chart-expanded');
+      if(other !== card){
+        const otherCanvas = other.querySelector('canvas');
+        closeExpandedChart(other, otherCanvas ? Chart.getChart(otherCanvas) : null);
+      }
     });
-    card.classList.toggle('chart-expanded', opening);
-    document.body.classList.toggle('chart-expanded-open', opening);
+    if(!opening){
+      closeExpandedChart(card, chart);
+      return;
+    }
+    card.classList.add('chart-expanded');
+    document.body.classList.add('chart-expanded-open');
+    suppressOverlaysBehindExpandedChart(card);
     expandButton.textContent = opening ? '✕ Tutup' : '⛶ Perbesar';
     expandButton.setAttribute('aria-label', opening ? 'Tutup tampilan besar' : 'Perbesar graph');
     resizeChartAfterLayout(chart);
