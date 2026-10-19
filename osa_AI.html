@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#07111f" />
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.2.0/dist/chartjs-plugin-zoom.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/vis-network@9.1.9/dist/vis-network.min.js"></script>
@@ -423,6 +424,78 @@ body::before{
   padding:12px 12px 10px;
   min-width:0;
   overflow:hidden;
+}
+.chart-card-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.chart-card-head h4{
+  margin:0;
+  min-width:0;
+}
+.chart-tools{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex:0 0 auto;
+}
+.chart-tool-btn{
+  appearance:none;
+  border:1px solid rgba(120,154,255,.26);
+  border-radius:9px;
+  background:rgba(8,18,33,.9);
+  color:#dce8ff;
+  min-height:30px;
+  padding:5px 9px;
+  font:inherit;
+  font-size:.72rem;
+  font-weight:700;
+  cursor:pointer;
+  transition:border-color .18s ease, background .18s ease, color .18s ease;
+}
+.chart-tool-btn:hover:not(:disabled){
+  border-color:#2de2e6;
+  background:rgba(45,226,230,.1);
+  color:#fff;
+}
+.chart-tool-btn:disabled{
+  opacity:.42;
+  cursor:not-allowed;
+}
+.chart-tool-btn.is-active{
+  border-color:#2de2e6;
+  color:#2de2e6;
+}
+.chart-card.chart-expanded{
+  position:fixed;
+  inset:14px;
+  z-index:10050;
+  display:flex;
+  flex-direction:column;
+  padding:16px;
+  background:#050d19;
+  border-color:rgba(45,226,230,.65);
+  box-shadow:0 24px 80px rgba(0,0,0,.72);
+  overflow:hidden;
+}
+.chart-card.chart-expanded .chart-wrap{
+  flex:1 1 auto;
+  height:auto;
+  min-height:0;
+}
+body.chart-expanded-open{
+  overflow:hidden;
+}
+body.chart-expanded-open::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:10040;
+  background:rgba(0,4,10,.78);
+  backdrop-filter:blur(4px);
 }
 .chart-card h4{
   margin:0 0 10px;
@@ -4589,6 +4662,18 @@ function attachSearch(inputId, tableId){
 function destroyCharts(){
   state.charts.forEach(c => { try { c.destroy(); } catch(e){} });
   state.charts = [];
+  document.querySelectorAll('.chart-card[data-chart-controls-ready="1"]').forEach(card => {
+    card.classList.remove('chart-expanded');
+    const head = card.querySelector(':scope > .chart-card-head');
+    const title = head?.querySelector('h4');
+    if(head && title){
+      head.before(title);
+      head.remove();
+    }
+    delete card.dataset.chartControlsReady;
+    card.removeAttribute('title');
+  });
+  document.body.classList.remove('chart-expanded-open');
 }
 
 function chartOptions(){
@@ -4622,10 +4707,105 @@ function chartOptions(){
 }
 
 function createChart(ctx, config){
+  const existingPlugins = config.options?.plugins || {};
+  config.options = config.options || {};
+  config.options.plugins = {
+    ...existingPlugins,
+    zoom: {
+      limits: { x: { minRange: 1 } },
+      zoom: {
+        mode: 'x',
+        drag: {
+          enabled: true,
+          threshold: 8,
+          backgroundColor: 'rgba(45,226,230,.14)',
+          borderColor: '#2de2e6',
+          borderWidth: 1
+        },
+        onZoomComplete: ({chart}) => updateChartZoomButton(chart, true)
+      }
+    }
+  };
   const c = new Chart(ctx, config);
   state.charts.push(c);
+  installChartControls(c);
   return c;
 }
+
+function updateChartZoomButton(chart, zoomed){
+  const card = chart?.canvas?.closest('.chart-card');
+  const button = card?.querySelector('[data-chart-reset]');
+  if(!button) return;
+  button.disabled = !zoomed || typeof chart.resetZoom !== 'function';
+  button.classList.toggle('is-active', !!zoomed);
+}
+
+function resizeChartAfterLayout(chart){
+  requestAnimationFrame(() => requestAnimationFrame(() => chart?.resize()));
+}
+
+function closeExpandedChart(card, chart){
+  if(!card?.classList.contains('chart-expanded')) return;
+  card.classList.remove('chart-expanded');
+  document.body.classList.remove('chart-expanded-open');
+  const button = card.querySelector('[data-chart-expand]');
+  if(button){
+    button.textContent = '⛶ Perbesar';
+    button.setAttribute('aria-label', 'Perbesar graph');
+  }
+  resizeChartAfterLayout(chart);
+}
+
+function installChartControls(chart){
+  const card = chart?.canvas?.closest('.chart-card');
+  if(!card || card.dataset.chartControlsReady === '1') return;
+  card.dataset.chartControlsReady = '1';
+
+  const title = card.querySelector(':scope > h4');
+  if(!title) return;
+  const head = document.createElement('div');
+  head.className = 'chart-card-head';
+  title.before(head);
+  head.appendChild(title);
+
+  const tools = document.createElement('div');
+  tools.className = 'chart-tools';
+  tools.innerHTML = `
+    <button type="button" class="chart-tool-btn" data-chart-reset disabled title="Kembalikan seluruh periode">↺ Reset Zoom</button>
+    <button type="button" class="chart-tool-btn" data-chart-expand title="Perbesar graph">⛶ Perbesar</button>`;
+  head.appendChild(tools);
+
+  const resetButton = tools.querySelector('[data-chart-reset]');
+  const expandButton = tools.querySelector('[data-chart-expand]');
+  resetButton.disabled = typeof chart.resetZoom !== 'function';
+  resetButton.addEventListener('click', () => {
+    if(typeof chart.resetZoom !== 'function') return;
+    chart.resetZoom();
+    updateChartZoomButton(chart, false);
+  });
+
+  expandButton.addEventListener('click', () => {
+    const opening = !card.classList.contains('chart-expanded');
+    document.querySelectorAll('.chart-card.chart-expanded').forEach(other => {
+      if(other !== card) other.classList.remove('chart-expanded');
+    });
+    card.classList.toggle('chart-expanded', opening);
+    document.body.classList.toggle('chart-expanded-open', opening);
+    expandButton.textContent = opening ? '✕ Tutup' : '⛶ Perbesar';
+    expandButton.setAttribute('aria-label', opening ? 'Tutup tampilan besar' : 'Perbesar graph');
+    resizeChartAfterLayout(chart);
+  });
+
+  card.title = 'Tarik secara horizontal pada graph untuk memperbesar periode yang dipilih.';
+}
+
+document.addEventListener('keydown', event => {
+  if(event.key !== 'Escape') return;
+  const card = document.querySelector('.chart-card.chart-expanded');
+  if(!card) return;
+  const canvas = card.querySelector('canvas');
+  closeExpandedChart(card, canvas ? Chart.getChart(canvas) : null);
+});
 
 function renderTwampTrend(payload){
   if(state.twampChart){
