@@ -14,7 +14,7 @@
 <section class="alarm-wrap"><div class="alarm-head"><b id="tableTitle">ACTIVE ISSUE</b><div class="alarm-tools"><input id="tableSearch" class="table-search" placeholder="Cari alarm, source, destination, Site ID atau Site Name"><button id="exportExcel" class="export-btn" type="button" hidden>EXPORT EXCEL</button><button id="exportText" class="export-btn" type="button" hidden>EXPORT TEXT WAG</button><span id="updated">—</span></div></div><div id="table" tabindex="0" role="region" aria-label="Tabel alarm, dapat digulir"></div></section>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
 const BASE='https://api.azhautomation.com',SITE_API=BASE+'/api/map/vip',TRANS_API=BASE+'/api/map/vip/transport';let mode='site',payload={},layers=L.layerGroup(),busy=false,lastTrace='',currentTransportRows=[];
-const map=L.map('map',{preferCanvas:true}).setView([-2.4,118],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);layers.addTo(map);
+const map=L.map('map',{preferCanvas:true,zoomSnap:.25,zoomDelta:.25,wheelPxPerZoomLevel:180,wheelDebounceTime:36,zoomAnimation:true,zoomAnimationThreshold:12,fadeAnimation:true,markerZoomAnimation:true}).setView([-2.4,118],5);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap',updateWhenZooming:false,keepBuffer:4}).addTo(map);layers.addTo(map);
 const routeFlowRenderer=L.svg({padding:.4});
 function transportNodeLabel(node,data){
  const status=String(node.status||'').trim().toUpperCase();
@@ -309,5 +309,20 @@ body{font-family:Bahnschrift,"Segoe UI Variable Text","Segoe UI",Arial,sans-seri
  window.focusCase=function(id){clearFocus();const alarm=(payload.alarms||[]).find(item=>String(item.id)===String(id));if(!alarm){alert('Alarm yang dipilih tidak ditemukan pada snapshot aktif.');return}const edge=(payload.edges||[]).find(item=>(alarm.edge_ids||[]).includes(item.id));if(edge){const a=nodeById(edge.source),b=nodeById(edge.destination);if(validNode(a)&&validNode(b)){const points=[[Number(a.lat),Number(a.lon)],[Number(b.lat),Number(b.lon)]],center=L.latLngBounds(points).getCenter();focusLine=L.polyline(points,{pane:'overlayPane',interactive:false,className:'nd-locate-link',color:'#ff4f87',weight:10,opacity:1}).addTo(map);addPointer(center,alarm,true);addChip(`LOCATING LINK · ${alarm.site_id||'-'}`);map.flyToBounds(L.latLngBounds(points),{paddingTopLeft:[90,130],paddingBottomRight:[90,130],maxZoom:16,duration:1.15});focusTimer=setTimeout(clearFocus,8000);return}}
   const candidates=[alarm.me_name,alarm.source,alarm.destination,...(alarm.node_ids||[])].map(deviceName).filter(Boolean);let node=candidates.map(nodeById).find(validNode);if(!node)node=(payload.nodes||[]).find(item=>key(item.site_id)===key(alarm.site_id)&&validNode(item));if(!node){alert('Koordinat node untuk alarm ini belum tersedia pada topology.');return}const latlng=[Number(node.lat),Number(node.lon)];addPointer(latlng,alarm,false);addChip(`LOCATING NODE · ${alarm.site_id||'-'}`);map.flyTo(latlng,16,{duration:1.15});map.once('moveend',()=>revealPopup(node));focusTimer=setTimeout(clearFocus,8000)};
  window.__clearNetdroneLocateFocus=clearFocus;
+})();
+</script>
+<style id="netdrone-smooth-zoom-v5">
+/* Smooth quarter-step zoom: slower, controlled transitions without changing topology data. */
+.leaflet-zoom-animated{transition-timing-function:cubic-bezier(.22,.61,.36,1)!important}
+.leaflet-tile{will-change:transform,opacity}
+</style>
+<script id="netdrone-smooth-zoom-engine-v5">
+(()=>{
+  if(typeof map==='undefined'||!map)return;
+  Object.assign(map.options,{zoomSnap:.25,zoomDelta:.25,wheelPxPerZoomLevel:180,wheelDebounceTime:36,zoomAnimation:true,zoomAnimationThreshold:12,fadeAnimation:true,markerZoomAnimation:true});
+  if(map.scrollWheelZoom){map.scrollWheelZoom.disable();map.scrollWheelZoom.enable()}
+  const nativeFlyTo=map.flyTo.bind(map),nativeFlyToBounds=map.flyToBounds.bind(map);
+  map.flyTo=(latlng,zoom,options={})=>nativeFlyTo(latlng,zoom,{...options,duration:Math.max(Number(options.duration)||0,1.8),easeLinearity:options.easeLinearity??.18});
+  map.flyToBounds=(bounds,options={})=>nativeFlyToBounds(bounds,{...options,duration:Math.max(Number(options.duration)||0,1.9),easeLinearity:options.easeLinearity??.18});
 })();
 </script></body></html>
