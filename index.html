@@ -380,16 +380,42 @@
     .orbit-core .nia-poster { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
     .orbit-core video { position:absolute; inset:0; opacity:0; }
     .orbit-core video.has-frame { opacity:1; }
+      /* Compact desktop sidebar; mobile retains its existing drawer. */
+    .sidebar-toggle { display:flex; align-items:center; justify-content:center; gap:9px; flex:0 0 auto; margin:12px 13px 0; padding:9px; border:1px solid var(--line); border-radius:10px; color:var(--cyan); background:rgba(42,212,255,.07); cursor:pointer; }
+    .sidebar-toggle:hover { background:rgba(42,212,255,.16); border-color:var(--cyan); }
+    .sidebar-toggle svg { width:18px; height:18px; flex-shrink:0; transition:transform .2s; }
+    .sidebar-toggle span { font-size:11px; }
+    @media(min-width:861px) {
+      body.sidebar-collapsed .app-shell { grid-template-columns:76px minmax(0,1fr); }
+      body.sidebar-collapsed .brand { justify-content:center; padding:22px 0 18px; }
+      body.sidebar-collapsed .brand-copy, body.sidebar-collapsed .nav-label,
+      body.sidebar-collapsed .group-name, body.sidebar-collapsed .chevron,
+      body.sidebar-collapsed .nav-item span, body.sidebar-collapsed .sidebar-footer span:not(.pulse),
+      body.sidebar-collapsed .sidebar-toggle span { display:none; }
+      body.sidebar-collapsed .sidebar-toggle { margin:12px 14px 0; }
+      body.sidebar-collapsed .sidebar-toggle svg { transform:rotate(180deg); }
+      body.sidebar-collapsed .nav-scroll { padding:15px 9px 24px; }
+      body.sidebar-collapsed .group-trigger { justify-content:center; padding:10px 0; gap:0; }
+      body.sidebar-collapsed .nav-item { justify-content:center; margin:4px 5px; padding:10px 0; gap:0; min-height:36px; }
+      body.sidebar-collapsed .nav-item::before { display:none; }
+      body.sidebar-collapsed .nav-item > i { font-size:16px; }
+      body.sidebar-collapsed .sidebar-footer { justify-content:center; padding:16px 0; }
+    }
+    @media(max-width:860px) { .sidebar-toggle { display:none; } }
   </style>
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar" aria-label="Navigasi utama">
+    <aside class="sidebar" id="mainSidebar" aria-label="Navigasi utama">
       <div class="brand">
         <div class="brand-mark"><i class="bi bi-headset"></i></div>
         <div class="brand-copy"><strong>HELPDESK DIOC</strong><span>Operations Intelligence</span></div>
       </div>
 
+            <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-controls="mainSidebar" aria-expanded="true" aria-label="Kecilkan sidebar" title="Kecilkan sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+        <span>Kecilkan sidebar</span>
+      </button>
       <nav class="nav-scroll">
         <div class="nav-label">Workspace</div>
 
@@ -506,6 +532,27 @@
   <button class="backdrop" type="button" aria-label="Tutup menu"></button>
 
   <script>
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const desktopSidebar = window.matchMedia('(min-width: 861px)');
+    let sidebarCollapsed = false;
+    try { sidebarCollapsed = localStorage.getItem('helpdesk.sidebarCollapsed') === 'true'; } catch (_) {}
+    function setSidebarCollapsed(collapsed) {
+      sidebarCollapsed = collapsed;
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      const label = collapsed ? 'Besarkan sidebar' : 'Kecilkan sidebar';
+      sidebarToggle.setAttribute('aria-expanded', String(!collapsed));
+      sidebarToggle.setAttribute('aria-label', label);
+      sidebarToggle.title = label;
+      sidebarToggle.querySelector('span').textContent = label;
+      try { localStorage.setItem('helpdesk.sidebarCollapsed', String(collapsed)); } catch (_) {}
+    }
+    sidebarToggle.addEventListener('click', () => setSidebarCollapsed(!sidebarCollapsed));
+    setSidebarCollapsed(sidebarCollapsed);
+    document.querySelectorAll('.group-trigger, .nav-item').forEach(item => {
+      const label = item.textContent.trim();
+      item.title = label;
+      item.setAttribute('aria-label', label);
+    });
     const groups = document.querySelectorAll('.menu-group');
     const navItems = document.querySelectorAll('.nav-item');
     const frame = document.getElementById('mainFrame');
@@ -572,6 +619,7 @@
       navItems.forEach(link => { link.classList.remove('active'); link.removeAttribute('aria-current'); });
     });
     document.getElementById('exploreTools').addEventListener('click', () => {
+      if (desktopSidebar.matches) setSidebarCollapsed(false);
       const firstGroup = groups[0];
       firstGroup.classList.add('open');
       firstGroup.querySelector('.group-trigger').setAttribute('aria-expanded', 'true');
