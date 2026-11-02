@@ -325,4 +325,41 @@ body{font-family:Bahnschrift,"Segoe UI Variable Text","Segoe UI",Arial,sans-seri
   map.flyTo=(latlng,zoom,options={})=>nativeFlyTo(latlng,zoom,{...options,duration:Math.max(Number(options.duration)||0,1.8),easeLinearity:options.easeLinearity??.18});
   map.flyToBounds=(bounds,options={})=>nativeFlyToBounds(bounds,{...options,duration:Math.max(Number(options.duration)||0,1.9),easeLinearity:options.easeLinearity??.18});
 })();
+</script>
+<script id="netdrone-kea-state-wag-export">
+(()=>{
+ const originalBuildSiteText=window.buildSiteText;
+ if(typeof originalBuildSiteText!=='function')return;
+ function wagVipTypeLabel(site){
+  const raw=String(site?.vip_type||'-').trim();
+  if(raw.toUpperCase()!=='KEA')return raw||'-';
+  const selected=typeof selectedKeaName==='function'
+   ? selectedKeaName(document.querySelector('#vip')?.value||'')
+   : '';
+  const memberships=Array.isArray(site?.kea_memberships)?site.kea_memberships:[];
+  let states=memberships
+   .filter(item=>!selected||String(item?.name||'').trim().toUpperCase()===String(selected).trim().toUpperCase())
+   .map(item=>String(item?.state||'').trim().toUpperCase())
+   .filter(Boolean);
+  if(!states.length&&Array.isArray(site?.kea_states)){
+   states=site.kea_states.map(value=>String(value||'').trim().toUpperCase()).filter(Boolean);
+  }
+  states=[...new Set(states)].sort((a,b)=>{
+   const order={POI:0,ROUTE:1};
+   return(order[a]??9)-(order[b]??9)||a.localeCompare(b);
+  });
+  return states.length?`KEA / ${states.join(' / ')}`:'KEA';
+ }
+ window.wagVipTypeLabel=wagVipTypeLabel;
+ window.buildSiteText=function(rows){
+  const sites=Array.isArray(rows)?rows:[];
+  const originals=sites.map(site=>[site,site.vip_type]);
+  try{
+   for(const [site] of originals)site.vip_type=wagVipTypeLabel(site);
+   return originalBuildSiteText(sites);
+  }finally{
+   for(const [site,value] of originals)site.vip_type=value;
+  }
+ };
+})();
 </script></body></html>
