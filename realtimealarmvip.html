@@ -362,4 +362,72 @@ body{font-family:Bahnschrift,"Segoe UI Variable Text","Segoe UI",Arial,sans-seri
   }
  };
 })();
+</script>
+<style id="netdrone-potential-issue-style">
+.potential-summary{position:absolute;z-index:510;right:14px;top:14px;max-width:min(390px,42vw);padding:10px 13px;border:1px solid #ff5a766f;border-radius:11px;background:linear-gradient(145deg,#210b18ed,#07182bed);box-shadow:0 0 0 1px #fff1 inset,0 0 24px #ff315528;color:#ffeaf0;backdrop-filter:blur(10px);pointer-events:none}.potential-summary b{display:block;color:#ff8ba0;font-size:10px;letter-spacing:1.1px}.potential-summary span{display:block;margin-top:4px;color:#c5d8e8;font-size:9px;line-height:1.4}.potential-banner{margin:9px 11px;padding:10px 12px;border-left:3px solid #ff4567;border-radius:7px;background:#ff315515;color:#ffdbe2;font-size:10px;box-shadow:0 0 18px #ff315515}.potential-banner b{color:#ff6c87;letter-spacing:.8px}.potential-halo{fill:#ff31551a;stroke:#ff4d6d;stroke-width:2;stroke-dasharray:4 7;animation:potential-halo 1.45s ease-in-out infinite;pointer-events:none}.potential-backup-flow{stroke-linecap:round;stroke-dasharray:9 14;animation:potential-backup-flow 1.05s linear infinite;filter:drop-shadow(0 0 4px #ffca4c);pointer-events:none}.potential-down-flow{stroke-linecap:round;stroke-dasharray:5 9;animation:potential-down-flow .7s linear infinite;filter:drop-shadow(0 0 4px #ff3155);pointer-events:none}.transport-degraded-flow{stroke-linecap:round;stroke-dasharray:3 10;animation:transport-degraded-flow 1.6s linear infinite;filter:drop-shadow(0 0 3px #ff9d38);pointer-events:none}@keyframes potential-halo{50%{stroke-width:4;fill:#ff315530;filter:drop-shadow(0 0 8px #ff3155)}}@keyframes potential-backup-flow{to{stroke-dashoffset:-23}}@keyframes potential-down-flow{to{stroke-dashoffset:-14}}@keyframes transport-degraded-flow{to{stroke-dashoffset:-13}}@media(max-width:900px){.potential-summary{max-width:72vw}.cards{grid-template-columns:repeat(3,1fr)!important}}@media(prefers-reduced-motion:reduce){.potential-halo,.potential-backup-flow,.potential-down-flow,.transport-degraded-flow{animation:none!important}}
+</style>
+<script id="netdrone-potential-issue-ui">
+(()=>{
+ const norm=value=>String(value||'').trim().toUpperCase();
+ const edgeKey=(a,b)=>[norm(a),norm(b)].sort().join(' <> ');
+ function selectedPotentialIssues(){
+  const issues=Array.isArray(payload?.potential_issues)?payload.potential_issues:[];
+  if(mode!=='transport')return[];
+  const q=norm(document.querySelector('#search')?.value),circleValue=norm(document.querySelector('#circle')?.value||'ALL'),vipValue=norm(document.querySelector('#vip')?.value||'ALL'),tableQuery=norm(document.querySelector('#tableSearch')?.value);
+  return issues.map(issue=>{
+   const sites=(issue.sites||[]).filter(site=>{
+    const circleOk=circleValue==='ALL'||norm(site.circle)===circleValue;
+    const vipOk=typeof matchVipFilter==='function'?matchVipFilter(site,vipValue):vipValue==='ALL'||norm(site.vip_type)===vipValue;
+    const hay=norm(`${site.site_id} ${site.site_name} ${site.circle} ${site.vip_type} ${issue.me_name} ${(issue.down_links||[]).map(link=>`${link.source} ${link.destination}`).join(' ')}`);
+    return circleOk&&vipOk&&(!q||hay.includes(q))&&(!tableQuery||hay.includes(tableQuery));
+   });
+   return sites.length?{...issue,sites}:null;
+  }).filter(Boolean);
+ }
+ function nodeById(id){return(payload.nodes||[]).find(node=>norm(node.id)===norm(id))}
+ function addEdgeFlow(link,className,color,weight){const a=nodeById(link.source),b=nodeById(link.destination);if(a?.lat==null||a?.lon==null||b?.lat==null||b?.lon==null)return;const line=L.polyline([[a.lat,a.lon],[b.lat,b.lon]],{renderer:routeFlowRenderer,className,color,weight,opacity:.95,interactive:false}).addTo(layers);line.__potentialOverlay=true}
+ function drawPotentialMap(issues){
+  document.querySelector('.potential-summary')?.remove();
+  if(!issues.length)return;
+  const layout=document.querySelector('.layout');
+  if(layout){const impacted=new Set(issues.flatMap(issue=>(issue.sites||[]).map(site=>norm(site.site_id))));layout.insertAdjacentHTML('beforeend',`<div class="potential-summary"><b>POTENTIAL RESILIENCE ISSUE · ${issues.length} CASE</b><span>${impacted.size} VIP site have reduced route resilience toward CN.</span></div>`)}
+  const seenDown=new Set(),seenBackup=new Set(),seenSite=new Set();
+  for(const issue of issues){
+   for(const link of issue.down_links||[]){const key=edgeKey(link.source,link.destination);if(!seenDown.has(key)){seenDown.add(key);addEdgeFlow(link,'potential-down-flow','#ff3155',8)}}
+   for(const link of issue.backup_links||[]){const key=edgeKey(link.source,link.destination);if(!seenBackup.has(key)){seenBackup.add(key);addEdgeFlow(link,'potential-backup-flow','#ffca4c',6)}}
+   for(const site of issue.sites||[]){if(site.lat==null||site.lon==null||seenSite.has(norm(site.site_id)))continue;seenSite.add(norm(site.site_id));const halo=L.circleMarker([site.lat,site.lon],{renderer:routeFlowRenderer,radius:15,className:'potential-halo',color:'#ff4d6d',weight:2,fillColor:'#ff3155',fillOpacity:.08,interactive:false}).addTo(layers);halo.__potentialOverlay=true}
+  }
+ }
+ function drawDegradedLinks(){for(const edge of payload.edges||[])if(norm(edge.status)==='ISSUE')addEdgeFlow(edge,'transport-degraded-flow','#ff9d38',5)}
+ function addPotentialCard(issues){
+  const impacted=new Set(issues.flatMap(issue=>(issue.sites||[]).map(site=>norm(site.site_id))));
+  cards.style.gridTemplateColumns='repeat(9,minmax(0,1fr))';
+  const linkIssueCard=[...cards.querySelectorAll('.card')].find(item=>norm(item.querySelector('small')?.textContent)==='LINK ISSUE');
+  const issueCount=(payload.edges||[]).filter(edge=>['DOWN','ISSUE'].includes(norm(edge.status))).length;
+  if(linkIssueCard?.querySelector('b'))linkIssueCard.querySelector('b').textContent=String(issueCount);
+  cards.insertAdjacentHTML('beforeend',card('POTENTIAL ISSUE',issues.length,'#ff5f7b'));
+  const tableBox=document.querySelector('#table');
+  if(issues.length&&tableBox&&!tableBox.querySelector('.potential-banner'))tableBox.insertAdjacentHTML('afterbegin',`<div class="potential-banner"><b>POTENTIAL ISSUE · ${issues.length} CASE</b><br>${impacted.size} VIP site have reduced route resilience. Moving red = down link; moving yellow = available backup route.</div>`);
+ }
+ const renderTransportBase=window.renderTransport;
+ window.renderTransport=function(){
+  const result=renderTransportBase.apply(this,arguments),issues=selectedPotentialIssues();
+  drawDegradedLinks();drawPotentialMap(issues);addPotentialCard(issues);return result;
+ };
+ function englishTime(value){if(!value)return'-';const date=new Date(value);return Number.isNaN(date.getTime())?String(value):date.toLocaleString('en-GB',{timeZone:'Asia/Jakarta',weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false})+' WIB'}
+ function siteKeaEvents(site){const memberships=Array.isArray(site?.kea_memberships)?site.kea_memberships:[],events=memberships.map(item=>String(item?.name||'').trim()).filter(Boolean);if(events.length)return[...new Set(events)];return[...new Set((site?.kea_events||[]).map(item=>String(item||'').trim()).filter(Boolean))]}
+ function payloadSite(siteId){return(payload.sites||[]).find(site=>norm(site.site_id)===norm(siteId))||null}
+ function keaTitle(name){const value=String(name||'').trim();return/^KEA\b/i.test(value)?value:`KEA ${value}`}
+ function buildRegularLinkSections(rows){
+  const allowed=new Set(['SUPER_VIP_LINK_ISSUE','VIP_SITE_LINK_ISSUE']),circles=new Map();
+  for(const alarm of rows){const category=norm(alarm.link_category);if(!allowed.has(category))continue;const meta=transportSiteMeta(alarm),site=payloadSite(alarm.site_id),events=siteKeaEvents(site),groups=events.length?events.map(event=>({key:`KEA:${norm(event)}`,title:keaTitle(event),kea:true})):[{key:'VIP',title:'VIP LINK MONITORING',kea:false}],circle=norm(meta.circle)||'UNKNOWN CIRCLE',pair=[norm(alarm.me_name),norm(alarm.destination)].sort(),segmentKey=pair.join('<>');if(!circles.has(circle))circles.set(circle,new Map());for(const group of groups){if(!circles.get(circle).has(group.key))circles.get(circle).set(group.key,{...group,segments:new Map()});const segments=circles.get(circle).get(group.key).segments;if(!segments.has(segmentKey))segments.set(segmentKey,{a:pair[0],b:pair[1],category,sites:new Map(),alarms:[],seen:new Set()});const segment=segments.get(segmentKey),siteName=alarm.site_name||meta.site_name||alarm.site_id||'-';if(alarm.site_id)segment.sites.set(norm(alarm.site_id),siteName);const alarmKey=norm(`${alarm.first_occurrence}|${alarm.alarm_name}`);if(!segment.seen.has(alarmKey)){segment.seen.add(alarmKey);segment.alarms.push({name:alarm.alarm_name||'-',time:alarm.first_occurrence||'-'})}}}
+  return circles;
+ }
+ function appendRegularReport(parts,rows){const circles=buildRegularLinkSections(rows);for(const [circle,groups] of [...circles.entries()].sort((a,b)=>a[0].localeCompare(b[0]))){parts.push(`*CIRCLE ${circle}*`,'');for(const group of [...groups.values()].sort((a,b)=>(a.kea?0:1)-(b.kea?0:1)||a.title.localeCompare(b.title))){parts.push(`*${group.title}*`,`Summary : ${group.segments.size} Link Segment`,'');let number=1;for(const segment of group.segments.values()){segment.alarms.sort((a,b)=>String(a.time).localeCompare(String(b.time))||String(a.name).localeCompare(String(b.name)));parts.push(`${number}. Link Path : ${segment.a} <> ${segment.b}`,`   Classification : ${segment.category==='SUPER_VIP_LINK_ISSUE'?'Super VIP Link Issue':'VIP Link Issue'}`,`   Impacted Site : ${[...segment.sites.entries()].map(([id,name])=>`${id} - ${name}`).join(', ')||'-'}`,`   Alarm Count : ${segment.alarms.length}`,'   Alarm Details :');segment.alarms.forEach((alarm,index)=>parts.push(`   ${index+1}) ${alarm.name} - ${alarm.time}`));parts.push('');number++}parts.push('')}parts.push('----------------------------------------','')}}
+ function potentialGroups(issues){const circles=new Map();for(const issue of issues)for(const site of issue.sites||[]){const circle=norm(site.circle)||'UNKNOWN CIRCLE',events=siteKeaEvents(site),groups=events.length?events.map(event=>({key:`KEA:${norm(event)}`,title:keaTitle(event),kea:true})):[{key:'VIP',title:'VIP POTENTIAL ISSUE',kea:false}];if(!circles.has(circle))circles.set(circle,new Map());for(const group of groups){if(!circles.get(circle).has(group.key))circles.get(circle).set(group.key,{...group,cases:new Map()});const cases=circles.get(circle).get(group.key).cases;if(!cases.has(issue.id))cases.set(issue.id,{...issue,sites:[]});cases.get(issue.id).sites.push(site)}}return circles}
+ function appendPotentialReport(parts,issues){parts.push('*POTENTIAL ROUTE ISSUE*','');if(!issues.length){parts.push('No potential route issue detected.','');return}for(const [circle,groups] of [...potentialGroups(issues).entries()].sort((a,b)=>a[0].localeCompare(b[0]))){parts.push(`*CIRCLE ${circle}*`,'');for(const group of [...groups.values()].sort((a,b)=>(a.kea?0:1)-(b.kea?0:1)||a.title.localeCompare(b.title))){parts.push(`*${group.title}*`,`Summary : ${group.cases.size} Potential Case`,'');let caseNumber=1;for(const issue of group.cases.values()){const backups=Array.isArray(issue.backup_paths)&&issue.backup_paths.length?issue.backup_paths:[{nodes:issue.remaining_path||[],destination_cn:issue.remaining_cn,status:'HEALTHY',warnings:[]}],destinations=[...new Set(backups.map(route=>route.destination_cn).filter(Boolean))].join(', ')||'CN';parts.push(`${caseNumber}. ME : ${issue.me_name||'-'}`,`   Route Path : ${issue.total_paths} Leg | ${issue.failed_paths} Failed | ${backups.length} Backup${backups.length>1?'s':''} to ${destinations}`,'','   Link Down :');let linkNumber=1;for(const link of issue.down_links||[]){parts.push(`   ${linkNumber++}) ${link.source||'-'} <> ${link.destination||'-'} - ${link.first_occurrence||'-'}`,'      Alarm Name :');const alarms=link.alarms||[];if(!alarms.length)parts.push('      - Alarm detail unavailable');else alarms.forEach(alarm=>parts.push(`      - ${alarm.alarm_name||'-'} - ${alarm.first_occurrence||'-'}`));}parts.push('','   Backup Link :');let routeNumber=1;for(const route of backups){parts.push(`   ${routeNumber++}) ${(route.nodes||[]).join(' <> ')||'-'}`,`      Link Status : ${norm(route.status)==='WARNING'?'Warning':'Healthy'}`);if(norm(route.status)==='WARNING'){parts.push('      Warning Details :');for(const warning of route.warnings||[]){parts.push(`      - ${warning.source||'-'} <> ${warning.destination||'-'}`);for(const alarm of warning.alarms||[])parts.push(`        ${alarm.alarm_name||'-'} - ${alarm.first_occurrence||'-'}`)}}}parts.push('','   Site Impact :');(issue.sites||[]).forEach((site,index)=>parts.push(`   ${index+1}) ${site.site_id||'-'} - ${site.site_name||'-'}`));parts.push('');caseNumber++}parts.push('')}parts.push('----------------------------------------','')}}
+ window.buildTransportText=function(rows){
+  const filtered=(rows||[]).filter(alarm=>norm(alarm.link_category)!=='ROUTE_VIP_LINK_ISSUE'),issues=selectedPotentialIssues(),regularSegments=new Set(filtered.map(alarm=>[norm(alarm.me_name),norm(alarm.destination)].sort().join('<>'))),parts=['*PROACTIVE MONITORING METRO LINK FOR VIP ROUTE*','*HELPDESK DIOC*','',`Report Time : ${englishTime(new Date())}`,`OWS Snapshot : ${englishTime(payload.source_updates?.alarms)}`,`Scope : Circle ${document.querySelector('#circle')?.value||'ALL'} | VIP ${document.querySelector('#vip')?.value||'ALL'} | Search ${document.querySelector('#search')?.value.trim()||'-'}`,'Status : ACTIVE MONITORING','',`*NATIONAL SUMMARY*`,`VIP/Super VIP Link Segment : ${regularSegments.size}`,`Active VIP/Super VIP Alarm : ${filtered.length}`,`Potential Route Case : ${issues.length}`,'','========================================',''];appendRegularReport(parts,filtered);appendPotentialReport(parts,issues);parts.push('*END OF REPORT*');return parts.join('\r\n').trim()+'\r\n'};
+ document.querySelector('#tableSearch')?.addEventListener('input',()=>{if(mode==='transport')setTimeout(()=>render(),0)});
+})();
 </script></body></html>
