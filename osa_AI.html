@@ -1101,6 +1101,51 @@ tr:hover td{
   font-size:.68rem;
   min-height:25px;
 }
+.geo-row-insights{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+  width:100%;
+}
+.geo-sia-summary{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  min-height:25px;
+  padding-left:10px;
+  border-left:1px solid rgba(120,154,255,.18);
+  white-space:nowrap;
+}
+.geo-sia-label{color:#a8b8d6;font-weight:750}
+.geo-sia-count{
+  min-width:24px;height:24px;padding:0 7px;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(38,211,124,.12);border:1px solid rgba(38,211,124,.48);
+  color:#56e69a;font-weight:900;
+}
+.geo-sia-count.has-impact{
+  background:rgba(255,77,77,.13);border-color:rgba(255,77,77,.62);color:#ff7373;
+}
+.geo-sia-detail{
+  border:1px solid rgba(80,203,255,.5);background:rgba(20,157,225,.12);
+  color:#8edfff;border-radius:7px;padding:4px 8px;font-size:.66rem;
+  font-weight:800;cursor:pointer;
+}
+.geo-sia-detail:hover,.geo-sia-detail:focus-visible{background:rgba(20,157,225,.24);outline:none}
+.geo-sia-detail:disabled{opacity:.45;cursor:not-allowed}
+#siaModal{z-index:2147483000}
+.history-dialog.sia-dialog{width:min(1180px,94vw);height:auto;min-height:340px;max-height:90vh}
+.sia-body{padding:16px 20px 22px;overflow:auto}
+.sia-summary-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.sia-chip{border:1px solid var(--line);border-radius:999px;padding:6px 10px;color:#b9c8e2;background:rgba(8,18,34,.72);font-size:.76rem}
+.sia-chip strong{color:#fff}
+.sia-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px}
+.sia-empty{padding:34px 18px;text-align:center;color:#8fa0bc}
+@media(max-width:760px){
+  .geo-row-insights{grid-template-columns:1fr}
+  .geo-sia-summary{padding-left:0;padding-top:6px;border-left:0;border-top:1px solid rgba(120,154,255,.14);justify-content:flex-start}
+}
 .geo-twamp-label{
   color:#a8b8d6;
   font-weight:700;
@@ -1981,6 +2026,22 @@ tr:hover td{
 <!-- AI ANALYSIS INPUT MODAL -->
 <!-- ========================================================= -->
 
+<div id="siaModal" class="history-modal" role="dialog" aria-modal="true" aria-labelledby="siaModalTitle">
+  <div class="history-dialog sia-dialog">
+    <div class="history-header">
+      <div>
+        <h2 id="siaModalTitle">Service Impact Alarm · RAN</h2>
+        <div id="siaModalSubtitle" class="topology-note" style="margin-top:5px">Active alarm untuk site terpilih</div>
+      </div>
+      <button id="btnSiaClose" class="history-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="sia-body">
+      <div id="siaSummaryBar" class="sia-summary-bar"></div>
+      <div id="siaModalContent"></div>
+    </div>
+  </div>
+</div>
+
 <div id="analysisInputModal" class="history-modal" role="dialog" aria-modal="true" aria-labelledby="analysisInputTitle">
   <div class="history-dialog analysis-input-dialog">
     <div class="history-header">
@@ -2352,7 +2413,7 @@ const CONFIG = {
   TWAMP_REALTIME_HOURS: 24,
   TWAMP_NEARBY_API: "https://api.azhautomation.com/api/twamp/nearby",
   ANALYSIS_API: "https://api.azhautomation.com/api/auto-analysis",
-  IMPACT_ALARM_RULES_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3Pbba7AX8zdtoEYcqrOjkQlkJEWuagDXggAtB7CL8Mu6qv8i2HoCYsMcNbBP3X5TJPJzuGqtaVOii/pub?output=csv",
+  IMPACT_ALARM_RULES_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT3Pbba7AX8zdtoEYcqrOjkQlkJEWuagDXggAtB7CL8Mu6qv8i2HoCYsMcNbBP3X5TJPJzuGqtaVOii/pub?gid=791733354&single=true&output=csv",
   MASTER_ALARM_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxUQUmAg4r0EtSRceK-GNihZ2dnWtn-DPFERHStdFM8RLafRn1uX9pmzFL9KyPCJIIax9lqo83FcE6/pub?gid=1448770603&single=true&output=csv",
   RME_ROUTE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=0&single=true&output=csv",
   MW_ROUTE_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vTzmuXWKiUU2trRaG4ULysiwYdX2c3KYO6gVtE3pfkJzD0Q7lVbHircpGy6MYcLtcWd9rZSwdqQUrx5/pub?gid=1067174993&single=true&output=csv",
@@ -2417,6 +2478,9 @@ const state = {
   geoBounds: null,
   geoSiteDb:null,
   geoData: [],
+  geoSiaBySite: new Map(),
+  geoSiaStatus: 'idle',
+  geoSiaError: '',
   allAlarms: [],
   impactRules: [],
   impactRulesLoaded: false
@@ -2883,6 +2947,10 @@ async function loadImpactAlarmRules(){
     alarmName:clean(row.Alarm_Name||row.alarm_name),
     matchType:clean(row.Match_Type||row.match_type||'CONTAINS').toUpperCase(),
     weight:Number(row.Impact_Weight||row.impact_weight||80),
+    issueMeaning:clean(row.Issue_Meaning||row.issue_meaning),
+    recommendation:clean(row.Recommendation||row.recommendation),
+    escalationOwner:clean(row.Escalation_Owner||row.escalation_owner),
+    infoDetail:clean(row.Alarm_Info_Detail||row.alarm_info_detail),
     enabled:!['false','0','no','disabled'].includes(clean(row.Enabled??row.enabled??'true').toLowerCase())
   })).filter(rule=>rule.alarmName&&Number.isFinite(rule.weight));
   state.impactRulesLoaded=true;
@@ -4561,6 +4629,7 @@ function buildBucketsFromOWS(rows, analyzedSite){
     __alarmSrc : r.alarm_source || '-',
     __severity : r.severity || '-',
     __domain   : r.domain || '-',
+    __vendor   : r.vendor || r.vendor_name || r.ems_vendor || '',
     __siteId   : r.site_id || '-',
     __siteName : r.site_name || '-',
     __loc      : r.location || '-',
@@ -5929,6 +5998,61 @@ async function loadGeoSiteDatabase(){
   return allSites;
 }
 
+async function loadGeoSiaAlarms(rows){
+  state.geoSiaBySite = new Map();
+  state.geoSiaStatus = 'loading';
+  state.geoSiaError = '';
+  const siteIds=(rows||[]).map(row=>clean(row.siteId)).filter(Boolean);
+  if(!siteIds.length){state.geoSiaStatus='ready';return;}
+  try{
+    await loadImpactAlarmRules();
+    const response=await fetch('https://api.azhautomation.com/api/ows/multi',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({site_ids:siteIds})
+    });
+    if(!response.ok) throw new Error(`SIA alarm HTTP ${response.status}`);
+    const payload=await response.json();
+    const alarmData=payload.data||{};
+    const keyMap=new Map(Object.entries(alarmData).map(([key,value])=>[clean(key).toUpperCase(),value]));
+    siteIds.forEach(siteId=>{
+      const raw=keyMap.get(siteId.toUpperCase())||[];
+      const ran=buildBucketsFromOWS(Array.isArray(raw)?raw:[],siteId).ran;
+      const sia=ran.map(row=>({row,rule:getImpactRule(row)})).filter(item=>item.rule);
+      state.geoSiaBySite.set(siteId.toUpperCase(),sia);
+    });
+    state.geoSiaStatus='ready';
+  }catch(error){
+    console.warn('Nearby SIA unavailable',error);
+    state.geoSiaStatus='error';
+    state.geoSiaError=error?.message||'Gagal memuat alarm SIA';
+  }
+}
+
+function geoSiaCell(siteId){
+  const key=clean(siteId).toUpperCase();
+  if(state.geoSiaStatus==='loading') return `<div class="geo-sia-summary"><span class="geo-sia-label">Service Impact Alarm :</span><span class="geo-sia-count">…</span><button class="geo-sia-detail" disabled>Detail</button></div>`;
+  if(state.geoSiaStatus==='error') return `<div class="geo-sia-summary" title="${escapeHtml(state.geoSiaError)}"><span class="geo-sia-label">Service Impact Alarm :</span><span class="geo-sia-count">!</span><button class="geo-sia-detail" disabled>Unavailable</button></div>`;
+  const count=(state.geoSiaBySite.get(key)||[]).length;
+  return `<div class="geo-sia-summary"><span class="geo-sia-label">Service Impact Alarm :</span><span class="geo-sia-count ${count?'has-impact':''}">${count}</span><button class="geo-sia-detail" type="button" data-sia-site="${escapeHtml(key)}">Detail</button></div>`;
+}
+
+function openGeoSiaModal(siteId){
+  const key=clean(siteId).toUpperCase();
+  const geo=state.geoData.find(row=>clean(row.siteId).toUpperCase()===key)||{};
+  const items=state.geoSiaBySite.get(key)||[];
+  document.getElementById('siaModalSubtitle').textContent=`${key}${geo.siteName?' — '+geo.siteName:''} · active RAN alarm yang cocok dengan Alarm Impact`;
+  document.getElementById('siaSummaryBar').innerHTML=`<span class="sia-chip">Site ID <strong>${escapeHtml(key)}</strong></span><span class="sia-chip">Service Impact Alarm <strong>${items.length}</strong></span><span class="sia-chip">Rule source <strong>Alarm Impact CSV</strong></span>`;
+  const content=document.getElementById('siaModalContent');
+  if(!items.length){
+    content.innerHTML='<div class="sia-empty">Tidak ada active RAN alarm pada site ini yang cocok dengan rule Alarm Impact.</div>';
+  }else{
+    content.innerHTML=`<div class="table-wrap sia-table-wrap"><table class="sia-table">${tableRowsHtml(items.map(item=>item.row),'tableRan')}</table></div>`;
+  }
+  document.getElementById('siaModal').classList.add('show');
+}
+
+function closeGeoSiaModal(){document.getElementById('siaModal').classList.remove('show');}
+
 async function loadGeoAnalytics(siteId, sheets){
 
   const siteRows = await loadGeoSiteDatabase();
@@ -6043,6 +6167,7 @@ async function loadGeoAnalytics(siteId, sheets){
   });
 
   state.geoData = nearest;
+  state.geoSiaStatus = 'loading';
 
   renderGeoTable(nearest);
 
@@ -6050,6 +6175,9 @@ async function loadGeoAnalytics(siteId, sheets){
     refSite,
     nearest
   });
+
+  await loadGeoSiaAlarms(nearest);
+  renderGeoTable(nearest);
 
 }
 
@@ -6108,12 +6236,15 @@ function renderGeoTable(rows){
       <tr class="geo-twamp-row">
         <td class="geo-twamp-indent" aria-hidden="true"></td>
         <td class="geo-twamp-content" colspan="5">
-          <div class="geo-twamp-line">
-            <span class="geo-twamp-label">
-              <strong>PLR Realtime</strong>
-              ${start && end ? `<span class="geo-twamp-window">${start}–${end}</span>` : ''}
-            </span>
-            ${trendHtml}
+          <div class="geo-row-insights">
+            <div class="geo-twamp-line">
+              <span class="geo-twamp-label">
+                <strong>PLR Realtime</strong>
+                ${start && end ? `<span class="geo-twamp-window">${start}–${end}</span>` : ''}
+              </span>
+              ${trendHtml}
+            </div>
+            ${geoSiaCell(r.siteId)}
           </div>
         </td>
       </tr>
@@ -7058,6 +7189,14 @@ async function analyze(){
 }
 
 document.getElementById('btnAnalyze').addEventListener('click', analyze);
+document.getElementById('geoTable').addEventListener('click',event=>{
+  const button=event.target.closest('[data-sia-site]');
+  if(button) openGeoSiaModal(button.dataset.siaSite);
+});
+document.getElementById('btnSiaClose').addEventListener('click',closeGeoSiaModal);
+document.getElementById('siaModal').addEventListener('click',event=>{
+  if(event.target.id==='siaModal') closeGeoSiaModal();
+});
 document.getElementById('twampRangeSwitch').addEventListener('click', event => {
   const button = event.target.closest('.twamp-range-btn');
   if(button) changeTwampRange(Number(button.dataset.hours));
@@ -7096,6 +7235,7 @@ document.getElementById('analysisInputModal').addEventListener('click',event=>{
 });
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&document.getElementById('analysisInputModal').classList.contains('show')) closeAnalysisInput();
+  if(event.key==='Escape'&&document.getElementById('siaModal').classList.contains('show')) closeGeoSiaModal();
 });
 document.getElementById('btnRefresh').addEventListener('click', analyze);
 document.getElementById('btnVipReport').addEventListener('click', exportVipReport);
