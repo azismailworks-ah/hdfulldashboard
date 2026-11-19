@@ -139,11 +139,17 @@ renderTransport=function(){renderTransportExportBase();currentSiteRows=[];docume
 function siteAlarmDetails(site){const seen=new Set(),details=[];for(const alarm of site.alarms||[]){const name=String(alarm.name||alarm.alarm_name||'-').trim(),when=alarmWhen(alarm.start_time||alarm.first_occurrence),scenario=String(alarm.scenario||'').replaceAll('_',' '),node=String(alarm.node||alarm.alarm_source||'-').trim(),key=[name.toUpperCase(),String(when).toUpperCase(),node.toUpperCase()].join('|');if(seen.has(key))continue;seen.add(key);details.push({name,when,scenario,node})}return details.sort((a,b)=>String(a.when).localeCompare(String(b.when))||a.name.localeCompare(b.name))}
 function exportSiteExcel(){const rows=visibleSiteRows(),header=['Issue Category','Circle','Site ID','Site Name','VIP Type','Status','Alarm Count','Alarm Details','Ticket - WO','TWAMP PLR (%)','TWAMP Delay (ms)','TWAMP Threshold (ms)','TWAMP Timestamp'],body=rows.map(site=>{const alarms=siteAlarmDetails(site),alarmText=alarms.map(a=>`${a.when} | ${a.name} | ${a.scenario} | ${a.node}`).join('\n');return[siteCategoryLabel(siteIssueCategory(site)),site.circle,site.site_id,site.site_name,site.vip_type,site.status,alarms.length,alarmText,ticketWO(site),site.kpi?.plr??'',site.kpi?.delay??'',site.kpi?.delay_threshold??'',site.kpi?.timestamp??'']});const csv='\ufeff'+[header,...body].map(row=>row.map(csvCell).join(',')).join('\r\n'),stamp=new Date().toISOString().slice(0,19).replaceAll(':','-');downloadBlob(csv,'text/csv;charset=utf-8',`VIP_Site_Active_Issue_${stamp}.csv`)}
 function buildSiteText(rows){const order=['NE_DOWN','CELL_DOWN','SIA_IMPACT','TWAMP_ISSUE'],labels={NE_DOWN:'NE DOWN',CELL_DOWN:'CELL DOWN',SIA_IMPACT:'SIA IMPACT',TWAMP_ISSUE:'TWAMP ISSUE'},circles=new Map();for(const site of rows){const category=siteIssueCategory(site);if(!category)continue;const circleName=String(site.circle||'UNKNOWN CIRCLE').trim().toUpperCase();if(!circles.has(circleName))circles.set(circleName,new Map(order.map(key=>[key,[]])));circles.get(circleName).get(category).push(site)}const generated=new Date().toLocaleString('id-ID',{timeZone:'Asia/Jakarta',dateStyle:'full',timeStyle:'medium'}),formatSource=value=>value?new Date(value).toLocaleString('id-ID',{timeZone:'Asia/Jakarta'}):'-',circleFilter=document.querySelector('#circle')?.value||'ALL',vipFilter=document.querySelector('#vip')?.value||'ALL',searchFilter=document.querySelector('#search')?.value.trim()||'-',parts=['*PROACTIVE MONITORING VIP SITE ISSUE*','*HELPDESK DIOC*','',`Report Time : ${generated} WIB`,`OWS Snapshot : ${formatSource(payload.source_updates?.alarms)} WIB`,`TWAMP Snapshot : ${formatSource(payload.source_updates?.twamp)} WIB`,`Scope : Circle ${circleFilter} | VIP ${vipFilter} | Search ${searchFilter}`,'Status : ACTIVE ISSUE','',`*NATIONAL SUMMARY*`];
-const summaryCircles = new Set(circleFilter === 'ALL' ? ['JAYA', 'SMTR', 'KSMP', 'JAVA'] : [circleFilter.trim().toUpperCase()]);
-for (const circleName of circles.keys()) summaryCircles.add(circleName);
-for (const circleName of summaryCircles) {
-  const groups = circles.get(circleName);
-  const count = category => groups?.get(category).length ?? 0;
+const circleAliases = new Map([['SUMATERA', 'SMTR'], ['KALISUMPA', 'KSMP'], ['KALISUMAPA', 'KSMP']]);
+const summaryCircleName = name => circleAliases.get(name) ?? name;
+const summaryCircles = new Map((circleFilter === 'ALL' ? ['JAYA', 'SMTR', 'KSMP', 'JAVA'] : [summaryCircleName(circleFilter.trim().toUpperCase())]).map(name => [name, new Map()]));
+for (const [circleName, groups] of circles) {
+  const name = summaryCircleName(circleName);
+  if (!summaryCircles.has(name)) summaryCircles.set(name, new Map());
+  const counts = summaryCircles.get(name);
+  for (const [category, sites] of groups) counts.set(category, (counts.get(category) ?? 0) + sites.length);
+}
+for (const [circleName, counts] of summaryCircles) {
+  const count = category => counts.get(category) ?? 0;
   parts.push(`${circleName} : NE Down : ${count('NE_DOWN')} | Cell Down : ${count('CELL_DOWN')} | SIA : ${count('SIA_IMPACT')} | Twamp : ${count('TWAMP_ISSUE')}`);
 }
 parts.push('', '========================================', '');
