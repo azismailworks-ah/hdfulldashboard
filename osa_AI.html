@@ -1782,6 +1782,7 @@ tr:hover td{
               <button class="twamp-range-btn" type="button" data-hours="6">6H</button>
               <button class="twamp-range-btn" type="button" data-hours="12">12H</button>
               <button class="twamp-range-btn active" type="button" data-hours="24">24H</button>
+              <button class="twamp-range-btn" type="button" data-hours="48">48H</button>
             </div>
             <div class="twamp-thresholds">
               <span class="geo-good">Good</span>
@@ -5012,7 +5013,7 @@ function renderTwampTrend(payload){
             ticks:{
               ...chartOptions().scales.x.ticks,
               autoSkip:true,
-              maxTicksLimit:state.twampHours === 24 ? 13 : 12,
+              maxTicksLimit:state.twampHours >= 24 ? 13 : 12,
               callback:function(value){ return this.getLabelForValue(value); }
             }
           },
@@ -7017,7 +7018,7 @@ function syncTwampRangeButtons(){
 }
 
 async function changeTwampRange(hours){
-  if(![6,12,24].includes(hours) || hours === state.twampHours) return;
+  if(![6,12,24,48].includes(hours) || hours === state.twampHours) return;
   state.twampHours = hours;
   syncTwampRangeButtons();
   const siteId = state.analyzedSiteId || document.getElementById('siteId').value.trim();
