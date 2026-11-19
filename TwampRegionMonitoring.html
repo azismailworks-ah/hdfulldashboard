@@ -1,0 +1,725 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#080d19"><title>TWAMP Observatory</title><style>@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+:root{color-scheme:dark;--bg:#080d19;--panel:#0f1829;--line:#22314b;--text:#f0f5ff;--muted:#a1afc8;--cyan:#63e9fc;--pink:#ec85fd;--mono:'IBM Plex Mono',monospace}*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse 900px 490px at 55% 3%,#122344 0%,transparent 76%),var(--bg);color:var(--text);font:14px Geist,system-ui,sans-serif}button,input,select{font:inherit;color:inherit}button,select{cursor:pointer}button,input,select{border:1px solid var(--line);border-radius:8px;background:#111b2d;padding:8px 11px}button:hover,button:focus-visible,select:focus-visible{border-color:var(--cyan);outline:none}button[aria-pressed=true],.primary{color:#091424;background:var(--cyan);border-color:var(--cyan);font-weight:700}h1,h2,p{margin:0}.top{height:65px;display:flex;justify-content:space-between;align-items:center;padding:0 max(22px,calc((100vw - 1460px)/2));border-bottom:1px solid #22314b;background:#0b1220d9}.brand,.tools,.controls,.sectionhead,.legend,.dialog-top,.dialog-actions{display:flex;align-items:center;gap:13px}.brand{font-weight:800;letter-spacing:.08em}.logo{display:grid;place-items:center;width:32px;height:32px;color:var(--cyan);background:#123147;border:1px solid #2d6482;border-radius:9px;font-size:22px}.brand-sub,.badge,.kicker,.monitor-label,.monitor-caption{font-family:var(--mono);letter-spacing:.09em}.brand-sub{color:var(--muted);font-size:10px}.badge{color:#ffd492;background:#422e234f;border:1px solid #725137;border-radius:5px;padding:6px 8px;font-size:10px}.badge.live{color:#92f6d2;border-color:#347464;background:#1a3d37}main{max-width:1500px;padding:28px 25px 0;margin:auto}.intro{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:28px}.kicker{font-size:11px;color:var(--cyan);font-weight:600}.kicker i,.pulse{display:inline-block;width:7px;height:7px;background:var(--cyan);border-radius:100%;margin-right:6px;box-shadow:0 0 12px var(--cyan)}h1{font-size:clamp(34px,4vw,62px);letter-spacing:-.075em;line-height:1.12;margin:5px 0 7px}h1 span,.cyan{color:var(--cyan)}.pink{color:var(--pink)}.sub,.muted{color:var(--muted)}.sectionhead{justify-content:space-between;margin-bottom:12px}.sectionhead>div:first-child{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}h2{font-size:21px;letter-spacing:-.03em}.seg{display:inline-flex;background:#0b1424;border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px;white-space:nowrap}.seg button{border-color:transparent;padding:6px 10px}.time,.filters label,#connectForm label{display:grid;gap:4px;color:var(--muted);font-size:11px}.filters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-bottom:12px}.filters select,.time select{width:100%;color:var(--text)}.grid{display:grid;grid-template-columns:1.48fr repeat(6,minmax(0,1fr));gap:8px}.card{text-align:left;min-width:0;padding:10px;background:linear-gradient(160deg,#16253d,#0c1423 90%);border:1px solid var(--line);border-radius:10px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}.card strong{display:block;font-size:12px;overflow-wrap:anywhere}.card.feature{grid-row:span 2;border-color:#377188;background:radial-gradient(ellipse at 20% 0%,#173b55,#0b182b 70%);padding:15px}.card.feature strong{font-size:18px}.grid.group{grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}.metrics{display:flex;gap:8px;flex-wrap:wrap;font:500 11px var(--mono);margin:6px 0}.feature .metrics{font-size:15px}.chart{display:block;width:100%;height:46px}.feature .chart{height:140px}.axis{display:flex;justify-content:space-between;color:#8798b7;font:9px var(--mono);gap:3px;margin-top:3px}.monitor{height:245px;position:relative;overflow:hidden;margin:2px 0;background:radial-gradient(ellipse at center,#0b2d4d94,transparent 62%)}#brain{display:block;width:100%;height:100%}.monitor-label,.monitor-caption{position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;pointer-events:none}.monitor-label{bottom:25px;color:#d7f7ff}.monitor-caption{bottom:7px;color:#8194b3}.monitor-caption span{color:var(--cyan)}.count{font:500 12px var(--mono);color:#ffb994;background:#452a32;border:1px solid #673a46;border-radius:7px;padding:2px 6px;vertical-align:middle}.issues{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px}.issue{text-align:left;border-color:#654057;background:linear-gradient(140deg,#301d35,#111a2c 70%);padding:12px}.issue strong{font-size:15px;display:block;margin:5px 0 9px}.issue .muted{font-size:11px}.issue .metrics{margin-bottom:0}.empty,#notice:not(:empty){grid-column:1/-1;border:1px dashed var(--line);border-radius:8px;padding:12px;color:var(--muted);margin-bottom:8px}footer{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--line);margin-top:24px;padding:16px 0;color:var(--muted);font-size:11px}dialog{width:min(930px,calc(100% - 24px));max-height:90vh;overflow:auto;background:#101a2c;color:var(--text);border:1px solid #365476;border-radius:16px;padding:22px;box-shadow:0 24px 100px #000a}dialog::backdrop{background:#030610bf;backdrop-filter:blur(5px)}.dialog-top{justify-content:space-between;align-items:start;margin-bottom:17px}.dialog-top h2{margin:4px 0}.dialog-actions{justify-content:flex-end}.dialog-chart .chart{height:190px}.table-wrap{overflow:auto;max-height:52vh;margin-top:14px}table{border-collapse:collapse;width:100%;font-size:12px}th,td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);position:sticky;top:0;background:#152238}#config{max-width:550px}#connectForm{display:grid;gap:12px}#connectForm input{width:100%;color:var(--text)}#connection{color:#ffd492}
+@media(max-width:1120px){.grid{grid-template-columns:1.3fr repeat(3,minmax(0,1fr))}.card.feature{grid-row:span 4}}@media(max-width:700px){main{padding:18px 12px 0}.top{padding:0 12px}.brand-sub{display:none}.intro{align-items:start;flex-direction:column;margin-bottom:20px}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.card.feature{grid-row:auto;grid-column:span 2}.feature .chart{height:100px}.sectionhead{align-items:flex-start;flex-wrap:wrap}.monitor{height:200px}.issues{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}}
+.range-tools{display:flex;align-items:end;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.range-tools label{display:grid;gap:4px}.sample-time{font-size:9px;color:var(--muted)}.dialog-chart>p{margin-top:8px}.issue-search{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}.issue-search input{width:min(100%,340px)}.issue[hidden],#issue-search-empty[hidden]{display:none!important}
+:root{--panel:#111d31;--line:#283951;--muted:#a9b8cf}
+.top{height:64px;background:#0a1322;position:relative}
+.brand{font-size:18px;letter-spacing:-.045em}.brand-sub{font:inherit;letter-spacing:inherit;color:#a9c7e4}
+main{padding-top:24px}.intro{padding:26px 24px;border:1px solid #28415b;border-radius:16px;background:radial-gradient(ellipse at 95% 0%,#17405980,transparent 65%),linear-gradient(135deg,#13233a,#0d1728);margin-bottom:24px}
+h1{font-size:clamp(31px,4.1vw,56px);letter-spacing:-.062em;margin:0 0 8px}.sub{max-width:54ch;line-height:1.5}.controls{flex-wrap:wrap}
+.overview .sectionhead,.filters{padding-inline:2px}.overview .sectionhead{margin-bottom:14px}.filters{margin-bottom:10px}
+#notice:not(:empty){padding:8px 11px;border-style:solid;background:#0d1829;color:#9db4cf;font-size:12px}
+.grid{gap:10px}.card{min-height:126px;padding:11px;background:linear-gradient(145deg,#172742,#0d1728 78%);box-shadow:0 4px 12px #03070f55;transition:border-color .18s,background .18s,box-shadow .18s}.card:hover,.card:focus-visible{border-color:#69d5ee;box-shadow:0 0 0 1px #63e9fc33,0 6px 15px #03070f99}.card strong{font-size:12px;line-height:1.22}.card.feature{padding:15px;background:radial-gradient(ellipse at 14% 5%,#21465c,#0e1e34 72%)}.card.feature strong{font-size:20px}.metrics{column-gap:10px;row-gap:4px}.card .chart{height:48px}.card.feature .chart{height:148px}.axis{font-size:10px}.sample-time{font-size:9px}
+@media(min-width:850px) and (max-width:1120px){.grid:not(.group){grid-template-columns:1.45fr repeat(6,minmax(0,1fr));gap:6px}.grid:not(.group) .card{padding:8px}.grid:not(.group) .card.feature{grid-row:span 2;padding:12px}.card .metrics{font-size:10px}.card strong{font-size:11px}}
+@media(max-width:700px){.intro{padding:17px 13px}.controls{gap:8px}.card{min-height:118px}.card.feature .chart{height:112px}.card.feature strong{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.card{transition:none}}
+#refresh-status:not(:empty){margin:0 0 10px;font-size:11px}.top .tools{flex-wrap:wrap;gap:6px}.top{height:auto;min-height:64px;padding-block:8px}</style></head><body>
+<header class="top"><div class="brand"><span class="logo">◈</span><span>TWAMP <span class="brand-sub">Observatory</span></span></div><div class="tools"><span id="status" class="badge" aria-live="polite">CONNECTING</span><button id="refresh-now" type="button" disabled>Refresh latest</button><button id="settings">⚙ Data sources</button></div></header>
+<main><section class="intro"><div><h1>Network Performance</h1><p class="sub">Track packet loss and delay across regions, then drill down to the sites driving each change.</p></div><div class="controls"><div class="seg" aria-label="Trend interval"><button data-step="15" aria-pressed="true">15 min</button><button data-step="60" aria-pressed="false">1 hour</button></div><label class="time">Snapshot (UTC+7)<select id="snapshot"></select></label></div></section>
+<section class="overview"><div class="sectionhead"><div><h2>Regional Trends</h2><span class="muted">Last 24 hours</span></div><div class="legend"><span class="pink">● PLR (%)</span><span class="cyan">● Delay (ms)</span></div></div>
+<div class="filters"><label>Level<select id="level"><option>Region</option><option>Area</option><option>Circle ID</option><option>MC-Cluster</option></select></label><label>Region<select id="region"></select></label><label>Area<select id="area"></select></label><label>Circle ID<select id="circle"></select></label><label>MC-Cluster<select id="cluster"></select></label></div><div id="notice" role="status"></div><p id="refresh-status" class="muted" aria-live="polite"></p><div id="grid" class="grid"></div></section>
+<section class="monitor" aria-label="Network monitoring visualization"><canvas id="brain" aria-hidden="true"></canvas><div class="monitor-label"><span class="pulse"></span> TWAMP MONITOR</div><div class="monitor-caption">Region <span>↑</span> · <span>↓</span> MC-Cluster</div></section>
+<section id="issue-section"><div class="sectionhead"><div><h2>MC-Cluster Issues <span id="count" class="count">—</span></h2><span class="muted">vs. prior-day hourly KPI · Relative PLR increase >5% or delay increase >10 ms</span></div><div class="seg"><button data-metric="all" aria-pressed="true">All</button><button data-metric="plr" aria-pressed="false">PLR</button><button data-metric="delay" aria-pressed="false">Delay</button></div></div><div class="issue-search"><label for="issue-search" class="muted">Search issues</label><input id="issue-search" type="search" placeholder="Search by region, area, or MC-Cluster" autocomplete="off" aria-controls="issues"><span id="issue-search-status" class="muted" role="status"></span></div><p id="issue-search-empty" class="empty" hidden>No issues match your search.</p><div id="issues" class="issues"></div></section>
+<footer><span>TWAMP Observatory</span><span>Realtime TWAMP monitoring · Hourly KPI baseline · UTC+7</span></footer></main>
+<dialog id="detail"><div class="dialog-top"><div><p class="kicker" id="detailType"></p><h2 id="detailTitle"></h2><p class="muted" id="detailSubtitle"></p></div><form method="dialog"><button aria-label="Close">✕</button></form></div><div id="detailBody"></div></dialog>
+<dialog id="config"><div class="dialog-top"><div><h2>Data sources</h2><p class="muted">Connect to the TWAMP API and site catalog.</p></div><form method="dialog"><button aria-label="Close">✕</button></form></div><form id="connectForm"><label>API base URL<input id="api" type="url" required value="https://api.azhautomation.com"></label><label>Site catalog URL (CSV)<input id="catalog" type="url"></label><label>Or choose a local CSV file<input id="file" type="file" accept=".csv,text/csv"></label><p class="muted">Update these settings when the API URL or site catalog changes.</p><p id="connection" role="status"></p><div class="dialog-actions"><button type="button" id="demo">Demo mode</button><button class="primary" id="connect">Connect</button></div></form></dialog>
+<script>(() => {
+'use strict';
+const MIN = 60000, H = 60 * MIN, DAY = 24 * H;
+const metrics = ['plr','delay'];
+const levels = ['Region','Area','Circle ID','MC-Cluster'];
+const fields = ['region','area','circle','cluster'];
+const key = (site, level) => JSON.stringify(fields.slice(0,level+1).map(field => site[field]));
+const avg = values => values.length ? values.reduce((sum,v) => sum+v,0)/values.length : null;
+const num = value => value != null && value !== '' && Number.isFinite(+value) ? +value : null;
+const time = value => typeof value === 'number' ? value : Date.parse(value.replace(' ','T') + (value.length === 16 ? ':00+07:00' : ''));
+const floor = (t, step) => Math.floor(t/(step*MIN))*step*MIN;
+function csv(text) {
+  const rows = []; let row = [], field = '', quoted = false;
+  for (let i = 0; i <= text.length; i++) {
+    const c = text[i];
+    if (c === '"' && quoted && text[i+1] === '"') { field += '"'; i++; }
+    else if (c === '"') quoted = !quoted;
+    else if ((c === ',' || c === '\n' || c === undefined) && !quoted) {
+      row.push(field.trim()); field = '';
+      if (c !== ',') { if(row.some(Boolean)) rows.push(row); row = []; }
+    } else field += c ?? '';
+  }
+  if (quoted) throw Error('The CSV contains an unclosed quoted field.');
+  const normalize = s => s.toLowerCase().replace(/[^a-z0-9]/g,'');
+  const aliases = [['siteid','sitecode','idsite','id'],['sitename','namasite','name'],['region','regionname'],['area','areaname'],['circleid','cirecleid','circle','cirecle'],['mccluster','mcclustername','mcclusterid']];
+  const header = rows.findIndex(r => aliases[0].some(a=>r.map(normalize).includes(a)) && aliases[2].some(a=>r.map(normalize).includes(a)));
+  if(header < 0) throw Error('The Site ID and Region headers could not be found.');
+  const indexes = aliases.map(a => rows[header].findIndex(h=>a.includes(normalize(h))));
+  if([0,2,3,4,5].some(i=>indexes[i]<0)) throw Error('The CSV must include Site ID, Region, Area, Circle ID, and MC-Cluster.');
+  const result = new Map();
+  for (const r of rows.slice(header+1)) {
+    const [id,name,region,area,circle,cluster] = indexes.map(i=>r[i]||'');
+    const cleanId = id.replace(/\s+/g,'').toUpperCase();
+    if(!cleanId || !region) continue;
+    const site = {id:cleanId,name,region,area,circle,cluster};
+    const prior = result.get(cleanId);
+    if (prior && key(prior,3) !== key(site,3)) throw Error('Conflicting regions for Site ID '+cleanId);
+    if (!prior || (!prior.name && name)) result.set(cleanId,site);
+  }
+  if(!result.size) throw Error('The catalog contains no sites with a region.');
+  return [...result.values()];
+}
+function index(rows) {
+  return new Map(rows.map(([t,p,d])=>[time(t),{plr:num(p),delay:num(d)}]).filter(([t])=>Number.isFinite(t)));
+}
+function timeline(end,step) {
+  return Array.from({length:1440/step},(_,i)=>end-(1440/step-1-i)*step*MIN);
+}
+function history(hourly,t,metric) {
+  // KPI labels mark the start of each hour. Weight by overlap with the previous hour.
+  const end = Math.ceil(t/H)*H;
+  let sum=0, covered=0;
+  for(const stamp of [end-H,end]) {
+    const overlap = Math.min(t,stamp)-Math.max(t-H,stamp-H);
+    if(overlap<=0) continue;
+    const value = hourly.get(stamp-H)?.[metric];
+    if(value == null) return null;
+    sum += value*overlap; covered += overlap;
+  }
+  return covered===H ? sum/H : null;
+}
+function monitoring(site,t,step,metric) {
+  if(step===15)return site.realtime.get(t)?.[metric];
+  return avg([15,30,45,60].map(minutes=>site.realtime.get(t-minutes*MIN)?.[metric]).filter(v=>v!=null));
+}
+function summarize(sites,t,step) {
+  return Object.fromEntries(metrics.map(m=>[m,avg(sites.map(s=>monitoring(s,t,step,m)).filter(v=>v!=null))]));
+}
+function compare(sites,t,step,metric) {
+  const pairs=[];
+  for(const s of sites) {
+    const current=monitoring(s,t,step,metric);
+    const yesterday=history(s.hourly,t-DAY,metric);
+    if(current==null || yesterday==null) continue;
+    pairs.push({site:s,current,yesterday,delta:current-yesterday});
+  }
+  const [current,yesterday]=['current','yesterday'].map(k=>avg(pairs.map(p=>p[k])));
+  const delta=current===null ? null : current-yesterday;
+  return {current,yesterday,delta,matched:pairs.length,contributors:pairs.filter(p=>p.delta>1e-9).sort((a,b)=>b.delta-a.delta)};
+}
+const clock = t=>new Date(t+7*H).toISOString().slice(11,16);
+const stamp = t=>new Date(t+7*H).toISOString().slice(0,16).replace('T',' ');
+globalThis.Twamp={MIN,H,DAY,metrics,levels,fields,key,csv,index,timeline,summarize,compare,floor,clock,stamp};
+})();
+
+(() => {
+'use strict';
+const T=Twamp, $=id=>document.getElementById(id);
+const csvUrl='https://docs.google.com/spreadsheets/d/e/2PACX-1vRkPuf1c9KKgZ56AN154o-N_toC0AuX59JiRCCMF1-Qmdu7yiUsxTbJuguJ4LIYz6uhJoygzd5a9xvT/pub?gid=675216418&single=true&output=csv';
+$('catalog').value=csvUrl;
+const state={sites:[],step:15,metric:'all',end:0,at:0,latest:{},live:false};
+const colors={plr:'#ec85fd',delay:'#63e9fc'};
+const labels={plr:'PLR',delay:'Delay'};
+const units={plr:'%',delay:' ms'};
+const fmt=(v,m,delta=false)=>v==null?'—':(delta&&v>0?'+':'')+v.toFixed(m==='plr'?2:1)+(delta&&m==='plr'?' pp':units[m]);
+const el=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;};
+const button=(cls,fn)=>{const e=el('button',cls);e.type='button';e.onclick=fn;return e;};
+function metricRow(values,delta=false) {
+  const row=el('div','metrics');
+  for(const m of T.metrics) row.append(el('span',m==='plr'?'pink':'cyan',labels[m]+' '+fmt(values[m],m,delta)));
+  return row;
+}
+function chart(parent,points,big=false,selectable=false) {
+  const canvas=el('canvas','chart');
+  canvas.setAttribute('aria-label','Packet loss and delay chart. Each metric has its own scale.');
+  canvas.setAttribute('role','img');
+  parent.append(canvas);
+  const axis=el('div','axis');
+  for(const i of big?[0,Math.floor(points.length/2),points.length-1]:[0,points.length-1]) axis.append(el('span','',T.clock(points[i].t)));
+  parent.append(axis);
+  let dragStart=null, selection=null;
+  const paint=()=>{
+    if(!canvas.isConnected)return;
+    const {width:w,height:h}=canvas.getBoundingClientRect(), dpi=window.devicePixelRatio||1;
+    if(!w||!h)return;
+    canvas.width=w*dpi; canvas.height=h*dpi;
+    const c=canvas.getContext('2d'); c.scale(dpi,dpi);
+    if(!big){
+      const backdrop=c.createLinearGradient(0,0,0,h);
+      backdrop.addColorStop(0,'#253b562a');backdrop.addColorStop(1,'#0d172800');
+      c.fillStyle=backdrop;c.fillRect(0,0,w,h);
+    }
+    const x=i=>3+i*(w-6)/Math.max(1,points.length-1);
+    if(selection){
+      c.fillStyle='#63e9fc28';
+      c.fillRect(x(selection[0]),0,Math.max(2,x(selection[1])-x(selection[0])),h);
+    }
+    c.strokeStyle='#29415e'; c.lineWidth=.6;
+    for(const y of [5,h*.35,h*.65,h-4]) {c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
+    for(const m of T.metrics) {
+      const vals=points.map(p=>p[m]).filter(v=>v!=null);
+      if(!vals.length)continue;
+      const max=Math.max(m==='plr'?0.3:10,...vals)*1.12;
+      const y=v=>h-4-v/max*(h-9);
+      c.strokeStyle=colors[m]; c.fillStyle=colors[m]; c.lineWidth=big?1.8:1.2;
+      let open=false;c.beginPath();
+      points.forEach((p,i)=>{if(p[m]==null){open=false;return;} if(open)c.lineTo(x(i),y(p[m]));else c.moveTo(x(i),y(p[m]));open=true;});
+      c.stroke();
+      const current=points.findIndex(p=>p.t===state.at);
+      if(current>=0&&points[current][m]!=null){c.beginPath();c.arc(x(current),y(points[current][m]),big?3:2,0,2*Math.PI);c.fill();}
+    }
+  };
+  const indexAt=event=>Math.max(0,Math.min(points.length-1,Math.round((event.clientX-canvas.getBoundingClientRect().left-3)/Math.max(1,canvas.clientWidth-6)*(points.length-1))));
+  canvas.onpointermove=event=>{
+    const i=indexAt(event);
+    if(dragStart!==null){selection=[Math.min(dragStart,i),Math.max(dragStart,i)];paint();}
+    const p=points[i];canvas.title=T.stamp(p.t)+' UTC+7 · PLR '+fmt(p.plr,'plr')+' · Delay '+fmt(p.delay,'delay');
+  };
+  if(typeof selectable==='function'){
+    canvas.style.cursor='crosshair';canvas.style.touchAction='none';
+    canvas.onpointerdown=event=>{dragStart=indexAt(event);canvas.setPointerCapture(event.pointerId);};
+    canvas.onpointerup=event=>{
+      if(dragStart===null)return;
+      const end=indexAt(event);selection=[Math.min(dragStart,end),Math.max(dragStart,end)];dragStart=null;paint();
+      if(selection[0]!==selection[1])selectable(...selection);
+    };
+    canvas.onpointercancel=()=>{dragStart=null;selection=null;paint();};
+  }else if(selectable) {
+    canvas.style.cursor='crosshair';
+    canvas.onclick=event=>{
+      const i=Math.max(0,Math.min(points.length-1,Math.round(event.offsetX/canvas.clientWidth*(points.length-1))));
+      $('detail').close();
+      if(state.live)loadView({at:points[i].t,end:state.end});else{state.at=points[i].t;$('snapshot').value=String(state.at);render();}
+    };
+  }
+  paints.set(canvas,paint);chartObservers.observe(canvas);requestAnimationFrame(paint);
+}
+const paints=new WeakMap();
+const chartObservers=new ResizeObserver(entries=>{for(const {target} of entries)paints.get(target)?.()});
+const regionOrder = [
+  'INNER JAKARTA',
+  'OUTER JAKARTA', 'WEST JAVA', 'CENTRAL JAVA', 'EAST JAVA', 'BALI NUSRA', 'MAPA',
+  'SULAWESI', 'EASTERN KALIMANTAN', 'WESTERN KALIMANTAN', 'SOUTH SUMATERA', 'CENTRAL SUMATERA', 'NORTH SUMATERA'
+];
+const regionRanks = new Map(regionOrder.map((region,index)=>[region,index]));
+function compareRegions(a,b) {
+  const rank=name=>regionRanks.get(name.trim().replace(/\s+/g,' ').toUpperCase())??regionOrder.length;
+  return rank(a)-rank(b)||a.localeCompare(b);
+}
+function group(sites,level) {
+  const groups=new Map();
+  for(const s of sites) {
+    const name=s[T.fields[level]];
+    if(!name)continue;
+    const k=T.key(s,level);
+    if(!groups.has(k))groups.set(k,{name,sites:[],path:T.fields.slice(0,level).map(f=>s[f]).filter(Boolean).join(' / ')});
+    groups.get(k).sites.push(s);
+  }
+  return [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name));
+}
+function options(select,values,all) {
+  const prior=select.value;
+  select.replaceChildren(new Option(all,''));
+  for(const v of values)select.add(new Option(v,v));
+  if(values.includes(prior))select.value=prior;
+}
+function selectedSites() {
+  let sites=state.sites;
+  for(const field of T.fields){
+    const select=$(field);
+    options(select,[...new Set(sites.map(s=>s[field]).filter(Boolean))].sort(),'All');
+    if(select.value)sites=sites.filter(s=>s[field]===select.value);
+  }
+  return sites;
+}
+function detail(groupInfo,issue) {
+  const {name,sites,path}=groupInfo;
+  $('detailType').textContent=issue?'MC-CLUSTER CONTRIBUTORS':$('level').value.toUpperCase();
+  $('detailTitle').textContent=name;
+  $('detailSubtitle').textContent=[path,T.stamp(state.at)+' UTC+7',sites.length+' mapped sites'].filter(Boolean).join(' · ');
+  const body=$('detailBody');body.replaceChildren();
+  if(!issue){
+    const wrap=el('div','dialog-chart');body.append(wrap);
+    chart(wrap,T.timeline(state.end,state.step).map(t=>({t,...T.summarize(sites,t,state.step)})),true,true);
+  }
+  const analyses=issue||Object.fromEntries(T.metrics.map(m=>[m,T.compare(sites,state.at,state.step,m)]));
+  for(const m of T.metrics) {
+    const a=analyses[m];
+    if(!a)continue;
+    const group=el('section');
+    group.append(el('h3',m==='plr'?'pink':'cyan',labels[m]+(issue?' · '+fmt(a.delta,m,true):'')));
+    group.append(el('p','muted','Current '+fmt(a.current,m)+' · D−1 '+fmt(a.yesterday,m)+' · '+a.matched+'/'+sites.length+' comparable sites'));
+    const rows=issue?a.contributors:sites.slice().sort((x,y)=>x.id.localeCompare(y.id)).map(site=>{
+      const result=T.compare([site],state.at,state.step,m);
+      return {...result,site,current:T.summarize([site],state.at,state.step)[m]};
+    });
+    if(rows.length){
+      const wrap=el('div','table-wrap'),table=el('table');
+      const head=table.createTHead().insertRow();
+      for(const h of ['Site ID','Site Name','Current','D−1','Δ vs D−1']) head.append(el('th','',h));
+      const tbody=table.createTBody();
+      for(const row of rows){
+        const tr=tbody.insertRow();
+        [row.site.id,row.site.name||'—',fmt(row.current,m),fmt(row.yesterday,m),fmt(row.delta,m,true)].forEach(v=>tr.append(el('td','',v)));
+      }
+      wrap.append(table);group.append(wrap);
+    } else group.append(el('p','muted','No sites exceeded the prior-day baseline for this metric.'));
+    body.append(group);
+  }
+  $('detail').showModal();
+}
+function render() {
+  for(const node of document.querySelectorAll('.chart'))chartObservers.unobserve(node);
+  const sites=selectedSites(), level=T.levels.indexOf($('level').value);
+  if(state.live){renderLive();return;}
+  const grid=$('grid');grid.replaceChildren();
+  const groups=group(sites,level);
+  const featured=level===0?groups.find(g=>/inner\s*jakarta|jakarta\s*inner/i.test(g.name)):null;
+  if(level===0)groups.sort((a,b)=>a===featured?-1:b===featured?1:compareRegions(a.name,b.name));
+  grid.classList.toggle('group',!featured||groups.length!==13);
+  if(!state.end){
+    grid.append(el('div','empty','No data for this interval.'));
+  }else{
+    const times=T.timeline(state.end,state.step);
+    for(const g of groups){
+      const card=button('card'+(g===featured?' feature':''),()=>detail(g));
+      card.append(el('strong','',g.name),metricRow(T.summarize(g.sites,state.at,state.step)));
+      chart(card,times.map(t=>({t,...T.summarize(g.sites,t,state.step)})),g===featured);
+      grid.append(card);
+    }
+    if(!groups.length)grid.append(el('div','empty','No regions match this filter.'));
+  }
+  const issues=$('issues');issues.replaceChildren();
+  const hits=[];
+  let eligible=0;
+  if(state.end)for(const g of group(sites,3)){
+    const active={};let score=0;
+    for(const m of T.metrics){
+      if(state.metric!=='all'&&state.metric!==m)continue;
+      const a=T.compare(g.sites,state.at,state.step,m);
+      if(a.matched)eligible++;
+      if(a.delta!=null&&a.delta>1e-9){
+        active[m]=a;
+        score=Math.max(score,a.delta/Math.max(m==='plr'?0.1:1,a.yesterday));
+      }
+    }
+    if(Object.keys(active).length)hits.push({g,active,score});
+  }
+  hits.sort((a,b)=>b.score-a.score);
+  $('count').textContent=hits.length;
+  if(!hits.length)issues.append(el('div','empty',eligible?'No MC-Cluster crossed the issue thresholds at this snapshot.':'The prior-day baseline is unavailable for this filter and snapshot.'));
+  for(const {g,active} of hits){
+    const card=button('issue',()=>detail(g,active));
+    card.dataset.search=normalizeIssueSearch(g.path+' '+g.name);
+    const contributors=new Set(Object.values(active).flatMap(a=>a.contributors.map(r=>r.site.id)));
+    card.append(el('span','muted',g.path),el('strong','',g.name),el('span','muted',T.clock(state.at)+' UTC+7 · '+contributors.size+' contributors'));
+    const metrics=el('div','metrics');
+    for(const [m,a] of Object.entries(active))metrics.append(el('span',m==='plr'?'pink':'cyan',labels[m]+' '+fmt(a.delta,m,true)));
+    card.append(metrics);issues.append(card);
+  }
+  filterIssueCards();
+  $('notice').textContent=state.live?''+sites.length.toLocaleString('en-US')+' mapped sites in this view.': '';
+}
+function setStep(step){
+  if(connection){loadFilteredView({step});return;}
+  state.step=step;
+  state.end=state.latest[step]||0;
+  state.at=state.end;
+  $('snapshot').replaceChildren();
+  if(state.end)for(const t of T.timeline(state.end,step).reverse())$('snapshot').add(new Option(T.stamp(t),String(t)));
+  else $('snapshot').add(new Option('No data available',''));
+  document.querySelectorAll('[data-step]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.step===step));
+  render();
+}
+function install(sites,live){
+  state.sites=sites;state.live=live;
+  const status=$('status');status.classList.toggle('live',live);status.textContent=live?'LIVE DATA':'DEMO DATA';
+  state.latest={15:0,60:0};
+  for(const s of sites)for(const [t,p] of s.realtime) {
+    if(p.plr!=null||p.delay!=null)state.latest[15]=Math.max(state.latest[15],t);
+  }
+  state.latest[60]=state.latest[15]?T.floor(state.latest[15]+15*T.MIN,60):0;
+  setStep(state.step);
+}
+function simulate(){
+  const end=T.floor(Date.now(),15), hourlyEnd=T.floor(end,60), sites=[];
+  const regions=regionOrder;
+  for(const [r,region] of regions.entries())for(let i=0;i<8;i++){
+    const id='DEMO-'+String(r*8+i+1).padStart(4,'0');
+    const value=(t,current)=>{
+      const phase=Math.floor(t/T.MIN/15)%(96), wave=(Math.sin(phase*.17+r*.63)+Math.cos(phase*.53+i*.7))*.5;
+      const surge=current&&[0,2,5,7].includes(r)&&i<3 ? Math.max(0,1-(end-t)/(5*T.MIN*15)):0;
+      const bias=current?-0.045:0.035;
+      return [Math.max(.02,.18+r*.016+wave*.05+bias+surge*(1.1+i*.23)),7+r*.51+wave*1.7+(current?-1:1)+surge*(13+i*3)];
+    };
+    const realtime=T.timeline(end,15).map(t=>[t,...value(t,true)]);
+    const hourly=[];
+    for(const lag of [0,1])for(let h=26;h >= (lag ? -1 : 0);h--){
+      const t=hourlyEnd-lag*T.DAY-h*T.H;
+      hourly.push([t,...value(t,lag===0)]);
+    }
+    sites.push({id,name:'Demo Site '+(r*8+i+1),region,area:'Area '+(r+1),circle:'C-'+String(r+1).padStart(2,'0'),cluster:'MC-'+String(r+1).padStart(2,'0')+['A','B'][Math.floor(i/4)],realtime:T.index(realtime),hourly:T.index(hourly)});
+  }
+  install(sites,false);
+}
+async function get(url,options){
+  const endpoint=new URL(url).pathname;
+  let response;
+  try {
+    response=await fetch(url,{...options,signal:AbortSignal.timeout(90000)});
+  } catch(error) {
+    if(error.name==='TimeoutError')throw Error(endpoint+' did not respond within 90 seconds.');
+    if(error instanceof TypeError)throw Error(endpoint+' could not be reached. Check your network or CORS settings.');
+    throw error;
+  }
+  if(!response.ok)throw Error(endpoint+' returned HTTP '+response.status+'.');
+  return response;
+}
+let generation=0, connection=null;
+const scope=()=>T.fields.map(f=>$(f).value);
+async function queryView(cfg,params){
+  const response=await get(cfg.api+'/api/twamp/area-view',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...params,catalog:cfg.catalog})});
+  return response.json();
+}
+function snapshotOptions() {
+  const select=$('snapshot');
+  select.replaceChildren();
+  if(state.end){
+    for(const t of T.timeline(state.end,state.step).reverse())select.add(new Option(T.stamp(t),String(t)));
+    select.value=String(state.at);
+  }else select.add(new Option('No data available',''));
+  document.querySelectorAll('[data-step]').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.step===state.step));
+}
+function formatPath(path){return path.filter(Boolean).join(' / ');}
+function normalizeIssueSearch(value){
+  return value.toLowerCase().replace(/[_\s-]+/g,' ').trim();
+}
+function filterIssueCards(){
+  const query=normalizeIssueSearch($('issue-search').value);
+  const cards=[...$('issues').querySelectorAll('.issue')];
+  let matched=0;
+  for(const card of cards){
+    card.hidden=Boolean(query)&&!card.dataset.search.includes(query);
+    if(!card.hidden)matched++;
+  }
+  $('issue-search-status').textContent=query&&cards.length?matched+' of '+cards.length+' issues':'';
+  $('issue-search-empty').hidden=!query||!cards.length||matched>0;
+}
+function renderLive(){
+  const {view}=state;
+  const grid=$('grid');grid.replaceChildren();
+  const featured=view.cards.find(g=>g.path.length===1&&/inner\s*jakarta|jakarta\s*inner/i.test(g.path[0]));
+  const cards=view.cards.slice().sort((a,b)=>{
+    if(a===featured)return -1;
+    if(b===featured)return 1;
+    return a.path.length===1&&b.path.length===1
+      ?compareRegions(a.path[0],b.path[0])
+      :a.path.at(-1).localeCompare(b.path.at(-1));
+  });
+  grid.classList.toggle('group',!featured||cards.length!==13);
+  for(const g of cards){
+    const indexed=T.index(g.data);
+    const points=T.timeline(state.end,state.step).map(t=>({t,...indexed.get(t)}));
+    const card=button('card'+(g===featured?' feature':''),()=>liveDetail(g,points));
+    const current=el('div','metrics');
+    for(const metric of T.metrics){
+      const sample=points.findLast(p=>p.t<=state.at&&p[metric]!=null);
+      const value=el('span',metric==='plr'?'pink':'cyan',labels[metric]+' '+fmt(sample?.[metric],metric));
+      if(sample&&sample.t!==state.at){
+        value.append(el('small','sample-time',' · '+T.clock(sample.t)+' UTC+7'));
+        value.title=T.stamp(sample.t)+' UTC+7';
+      }
+      current.append(value);
+    }
+    card.append(el('strong','',g.path.at(-1)),current);
+    chart(card,points,g===featured);
+    grid.append(card);
+  }
+  if(!cards.length)grid.append(el('div','empty','No data for this interval and filter.'));
+  const qualifies=(metric,a)=>a.delta>(metric==='plr'?Math.max(0,a.yesterday)*.05:10)+1e-9;
+  const visible=view.issues.map(g=>({...g,metrics:Object.fromEntries(Object.entries(g.metrics).filter(([m,a])=>qualifies(m,a)&&(state.metric==='all'||m===state.metric)))})).filter(g=>Object.keys(g.metrics).length);
+  const score=g=>Math.max(...Object.entries(g.metrics).map(([m,a])=>a.delta/Math.max(m==='plr'?.1:1,a.yesterday)));
+  visible.sort((a,b)=>score(b)-score(a));
+  $('count').textContent=view.eligible?String(visible.length):'—';
+  const issues=$('issues');issues.replaceChildren();
+  if(!visible.length)issues.append(el('div','empty',view.baselineUpgradeNeeded?'Prior-day analysis requires a newer API version.':view.eligible?'No MC-Cluster crossed the issue thresholds at this snapshot.':'The prior-day baseline is incomplete for this snapshot.'));
+  for(const g of visible){
+    const card=button('issue',()=>liveDetail(g));
+    card.dataset.search=normalizeIssueSearch([g.path[0],g.path[1],g.path.at(-1)].join(' '));
+    card.append(el('span','muted',formatPath(g.path.slice(0,-1))),el('strong','',g.path.at(-1)),el('span','muted',T.clock(state.at)+' UTC+7 · '+g.count+' mapped sites'));
+    const metrics=el('div','metrics');
+    for(const [m,a] of Object.entries(g.metrics))metrics.append(el('span',m==='plr'?'pink':'cyan',labels[m]+' '+fmt(a.delta,m,true)));
+    card.append(metrics);issues.append(card);
+  }
+  filterIssueCards();
+  $('notice').textContent=''+view.count.toLocaleString('en-US')+' mapped sites in this view.';
+}
+async function liveDetail(g,points) {
+  const at=state.at, end=state.end, step=state.step, config=connection.config;
+  const dialog=$('detail'), body=$('detailBody');
+  const supportsRanges=state.view.contributor_ranges===true;
+  $('detailType').textContent=g.metrics?'MC-CLUSTER CONTRIBUTORS':T.levels[g.path.length-1].toUpperCase();
+  $('detailTitle').textContent=g.path.at(-1);
+  $('detailSubtitle').textContent=[formatPath(g.path.slice(0,-1)),g.count+' mapped sites'].filter(Boolean).join(' · ');
+  body.replaceChildren();
+  const wrap=el('div','dialog-chart'), summary=el('div'), results=el('div');
+  body.append(wrap,summary,results);
+  for(const [metric,a] of Object.entries(g.metrics||{})){
+    summary.append(el('p','muted',labels[metric]+' pada '+T.clock(at)+' UTC+7 · D−1 '+fmt(a.yesterday,metric)+' · Δ '+fmt(a.delta,metric,true)));
+  }
+  dialog.showModal();
+  try{
+    if(!points){
+      wrap.textContent='Loading MC-Cluster trend…';
+      const view=await queryView(config,{at,end,step,level:3,scope:g.path});
+      if(!dialog.open||!wrap.isConnected)return;
+      const indexed=T.index(view.cards.find(c=>JSON.stringify(c.path)===JSON.stringify(g.path))?.data||[]);
+      points=T.timeline(end,step).map(t=>({t,...indexed.get(t)}));
+    }
+    wrap.replaceChildren();
+    if(!supportsRanges){
+      chart(wrap,points,true);
+      results.textContent='Period analysis requires a newer TWAMP Area API version.';
+      return;
+    }
+    const controls=el('div','range-tools');
+    const from=el('select'),to=el('select');
+    from.setAttribute('aria-label','Baseline point before the rise');
+    to.setAttribute('aria-label','End of period');
+    points.forEach((point,i)=>{
+      if(i<points.length-1)from.add(new Option(T.stamp(point.t),String(i)));
+      if(i>0)to.add(new Option(T.stamp(point.t),String(i)));
+    });
+    const snapshotIndex=points.findIndex(p=>p.t===at);
+    const stopIndex=Math.max(1,snapshotIndex);
+    from.value=String(stopIndex-1);to.value=String(stopIndex);
+    const hint=el('p','muted','Drag from before the rise to the peak or through recovery, or select the times below.');
+    const fromLabel=el('label','muted','Before rise ');
+    const toLabel=el('label','muted','End of period ');
+    fromLabel.append(from);toLabel.append(to);
+    let runId=0;
+    async function analyze(){
+      const first=+from.value,last=+to.value;
+      if(first>=last){results.textContent='The end time must follow the baseline point.';return;}
+      const request=++runId;
+      results.textContent='Finding sites that follow the regional trend…';
+      try{
+        const response=await queryView(config,{at,end,step,detail:g.path,range_start:points[first+1].t,range_stop:points[last].t});
+        if(request!==runId||!dialog.open||!results.isConnected)return;
+        results.replaceChildren();
+        for(const metric of T.metrics){
+          const rows=response.contributors[metric];
+          const section=el('section');results.append(section);
+          section.append(el('h3',metric==='plr'?'pink':'cyan',labels[metric]+' · '+rows.length+' contributors'));
+          if(!rows.length){section.append(el('p','muted','No sites matched the selected trend and metric threshold.'));continue;}
+          const tableWrap=el('div','table-wrap'),table=el('table');tableWrap.append(table);section.append(tableWrap);
+          const headers=table.createTHead().insertRow();
+          for(const header of ['Site ID','Site Name','Before rise','Onset','Peak','Recovery','Latest reading'])headers.append(el('th','',header));
+          const tbody=table.createTBody();
+          for(const site of rows){
+            const row=tbody.insertRow();
+            const latest=site.current_at?fmt(site.current,metric)+' · '+T.stamp(site.current_at)+' UTC+7':'—';
+            const recovery=site.recovery_at?fmt(site.recovery,metric)+' · '+T.stamp(site.recovery_at)+' UTC+7':'—';
+            [site.id,site.name||'—',fmt(site.before,metric),fmt(site.onset,metric),fmt(site.peak,metric),recovery,latest].forEach(value=>row.append(el('td','',value)));
+          }
+        }
+      }catch(error){if(request===runId&&results.isConnected)results.textContent='Analysis failed to load · '+error.message;}
+    }
+    const submit=button('primary',analyze);submit.textContent='Analisis contributors';
+    controls.append(fromLabel,toLabel,submit);
+    chart(wrap,points,true,(first,last)=>{from.value=String(first);to.value=String(last);analyze();});
+    wrap.append(hint,controls);
+    results.textContent='Select a period to see contributing sites.';
+  }catch(error){if(wrap.isConnected)wrap.textContent='Chart failed to load · '+error.message;}
+}
+let viewLoading=false;
+async function loadView({step=state.step,at,end,initial=false,config=connection?.config,sites=state.sites}={}){
+  const request=++generation;
+  viewLoading=true;
+  $('refresh-now').disabled=true;
+  if(!initial)$('notice').textContent='Loading trends and baseline…';
+  try{
+    const level=initial?0:T.levels.indexOf($('level').value);
+    if(initial){
+      const catalogSites=await sites;
+      if(request!==generation)return;
+      $('level').value=T.levels[0];T.fields.forEach(f=>$(f).value='');
+      state.sites=catalogSites;
+      connection={config};
+      selectedSites();
+    }
+    const view=await queryView(config,{step,at,end,level,scope:initial?[]:scope()});
+    if(!Array.isArray(view.cards)||!Array.isArray(view.issues))throw Error('The API returned an unexpected analysis response.');
+    if(request!==generation)return;
+    if(view.baseline_days?.length!==1||view.baseline_days[0]!==1){
+      view.issues=[];view.eligible=0;view.baselineUpgradeNeeded=true;
+    }
+    state.live=true;state.view=view;state.step=step;state.end=view.end;state.at=view.at??view.end;
+    connection={config};
+    if(initial)lastRefreshSlot=Math.floor((Date.now()-refreshDelay)/refreshInterval);
+    $('status').classList.add('live');$('status').textContent='LIVE DATA';
+    snapshotOptions();render();
+    const checked=T.clock(Date.now())+' UTC+7';
+    $('refresh-status').textContent=state.at!==state.end
+      ? 'Historical snapshot · Select Refresh latest to resume automatic updates.'
+      : 'Last checked '+checked+' · Latest data '+(state.end?T.stamp(state.end)+' UTC+7':'unavailable');
+  }catch(e){
+    if(request!==generation)return;
+    if(initial||!state.live)throw e;
+    if(request===generation){
+      $('notice').textContent='Refresh failed · '+e.message;
+      snapshotOptions();
+    }
+  }finally{
+    if(request===generation){viewLoading=false;$('refresh-now').disabled=!connection;}
+  }
+}
+async function connectSources({automatic=false}={}){
+  const api=$('api').value.trim().replace(/\/+$/,'');
+  const url=$('catalog').value.trim()||csvUrl, file=$('file').files[0];
+  const custom=Boolean(file||url!==csvUrl);
+  $('connect').disabled=true;
+  $('connection').textContent='Loading site catalog and TWAMP data…';
+  if(automatic){
+    $('status').textContent='CONNECTING';
+    $('notice').textContent='Loading 24-hour trends and the prior-day baseline…';
+  }
+  try{
+    if(custom){
+      const raw=file?await file.text():await get(url).then(r=>r.text());
+      await loadView({initial:true,config:{api,catalog:raw},sites:T.csv(raw)});
+    }else{
+      const sites=get(api+'/api/twamp/area-catalog').then(r=>r.text())
+        .catch(()=>get(csvUrl).then(r=>r.text())).then(T.csv);
+      await loadView({initial:true,config:{api},sites});
+    }
+    $('connection').textContent='';
+    if($('config').open)$('config').close();
+  }catch(e){
+    const message='Could not connect to the TWAMP API. '+e.message;
+    $('connection').textContent=message;
+    if(!state.live){
+      showStartupError(message,()=>connectSources({automatic:true}));
+    }
+  }finally{
+    $('connect').disabled=false;
+  }
+}
+$('connectForm').onsubmit=event=>{
+  event.preventDefault();
+  connectSources();
+};
+$('settings').onclick=()=>$('config').showModal();
+$('demo').onclick=()=>{generation++;viewLoading=false;connection=null;$('refresh-now').disabled=true;$('refresh-status').textContent='';simulate();$('config').close();};
+$('snapshot').onchange=()=>{const at=+$('snapshot').value;if(state.live)loadView({at,end:state.end});else{state.at=at;render();}};
+function showStartupError(message,retry){
+  $('status').textContent='TRENDS UNAVAILABLE';
+  const hint=connection?' Select a region, area, or MC-Cluster to load a smaller scope. ': ' ';
+  const retryButton=button('retry',retry);
+  retryButton.textContent='Retry';
+  $('notice').replaceChildren(el('span','',message+hint),retryButton);
+}
+function loadFilteredView(options={}){
+  loadView(options).catch(e=>showStartupError(e.message,()=>loadFilteredView(options)));
+}
+const applyFilters=()=>{if(connection){selectedSites();loadFilteredView(state.live?{at:state.at,end:state.end}:{});}else render();};
+$('level').onchange=applyFilters;
+T.fields.forEach((field,i)=>$(field).onchange=()=>{T.fields.slice(i+1).forEach(f=>$(f).value='');applyFilters();});
+document.querySelectorAll('[data-step]').forEach(b=>b.onclick=()=>setStep(+b.dataset.step));
+document.querySelectorAll('[data-metric]').forEach(b=>b.onclick=()=>{
+  state.metric=b.dataset.metric;
+  document.querySelectorAll('[data-metric]').forEach(x=>x.setAttribute('aria-pressed',x===b));render();
+});
+$('issue-search').addEventListener('input',filterIssueCards);
+const refreshInterval=15*T.MIN;
+const refreshDelay=15000;
+let lastRefreshSlot, retryTimer;
+$('refresh-now').onclick=()=>{if(connection&&!viewLoading)loadFilteredView();};
+function refreshLatest(){
+  const slot=Math.floor((Date.now()-refreshDelay)/refreshInterval);
+  if(!connection||viewLoading||document.hidden||$('config').open||$('detail').open||state.at!==state.end||slot===lastRefreshSlot)return;
+  lastRefreshSlot=slot;
+  if(!state.live){loadFilteredView();return;}
+  const previousEnd=state.end;
+  loadView().then(()=>{
+    if(state.end!==previousEnd||state.step!==15)return;
+    clearTimeout(retryTimer);
+    retryTimer=setTimeout(()=>{
+      if(connection&&!viewLoading&&!document.hidden&&!$('config').open&&!$('detail').open&&state.at===state.end&&state.end===previousEnd)loadView();
+    },60000);
+  });
+}
+function scheduleRefresh(){
+  const next=(Math.floor((Date.now()-refreshDelay)/refreshInterval)+1)*refreshInterval+refreshDelay;
+  setTimeout(()=>{
+    refreshLatest();
+    scheduleRefresh();
+  },Math.max(1,next-Date.now()));
+}
+document.addEventListener('visibilitychange',refreshLatest);
+$('detail').addEventListener('close',refreshLatest);
+$('config').addEventListener('close',refreshLatest);
+scheduleRefresh();
+snapshotOptions();
+connectSources({automatic:true});
+function neural() {
+  const canvas=$('brain'),c=canvas.getContext('2d'), reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const nodes=[];
+  let seed=421;
+  const rand=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
+  for(const sign of [-1,1])for(let i=0;i<160;i++){
+    const a=rand()*Math.PI*2,r=Math.sqrt(rand()),x=Math.cos(a)*r,y=Math.sin(a)*r;
+    nodes.push({x:sign*(10+Math.max(0,51+52*x)+4*Math.sin(y*13)),y:y*58-7+7*x,z:rand()});
+  }
+  const edges=[];
+  nodes.forEach((a,i)=>nodes.slice(i+1).forEach((b,j)=>{const d=Math.hypot(a.x-b.x,a.y-b.y);if(d<17&&d>4&&rand()<.35)edges.push([i,i+j+1]);}));
+  let w=0,h=0,dpi=1;
+  function draw(ms){
+    c.setTransform(dpi,0,0,dpi,0,0);c.clearRect(0,0,w,h);
+    if(!w||!h)return;
+    const cx=w/2,cy=h*.45,scale=Math.min(1,h/225);
+    for(const dir of [-1,1]){
+      const n=dir<0?13:Math.min(8,Number(count.textContent)||0);
+      for(let i=0;i<n;i++){
+        const target=w*(.055+.89*(n===1?.5:i/(n-1))),start=cx+(i-(n-1)/2)*7,sy=cy+dir*37*scale,ey=dir<0?0:h;
+        const p1=[start,sy+dir*35],p2=[target,ey-dir*50];
+        c.beginPath();c.moveTo(start,sy);c.bezierCurveTo(...p1,...p2,target,ey);
+        c.strokeStyle=dir<0?'#49c6fc55':'#be72ff59';c.lineWidth=1;c.stroke();
+        for(let wire=1;wire<4;wire++){
+          c.beginPath();c.moveTo(start,sy);
+          c.bezierCurveTo(p1[0]+wire*5,p1[1],p2[0],p2[1]+wire*3,target+wire*2,ey);
+          c.strokeStyle=dir<0?'#2774a42b':'#8c4ea62e';c.stroke();
+        }
+        const p=(ms*.00043+i*.092)%1,u=1-p;
+        const bezier=(a,b,d,e)=>u*u*u*a+3*u*u*p*b+3*u*p*p*d+p*p*p*e;
+        const x=bezier(start,p1[0],p2[0],target),y=bezier(sy,p1[1],p2[1],ey);
+        c.fillStyle=dir<0?'#83edff':'#c788ff';c.shadowColor=c.fillStyle;c.shadowBlur=10;c.fillRect(x-1,y-1,3,3);c.shadowBlur=0;
+      }
+    }
+    c.save();c.translate(cx,cy);c.scale(scale,scale);
+    const glow=c.createRadialGradient(0,0,8,0,0,135);
+    glow.addColorStop(0,'#3fa8ff34');glow.addColorStop(.54,'#7843d31f');glow.addColorStop(1,'#1c3c8300');
+    c.fillStyle=glow;c.fillRect(-135,-120,270,240);
+    for(let j=0;j<6;j++){
+      const bend=45+j*5+4*Math.sin(ms/1200+j);
+      c.beginPath();c.ellipse(0,-3,112+j*5,bend,-.2+j*.08,0,Math.PI*2);
+      c.strokeStyle=j%2?'#b677fc24':'#5bd4f324';c.lineWidth=.6;c.stroke();
+    }
+
+    const xy=nodes.map(n=>[n.x*(1+.02*Math.sin(ms/1300+n.z)),n.y+1.4*Math.cos(ms/900+n.z)]);
+    c.lineWidth=.72;
+    for(const [i,j] of edges){
+      const a=xy[i],b=xy[j];c.beginPath();c.moveTo(...a);c.lineTo(...b);
+      c.strokeStyle='rgba(78,181,255,'+(.18+.27*nodes[i].z)+')';c.stroke();
+    }
+    for(const [i,[x,y]] of xy.entries()){
+      const light=(1+Math.sin(ms/410+i*.74))/2;
+      c.fillStyle=i%7===0?'#ed9fff':light>.78?'#bafaff':x>0?'#a379ee':'#49a8ef';
+      c.shadowColor=c.fillStyle;c.shadowBlur=light>0.8?12:2;
+      c.beginPath();c.arc(x,y,light>.8?1.85:1.05,0,Math.PI*2);c.fill();
+    }
+    c.restore();
+  }
+  new ResizeObserver(()=>{w=canvas.clientWidth;h=canvas.clientHeight;dpi=window.devicePixelRatio||1;canvas.width=w*dpi;canvas.height=h*dpi;draw(0);}).observe(canvas);
+  if(!reduced){const tick=ms=>{if(!document.hidden)draw(ms);requestAnimationFrame(tick);};requestAnimationFrame(tick);}
+}
+neural();
+})();
+
+</script></body></html>
