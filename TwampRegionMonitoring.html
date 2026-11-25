@@ -13,7 +13,7 @@ h1{font-size:clamp(31px,4.1vw,56px);letter-spacing:-.062em;margin:0 0 8px}.sub{m
 @media(min-width:850px) and (max-width:1120px){.grid:not(.group){grid-template-columns:1.45fr repeat(6,minmax(0,1fr));gap:6px}.grid:not(.group) .card{padding:8px}.grid:not(.group) .card.feature{grid-row:span 2;padding:12px}.card .metrics{font-size:10px}.card strong{font-size:11px}}
 @media(max-width:700px){.intro{padding:17px 13px}.controls{gap:8px}.card{min-height:118px}.card.feature .chart{height:112px}.card.feature strong{font-size:18px}}
 @media(prefers-reduced-motion:reduce){.card{transition:none}}
-#refresh-status:not(:empty){margin:0 0 10px;font-size:11px}.top .tools{flex-wrap:wrap;gap:6px}.top{height:auto;min-height:64px;padding-block:8px}</style></head><body>
+#refresh-status:not(:empty){margin:0 0 10px;font-size:11px}.top .tools{flex-wrap:wrap;gap:6px}.top{height:auto;min-height:64px;padding-block:8px}@keyframes refresh-spin{to{transform:rotate(360deg)}}#refresh-now.is-loading::before{content:"";display:inline-block;width:11px;height:11px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:7px;vertical-align:-2px;animation:refresh-spin .8s linear infinite}</style></head><body>
 <header class="top"><div class="brand"><span class="logo">◈</span><span>TWAMP <span class="brand-sub">Observatory</span></span></div><div class="tools"><span id="status" class="badge" aria-live="polite">CONNECTING</span><button id="refresh-now" type="button" disabled>Refresh latest</button><button id="settings">⚙ Data sources</button></div></header>
 <main><section class="intro"><div><h1>Network Performance</h1><p class="sub">Track packet loss and delay across regions, then drill down to the sites driving each change.</p></div><div class="controls"><div class="seg" aria-label="Trend interval"><button data-step="15" aria-pressed="true">15 min</button><button data-step="60" aria-pressed="false">1 hour</button></div><label class="time">Snapshot (UTC+7)<select id="snapshot"></select></label></div></section>
 <section class="overview"><div class="sectionhead"><div><h2>Regional Trends</h2><span class="muted">Last 24 hours</span></div><div class="legend"><span class="pink">● PLR (%)</span><span class="cyan">● Delay (ms)</span></div></div>
@@ -533,6 +533,10 @@ async function loadView({step=state.step,at,end,initial=false,config=connection?
   const request=++generation;
   viewLoading=true;
   $('refresh-now').disabled=true;
+  $('refresh-now').classList.add('is-loading');
+  $('refresh-now').textContent='Refreshing…';
+  $('refresh-now').setAttribute('aria-busy','true');
+  $('refresh-status').textContent='Refresh in progress…';
   if(!initial)$('notice').textContent='Loading trends and baseline…';
   try{
     const level=initial?0:T.levels.indexOf($('level').value);
@@ -544,7 +548,8 @@ async function loadView({step=state.step,at,end,initial=false,config=connection?
       connection={config};
       selectedSites();
     }
-    const view=await queryView(config,{step,at,end,level,scope:initial?[]:scope()});
+    const settledEnd=end??T.floor(Date.now()-10*T.MIN,step);
+    const view=await queryView(config,{step,at,end:settledEnd,level,scope:initial?[]:scope()});
     if(!Array.isArray(view.cards)||!Array.isArray(view.issues))throw Error('The API returned an unexpected analysis response.');
     if(request!==generation)return;
     if(view.baseline_days?.length!==1||view.baseline_days[0]!==1){
@@ -558,16 +563,23 @@ async function loadView({step=state.step,at,end,initial=false,config=connection?
     const checked=T.clock(Date.now())+' UTC+7';
     $('refresh-status').textContent=state.at!==state.end
       ? 'Historical snapshot · Select Refresh latest to resume automatic updates.'
-      : 'Last checked '+checked+' · Latest data '+(state.end?T.stamp(state.end)+' UTC+7':'unavailable');
+      : 'Refresh complete '+checked+' · Latest data '+(state.end?T.stamp(state.end)+' UTC+7':'unavailable');
   }catch(e){
     if(request!==generation)return;
-    if(initial||!state.live)throw e;
+    if(initial||!state.live){$('refresh-status').textContent='Refresh failed · '+e.message;throw e;}
     if(request===generation){
       $('notice').textContent='Refresh failed · '+e.message;
+      $('refresh-status').textContent='Refresh failed · '+e.message;
       snapshotOptions();
     }
   }finally{
-    if(request===generation){viewLoading=false;$('refresh-now').disabled=!connection;}
+    if(request===generation){
+      viewLoading=false;
+      $('refresh-now').disabled=!connection;
+      $('refresh-now').classList.remove('is-loading');
+      $('refresh-now').textContent='Refresh latest';
+      $('refresh-now').setAttribute('aria-busy','false');
+    }
   }
 }
 async function connectSources({automatic=false}={}){
@@ -628,7 +640,7 @@ document.querySelectorAll('[data-metric]').forEach(b=>b.onclick=()=>{
 });
 $('issue-search').addEventListener('input',filterIssueCards);
 const refreshInterval=15*T.MIN;
-const refreshDelay=15000;
+const refreshDelay=10*T.MIN;
 let lastRefreshSlot, retryTimer;
 $('refresh-now').onclick=()=>{if(connection&&!viewLoading)loadFilteredView();};
 function refreshLatest(){
