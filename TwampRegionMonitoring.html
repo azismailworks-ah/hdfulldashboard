@@ -548,7 +548,7 @@ async function loadView({step=state.step,at,end,initial=false,config=connection?
       connection={config};
       selectedSites();
     }
-    const settledEnd=end??T.floor(Date.now()-10*T.MIN,step);
+    const settledEnd=end??T.floor(Date.now()-15*T.MIN,step);
     const view=await queryView(config,{step,at,end:settledEnd,level,scope:initial?[]:scope()});
     if(!Array.isArray(view.cards)||!Array.isArray(view.issues))throw Error('The API returned an unexpected analysis response.');
     if(request!==generation)return;
@@ -640,7 +640,7 @@ document.querySelectorAll('[data-metric]').forEach(b=>b.onclick=()=>{
 });
 $('issue-search').addEventListener('input',filterIssueCards);
 const refreshInterval=15*T.MIN;
-const refreshDelay=10*T.MIN;
+const refreshDelay=15*T.MIN;
 let lastRefreshSlot, retryTimer;
 $('refresh-now').onclick=()=>{if(connection&&!viewLoading)loadFilteredView();};
 function refreshLatest(){
