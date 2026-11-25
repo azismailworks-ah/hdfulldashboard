@@ -29,7 +29,7 @@ const MIN = 60000, H = 60 * MIN, DAY = 24 * H;
 const metrics = ['plr','delay'];
 const levels = ['Region','Area','Circle ID','MC-Cluster'];
 const fields = ['region','area','circle','cluster'];
-const key = (site, level) => JSON.stringify(fields.slice(0,level+1).map(field => site[field]));
+const key = (site, level) => JSON.stringify(level===3?[site.region,site.circle,site.cluster]:fields.slice(0,level+1).map(field => site[field]));
 const avg = values => values.length ? values.reduce((sum,v) => sum+v,0)/values.length : null;
 const num = value => value != null && value !== '' && Number.isFinite(+value) ? +value : null;
 const time = value => typeof value === 'number' ? value : Date.parse(value.replace(' ','T') + (value.length === 16 ? ':00+07:00' : ''));
@@ -208,7 +208,7 @@ function group(sites,level) {
     const name=s[T.fields[level]];
     if(!name)continue;
     const k=T.key(s,level);
-    if(!groups.has(k))groups.set(k,{name,sites:[],path:T.fields.slice(0,level).map(f=>s[f]).filter(Boolean).join(' / ')});
+    if(!groups.has(k))groups.set(k,{name,sites:[],path:(level===3?['region','circle']:T.fields.slice(0,level)).map(f=>s[f]).filter(Boolean).join(' / ')});
     groups.get(k).sites.push(s);
   }
   return [...groups.values()].sort((a,b)=>a.name.localeCompare(b.name));
@@ -441,7 +441,7 @@ function renderLive(){
   if(!visible.length)issues.append(el('div','empty',view.baselineUpgradeNeeded?'Prior-day analysis requires a newer API version.':view.eligible?'No MC-Cluster crossed the issue thresholds at this snapshot.':'The prior-day baseline is incomplete for this snapshot.'));
   for(const g of visible){
     const card=button('issue',()=>liveDetail(g));
-    card.dataset.search=normalizeIssueSearch([g.path[0],g.path[1],g.path.at(-1)].join(' '));
+    card.dataset.search=normalizeIssueSearch(g.path.filter(Boolean).join(' '));
     card.append(el('span','muted',formatPath(g.path.slice(0,-1))),el('strong','',g.path.at(-1)),el('span','muted',T.clock(state.at)+' UTC+7 · '+g.count+' mapped sites'));
     const metrics=el('div','metrics');
     for(const [m,a] of Object.entries(g.metrics))metrics.append(el('span',m==='plr'?'pink':'cyan',labels[m]+' '+fmt(a.delta,m,true)));
