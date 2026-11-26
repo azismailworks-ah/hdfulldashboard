@@ -674,4 +674,96 @@ body{font-family:Bahnschrift,"Segoe UI Variable Text","Segoe UI",Arial,sans-seri
   refreshToolbar();
 })();
 </script>
+<style id="netdrone-rtwp-toggle-style">
+.quarantine-toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.rtwp-toggle{display:inline-flex;align-items:center;gap:8px;min-height:30px;padding:4px 9px 4px 7px;border:1px solid #286b94;border-radius:8px;background:linear-gradient(145deg,#0a2944,#071c31);color:#b9d9eb;font-size:9px;font-weight:800;letter-spacing:.45px;cursor:pointer;user-select:none;box-shadow:0 5px 16px #0004,inset 0 1px #8eefff0d}.rtwp-toggle:hover{border-color:#2fd8ef;box-shadow:0 5px 16px #0005,0 0 17px #20d7ef20}.rtwp-toggle input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}.rtwp-switch-track{position:relative;width:32px;height:17px;border:1px solid #45637b;border-radius:999px;background:#142334;transition:.2s}.rtwp-switch-track::after{content:"";position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#7891a4;box-shadow:0 1px 4px #0008;transition:.2s}.rtwp-toggle input:checked+.rtwp-switch-track{border-color:#20d5ed;background:#0b7080;box-shadow:0 0 12px #24d9f455}.rtwp-toggle input:checked+.rtwp-switch-track::after{left:17px;background:#dffcff;box-shadow:0 0 8px #bffaff}.rtwp-toggle input:focus-visible+.rtwp-switch-track{outline:2px solid #fff;outline-offset:2px}.rtwp-toggle-state{min-width:22px;color:#829bae}.rtwp-toggle input:checked~.rtwp-toggle-state{color:#3ee4f5}.rtwp-filter-note{color:#ffcf65;font-size:8px;font-weight:700;letter-spacing:.35px}.rtwp-filter-note[hidden]{display:none}@media(max-width:620px){.quarantine-toolbar{width:100%}.rtwp-toggle{flex:1;justify-content:center}}
+</style>
+<script id="netdrone-rtwp-alarm-toggle">
+(() => {
+  const storageKey = 'netdrone.showRtwpAlarm.v1';
+  const toolbar = document.querySelector('.quarantine-toolbar');
+  if (!toolbar) return;
+
+  function readEnabled() {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      return saved === null ? true : saved !== 'false';
+    } catch {
+      return true;
+    }
+  }
+
+  let showRtwpAlarm = readEnabled();
+  const label = document.createElement('label');
+  label.className = 'rtwp-toggle';
+  label.title = 'Show or hide alarms whose alarm name contains RTWP';
+  label.innerHTML = '<input type="checkbox" aria-label="Show RTWP alarm"><span class="rtwp-switch-track" aria-hidden="true"></span><span>SHOW RTWP ALARM</span><span class="rtwp-toggle-state"></span>';
+  const input = label.querySelector('input');
+  const state = label.querySelector('.rtwp-toggle-state');
+  const note = document.createElement('span');
+  note.className = 'rtwp-filter-note';
+  note.textContent = 'RTWP HIDDEN';
+  toolbar.append(label, note);
+
+  function alarmName(alarm) {
+    return String(alarm?.name || alarm?.alarm_name || alarm?.alarmName || '').trim();
+  }
+
+  function isRtwpAlarm(alarm) {
+    return /RTWP/i.test(alarmName(alarm));
+  }
+
+  function filterSites(sites) {
+    if (showRtwpAlarm) return sites || [];
+    return (sites || []).map(site => {
+      const alarms = Array.isArray(site?.alarms) ? site.alarms : [];
+      const visibleAlarms = alarms.filter(alarm => !isRtwpAlarm(alarm));
+      if (visibleAlarms.length === alarms.length) return site;
+      const visibleSite = {...site, alarms: visibleAlarms};
+      const category = siteIssueCategory(visibleSite);
+      visibleSite.status = category === 'NE_DOWN' || category === 'CELL_DOWN' ? 'CRITICAL'
+        : category === 'SIA_IMPACT' ? 'SIA'
+        : visibleAlarms.length ? site.status
+        : category === 'TWAMP_ISSUE' ? 'KPI' : 'CLEAR';
+      return visibleSite;
+    });
+  }
+
+  function refreshControl() {
+    input.checked = showRtwpAlarm;
+    state.textContent = showRtwpAlarm ? 'ON' : 'OFF';
+    note.hidden = showRtwpAlarm || mode !== 'site';
+  }
+
+  const renderBeforeRtwpToggle = render;
+  render = function () {
+    refreshControl();
+    if (mode !== 'site' || !payload || !Array.isArray(payload.sites) || showRtwpAlarm) {
+      return renderBeforeRtwpToggle();
+    }
+    const originalSites = payload.sites;
+    payload.sites = filterSites(originalSites);
+    try {
+      return renderBeforeRtwpToggle();
+    } finally {
+      payload.sites = originalSites;
+    }
+  };
+
+  input.addEventListener('change', () => {
+    showRtwpAlarm = input.checked;
+    try { localStorage.setItem(storageKey, String(showRtwpAlarm)); } catch {}
+    render();
+  });
+  for (const id of ['siteMode', 'transportMode']) {
+    document.getElementById(id)?.addEventListener('click', refreshControl);
+  }
+  window.addEventListener('storage', event => {
+    if (event.key !== storageKey && event.key !== null) return;
+    showRtwpAlarm = readEnabled();
+    render();
+  });
+  window.netdroneRtwpFilter = {isRtwpAlarm, filterSites, isEnabled: () => showRtwpAlarm};
+  refreshControl();
+})();
+</script>
 </body></html>
