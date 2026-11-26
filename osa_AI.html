@@ -1696,6 +1696,121 @@ tr:hover td{
 .analysis-input-actions{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line)}
 @media(max-width:680px){.analysis-input-grid{grid-template-columns:1fr}.analysis-input-field.full{grid-column:auto}}
 
+
+
+/* =====================================================
+   ON-DEMAND SECTORAL ANALYSIS
+===================================================== */
+.sectoral-controls{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.sectoral-meta{
+  color:#7f91b0;
+  font-size:.68rem;
+  white-space:nowrap;
+}
+.sectoral-btn{
+  position:relative;
+  isolation:isolate;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  min-height:38px;
+  padding:9px 15px;
+  border:1px solid rgba(45,226,230,.48);
+  border-radius:12px;
+  background:
+    linear-gradient(135deg,rgba(12,34,54,.96),rgba(21,24,62,.96));
+  color:#ecfeff;
+  font:inherit;
+  font-size:.76rem;
+  font-weight:800;
+  letter-spacing:.2px;
+  cursor:pointer;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.06);
+  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+.sectoral-btn::before{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  z-index:-1;
+  background:linear-gradient(110deg,transparent 20%,rgba(45,226,230,.18) 45%,rgba(181,108,255,.22) 55%,transparent 80%);
+  transform:translateX(-110%);
+  animation:sectoralSweep 4.2s ease-in-out infinite;
+}
+.sectoral-btn:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(45,226,230,.82);
+  box-shadow:0 10px 30px rgba(0,212,255,.15),inset 0 1px rgba(255,255,255,.08);
+}
+.sectoral-btn:focus-visible{outline:2px solid #2de2e6;outline-offset:3px}
+.sectoral-btn:disabled{cursor:not-allowed;opacity:.48;animation:none}
+.sectoral-btn.is-loading{opacity:1;cursor:progress}
+.sectoral-btn.is-active{
+  border-color:rgba(38,211,124,.72);
+  box-shadow:0 0 0 1px rgba(38,211,124,.13),0 10px 30px rgba(38,211,124,.12);
+}
+.sectoral-icon{
+  width:18px;
+  height:18px;
+  display:grid;
+  place-items:center;
+  flex:0 0 auto;
+}
+.sectoral-icon svg{width:18px;height:18px;overflow:visible}
+.sectoral-btn.is-loading .sectoral-icon{animation:sectoralRadar 1s linear infinite}
+@keyframes sectoralSweep{0%,58%{transform:translateX(-110%)}82%,100%{transform:translateX(110%)}}
+@keyframes sectoralRadar{to{transform:rotate(360deg)}}
+
+.geo-map-card{position:relative}
+.sectoral-status{
+  position:absolute;
+  left:14px;
+  bottom:14px;
+  z-index:650;
+  display:none;
+  max-width:min(430px,calc(100% - 28px));
+  padding:10px 12px;
+  border:1px solid rgba(45,226,230,.28);
+  border-radius:12px;
+  background:rgba(4,11,24,.91);
+  color:#dceaff;
+  font-size:.68rem;
+  line-height:1.45;
+  box-shadow:0 12px 32px rgba(0,0,0,.38);
+  backdrop-filter:blur(10px);
+}
+.sectoral-status.show{display:block}
+.sectoral-status.error{border-color:rgba(255,77,77,.48);color:#ffc6c6}
+.sectoral-status-head{display:flex;align-items:center;gap:8px;font-weight:800;color:#f3fbff}
+.sectoral-status-dot{width:8px;height:8px;border-radius:50%;background:#2de2e6;box-shadow:0 0 12px #2de2e6}
+.sectoral-legend{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:6px;color:#9eb0cd}
+.sectoral-legend-item{display:inline-flex;align-items:center;gap:4px}
+.sectoral-swatch{width:9px;height:9px;border-radius:3px}
+.sector-fan-marker{background:transparent!important;border:0!important;overflow:visible!important}
+.sector-fan-svg{overflow:visible;filter:drop-shadow(0 5px 10px rgba(0,0,0,.48))}
+.sector-fan-svg .sector-wedge{transition:opacity .2s ease,filter .2s ease}
+.sector-fan-svg:hover .sector-wedge{opacity:.92!important;filter:brightness(1.15)}
+.sector-fan-svg text{font-family:Inter,Segoe UI,Arial,sans-serif;pointer-events:none}
+.sector-popup{min-width:205px;color:#172033}
+.sector-popup-title{font-weight:900;margin-bottom:6px}
+.sector-popup-grid{display:grid;grid-template-columns:auto 1fr auto;gap:4px 9px;font-size:12px}
+.sector-popup-muted{color:#6b7280}
+
+@media(max-width:680px){
+  .sectoral-controls{width:100%;justify-content:flex-start}
+  .sectoral-btn{flex:1;min-width:190px}
+  .sectoral-meta{width:100%}
+  .sectoral-status{left:8px;bottom:8px;max-width:calc(100% - 16px)}
+}
+
 </style>
 </head>
 <body>
@@ -1974,12 +2089,26 @@ tr:hover td{
           Top 10 nearest surrounding sites
         </div>
       </div>
+      <div class="sectoral-controls">
+        <button id="btnSectoralAnalysis" class="sectoral-btn" type="button" disabled aria-pressed="false">
+          <span class="sectoral-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M12 12 4.4 6.2M12 12l7.6-5.8M12 12v9"/>
+              <path d="M7.2 8.3A6 6 0 0 1 16.8 8.3M4.2 5.9a10 10 0 0 1 15.6 0" opacity=".78"/>
+              <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+            </svg>
+          </span>
+          <span class="sectoral-btn-label">Analyze Sectoral</span>
+        </button>
+        <div class="sectoral-meta">On-demand · RSSI peak last 24 hours</div>
+      </div>
     </div>
 
     <div class="geo-layout">
 
-      <div class="geo-card">
+      <div class="geo-card geo-map-card">
         <div id="geoMap"></div>
+        <div id="sectoralStatus" class="sectoral-status" role="status" aria-live="polite"></div>
       </div>
 
       <div class="geo-card">
@@ -2409,6 +2538,7 @@ tr:hover td{
 <script>
 const CONFIG = {
   KPI_API: "https://api.azhautomation.com/api/kpi",
+  SECTORAL_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRkPuf1c9KKgZ56AN154o-N_toC0AuX59JiRCCMF1-Qmdu7yiUsxTbJuguJ4LIYz6uhJoygzd5a9xvT/pub?gid=323573764&single=true&output=csv",
   SINGLE_SITE_HISTORY_API: "https://api.azhautomation.com/api/ows/site-history",
   TWAMP_REALTIME_API: "https://api.azhautomation.com/api/twamp/realtime",
   TWAMP_REALTIME_HOURS: 24,
@@ -2477,6 +2607,13 @@ const state = {
   siteInfo: null,
   geoMap: null,
   geoBounds: null,
+  geoSectorDb: null,
+  geoSectorLayers: null,
+  geoSectorResults: null,
+  geoSectorSiteId: '',
+  geoSectorVisible: false,
+  geoSectorLoading: false,
+  geoRssiCache: new Map(),
   geoSiteDb:null,
   geoData: [],
   geoSiaBySite: new Map(),
@@ -6255,6 +6392,221 @@ function renderGeoTable(rows){
 
 }
 
+
+function sectorNumber(value){
+  const number=Number(value);
+  return Number.isFinite(number)&&number>=0&&number<360?number:null;
+}
+
+async function loadSectoralDatabase(){
+  if(state.geoSectorDb) return state.geoSectorDb;
+  const rows=await fetchCsv(CONFIG.SECTORAL_CSV);
+  const database=new Map();
+  rows.forEach(row=>{
+    const siteId=clean(row.SITE_ID||row['Site ID']||row.site_id).toUpperCase();
+    if(!siteId) return;
+    const longitude=Number(row.LONGITUDE||row.Longitude||row.longitude);
+    const latitude=Number(row.LATITUDE||row.Latitude||row.latitude);
+    const sectors=[
+      sectorNumber(row.SECTOR_1_AZIMUTH||row['Sector 1 Azimuth']),
+      sectorNumber(row.SECTOR_2_AZIMUTH||row['Sector 2 Azimuth']),
+      sectorNumber(row.SECTOR_3_AZIMUTH||row['Sector 3 Azimuth'])
+    ];
+    if(!sectors.some(value=>value!==null)) return;
+    database.set(siteId,{
+      siteId,
+      siteName:clean(row.SITE_NAME||row['Site Name']||row.site_name),
+      latitude:Number.isFinite(latitude)?latitude:null,
+      longitude:Number.isFinite(longitude)?longitude:null,
+      sectors
+    });
+  });
+  state.geoSectorDb=database;
+  return database;
+}
+
+function rssiPeak(rows,key){
+  const values=(Array.isArray(rows)?rows:[])
+    .map(row=>Number(row?.[key]))
+    .filter(value=>Number.isFinite(value)&&value<0&&value>-200);
+  return values.length?Math.max(...values):null;
+}
+
+async function loadSiteRssiPeak(siteId){
+  const cacheKey=String(siteId||'').toUpperCase();
+  const cached=state.geoRssiCache.get(cacheKey);
+  if(cached&&Date.now()-cached.savedAt<300000) return cached.value;
+  const response=await fetch(
+    `${CONFIG.KPI_API}?site_id=${encodeURIComponent(cacheKey)}&days=1`,
+    {cache:'no-store'}
+  );
+  if(!response.ok) throw new Error(`RSSI HTTP ${response.status}`);
+  const json=await response.json();
+  const rows=Array.isArray(json?.data)?json.data:[];
+  const value=[
+    rssiPeak(rows,'ulrssi_s1'),
+    rssiPeak(rows,'ulrssi_s2'),
+    rssiPeak(rows,'ulrssi_s3')
+  ];
+  state.geoRssiCache.set(cacheKey,{savedAt:Date.now(),value});
+  return value;
+}
+
+async function mapWithConcurrency(items,limit,worker,onProgress){
+  const results=new Array(items.length);
+  let cursor=0;
+  let complete=0;
+  async function run(){
+    while(cursor<items.length){
+      const index=cursor++;
+      try{results[index]=await worker(items[index],index);}
+      catch(error){results[index]={...items[index],rssi:[null,null,null],rssiError:error.message||String(error)};}
+      complete++;
+      onProgress?.(complete,items.length);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,items.length)},run));
+  return results;
+}
+
+function sectorPolarPoint(cx,cy,radius,azimuth){
+  const radians=(azimuth-90)*Math.PI/180;
+  return [cx+Math.cos(radians)*radius,cy+Math.sin(radians)*radius];
+}
+
+function sectorFanSvg(result,isMain){
+  const size=isMain?152:124;
+  const center=size/2;
+  const radius=isMain?59:47;
+  const colors=['#2de2e6','#2f80ff','#b56cff'];
+  const halfWidth=24;
+  const sectorMarkup=result.sectors.map((azimuth,index)=>{
+    if(azimuth===null) return '';
+    const start=sectorPolarPoint(center,center,radius,azimuth-halfWidth);
+    const end=sectorPolarPoint(center,center,radius,azimuth+halfWidth);
+    const label=sectorPolarPoint(center,center,radius*.47,azimuth);
+    const rssiLabel=sectorPolarPoint(center,center,radius*.83,azimuth);
+    const rssi=Number.isFinite(result.rssi?.[index])?`${result.rssi[index].toFixed(1)} dBm`:'No RSSI';
+    return `
+      <path class="sector-wedge" d="M ${center} ${center} L ${start[0].toFixed(2)} ${start[1].toFixed(2)} A ${radius} ${radius} 0 0 1 ${end[0].toFixed(2)} ${end[1].toFixed(2)} Z" fill="${colors[index]}" fill-opacity=".34" stroke="${colors[index]}" stroke-width="1.4"/>
+      <text x="${label[0].toFixed(2)}" y="${label[1].toFixed(2)}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="${isMain?11:9}" font-weight="900" stroke="#04101e" stroke-width="3" paint-order="stroke">S${index+1}</text>
+      <text x="${rssiLabel[0].toFixed(2)}" y="${rssiLabel[1].toFixed(2)}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="${isMain?7.8:6.6}" font-weight="800" stroke="#04101e" stroke-width="2.6" paint-order="stroke">${rssi}</text>`;
+  }).join('');
+  return `<svg class="sector-fan-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="Sectoral ${escapeHtml(result.siteId)}">
+    ${sectorMarkup}
+    <circle cx="${center}" cy="${center}" r="${isMain?6.5:5}" fill="${isMain?'#00d4ff':'#26d37c'}" stroke="#fff" stroke-width="2"/>
+  </svg>`;
+}
+
+function sectorPopup(result){
+  const rows=result.sectors.map((azimuth,index)=>{
+    const rssi=Number.isFinite(result.rssi?.[index])?`${result.rssi[index].toFixed(1)} dBm`:'No data';
+    return `<span>S${index+1}</span><span>${azimuth===null?'No azimuth':`${azimuth}°`}</span><strong>${rssi}</strong>`;
+  }).join('');
+  return `<div class="sector-popup">
+    <div class="sector-popup-title">${escapeHtml(result.siteId)} · ${escapeHtml(result.siteName||'-')}</div>
+    <div class="sector-popup-grid"><span class="sector-popup-muted">Sector</span><span class="sector-popup-muted">Azimuth</span><span class="sector-popup-muted">24h Peak</span>${rows}</div>
+  </div>`;
+}
+
+function setSectoralStatus(message,{error=false,legend=false}={}){
+  const element=document.getElementById('sectoralStatus');
+  if(!element) return;
+  if(!message){element.className='sectoral-status';element.innerHTML='';return;}
+  element.className=`sectoral-status show${error?' error':''}`;
+  element.innerHTML=`<div class="sectoral-status-head"><span class="sectoral-status-dot"></span><span>${escapeHtml(message)}</span></div>${legend?`<div class="sectoral-legend"><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2de2e6"></i>S1</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2f80ff"></i>S2</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#b56cff"></i>S3</span><span>Labels at fan tips show UL RSSI peak from the last 24 hours.</span></div>`:''}`;
+}
+
+function setSectoralButton(mode){
+  const button=document.getElementById('btnSectoralAnalysis');
+  if(!button) return;
+  const label=button.querySelector('.sectoral-btn-label');
+  button.classList.toggle('is-loading',mode==='loading');
+  button.classList.toggle('is-active',mode==='active');
+  button.disabled=mode==='loading'||!state.geoMap;
+  button.setAttribute('aria-pressed',String(mode==='active'));
+  label.textContent=mode==='loading'?'Analyzing Sectoral':mode==='active'?'Hide Sectoral':'Analyze Sectoral';
+}
+
+function clearSectoralLayers(){
+  if(state.geoSectorLayers&&state.geoMap){state.geoMap.removeLayer(state.geoSectorLayers);}
+  state.geoSectorLayers=null;
+  state.geoSectorVisible=false;
+}
+
+function resetSectoralAnalysis(){
+  clearSectoralLayers();
+  state.geoSectorResults=null;
+  state.geoSectorSiteId='';
+  state.geoSectorLoading=false;
+  setSectoralStatus('');
+  const button=document.getElementById('btnSectoralAnalysis');
+  if(button){button.disabled=true;button.classList.remove('is-loading','is-active');button.setAttribute('aria-pressed','false');button.querySelector('.sectoral-btn-label').textContent='Analyze Sectoral';}
+}
+
+function drawSectoralLayers(results){
+  if(!state.geoMap) return;
+  clearSectoralLayers();
+  const group=L.layerGroup().addTo(state.geoMap);
+  results.forEach(result=>{
+    if(!Number.isFinite(result.lat)||!Number.isFinite(result.lon)) return;
+    const isMain=result.siteId===state.analyzedSiteId;
+    const size=isMain?152:124;
+    L.marker([result.lat,result.lon],{
+      icon:L.divIcon({className:'sector-fan-marker',html:sectorFanSvg(result,isMain),iconSize:[size,size],iconAnchor:[size/2,size/2]}),
+      keyboard:true,
+      zIndexOffset:isMain?900:500,
+      riseOnHover:true
+    }).bindPopup(sectorPopup(result),{maxWidth:340}).addTo(group);
+  });
+  state.geoSectorLayers=group;
+  state.geoSectorVisible=true;
+  setSectoralButton('active');
+  setSectoralStatus(`${results.length} site sectoral overlays active`,{legend:true});
+}
+
+async function toggleSectoralAnalysis(){
+  if(state.geoSectorLoading||!state.geoMap) return;
+  if(state.geoSectorVisible){
+    clearSectoralLayers();
+    setSectoralButton('idle');
+    setSectoralStatus('Sectoral overlay hidden. Click Analyze Sectoral to show it again.');
+    return;
+  }
+  if(state.geoSectorResults&&state.geoSectorSiteId===state.analyzedSiteId){
+    drawSectoralLayers(state.geoSectorResults);
+    return;
+  }
+  state.geoSectorLoading=true;
+  setSectoralButton('loading');
+  setSectoralStatus('Loading sector directions...');
+  try{
+    const database=await loadSectoralDatabase();
+    const mapSites=[
+      (state.geoSiteDb||[]).find(row=>row.siteId===state.analyzedSiteId),
+      ...(state.geoData||[])
+    ].filter(Boolean);
+    const candidates=mapSites.map(site=>{
+      const sector=database.get(String(site.siteId||'').toUpperCase());
+      return sector?{...sector,lat:Number(site.lat),lon:Number(site.lon),siteName:site.siteName||sector.siteName}:null;
+    }).filter(Boolean);
+    if(!candidates.length) throw new Error('No sectoral data found for sites currently displayed on the map.');
+    const results=await mapWithConcurrency(candidates,3,async candidate=>({
+      ...candidate,
+      rssi:await loadSiteRssiPeak(candidate.siteId)
+    }),(complete,total)=>setSectoralStatus(`Loading RSSI peak last 24 hours · ${complete}/${total} sites`));
+    state.geoSectorResults=results;
+    state.geoSectorSiteId=state.analyzedSiteId;
+    drawSectoralLayers(results);
+  }catch(error){
+    console.error('Sectoral analysis failed',error);
+    setSectoralStatus(error.message||'Sectoral analysis failed.',{error:true});
+    setSectoralButton('idle');
+  }finally{
+    state.geoSectorLoading=false;
+  }
+}
+
 function renderGeoMap(data){
 
   const mapDiv =
@@ -6402,6 +6754,8 @@ function renderGeoMap(data){
       animate:false
     }
   );
+
+  setSectoralButton('idle');
 
 }
 
@@ -7041,6 +7395,7 @@ async function changeTwampRange(hours){
 }
 
 async function analyze(){
+  resetSectoralAnalysis();
   const siteId = document.getElementById('siteId').value.trim();
   const rangeDays = Number(document.getElementById('days').value || 7);
   if(!siteId){
@@ -7161,6 +7516,8 @@ async function analyze(){
 
     document.getElementById('topologyTitle').textContent = `Transport Topology For Site · ${siteId}`;
     document.getElementById('overviewText').textContent = `Site ${siteId}${state.siteName ? ' — ' + state.siteName : ''} · ${apiData.length} KPI points loaded.`;
+    // Lock all on-demand features to the site that completed the core analysis.
+    state.analyzedSiteId = String(siteId).trim().toUpperCase();
     await loadGeoAnalytics(
       siteId,
       sheets
@@ -7177,10 +7534,6 @@ async function analyze(){
     renderSiteInfo(
       state.siteInfo
     );
-
-    // Lock the history feature to the site that completed analysis,
-    // even if the input field is edited afterward.
-    state.analyzedSiteId = String(siteId).trim().toUpperCase();
   }catch(err){
     console.error(err);
     alert('Analysis failed. Check console for details.');
@@ -7190,6 +7543,7 @@ async function analyze(){
 }
 
 document.getElementById('btnAnalyze').addEventListener('click', analyze);
+document.getElementById('btnSectoralAnalysis').addEventListener('click',toggleSectoralAnalysis);
 document.getElementById('geoTable').addEventListener('click',event=>{
   const button=event.target.closest('[data-sia-site]');
   if(button) openGeoSiaModal(button.dataset.siaSite);
