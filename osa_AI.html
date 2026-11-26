@@ -1799,10 +1799,25 @@ tr:hover td{
 .sector-fan-svg .sector-wedge{transition:opacity .2s ease,filter .2s ease}
 .sector-fan-svg:hover .sector-wedge{opacity:.92!important;filter:brightness(1.15)}
 .sector-fan-svg text{font-family:Inter,Segoe UI,Arial,sans-serif;pointer-events:none}
-.sector-popup{min-width:205px;color:#172033}
-.sector-popup-title{font-weight:900;margin-bottom:6px}
-.sector-popup-grid{display:grid;grid-template-columns:auto 1fr auto;gap:4px 9px;font-size:12px}
+.sector-popup{min-width:480px;max-width:560px;color:#172033}
+.sector-popup-title{font-weight:900;margin-bottom:2px}
+.sector-popup-subtitle{color:#667085;font-size:11px;margin-bottom:9px}
+.sector-popup-scroll{max-height:310px;overflow:auto;border:1px solid #d8e0eb;border-radius:9px}
+.sector-popup-table{width:100%;border-collapse:collapse;font-size:11px}
+.sector-popup-table th{position:sticky;top:0;z-index:1;padding:7px 6px;background:#eaf0f8;color:#344054;text-align:left;white-space:nowrap}
+.sector-popup-table td{padding:7px 6px;border-top:1px solid #e6ebf2;vertical-align:top}
+.sector-popup-table tr.is-bad td{background:#fff5f5}
+.sector-popup-table .rssi-bad{color:#c52929;font-weight:900;white-space:nowrap}
+.sector-popup-table .rssi-good{color:#15803d;font-weight:800;white-space:nowrap}
+.sector-period{white-space:nowrap;margin-bottom:3px}
+.sector-period:last-child{margin-bottom:0}
+.sector-normal{color:#15803d;font-weight:700}
 .sector-popup-muted{color:#6b7280}
+@media(max-width:680px){
+  .sector-popup{min-width:0;width:76vw;max-width:76vw}
+  .sector-popup-scroll{overflow:auto}
+  .sector-popup-table{min-width:520px}
+}
 
 @media(max-width:680px){
   .sectoral-controls{width:100%;justify-content:flex-start}
@@ -2538,6 +2553,7 @@ tr:hover td{
 <script>
 const CONFIG = {
   KPI_API: "https://api.azhautomation.com/api/kpi",
+  RSSI_SECTOR_API: "https://api.azhautomation.com/api/kpi/rssi-sectoral",
   SECTORAL_CSV: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRkPuf1c9KKgZ56AN154o-N_toC0AuX59JiRCCMF1-Qmdu7yiUsxTbJuguJ4LIYz6uhJoygzd5a9xvT/pub?gid=323573764&single=true&output=csv",
   SINGLE_SITE_HISTORY_API: "https://api.azhautomation.com/api/ows/site-history",
   TWAMP_REALTIME_API: "https://api.azhautomation.com/api/twamp/realtime",
@@ -6425,48 +6441,29 @@ async function loadSectoralDatabase(){
   return database;
 }
 
-function rssiPeak(rows,key){
-  const values=(Array.isArray(rows)?rows:[])
-    .map(row=>Number(row?.[key]))
-    .filter(value=>Number.isFinite(value)&&value<0&&value>-200);
-  return values.length?Math.max(...values):null;
-}
-
-async function loadSiteRssiPeak(siteId){
-  const cacheKey=String(siteId||'').toUpperCase();
+async function loadSectorRssiDetails(siteIds){
+  const normalized=[...new Set((siteIds||[]).map(siteId=>String(siteId||'').trim().toUpperCase()).filter(Boolean))].sort();
+  const cacheKey=`24|-100|${normalized.join(',')}`;
   const cached=state.geoRssiCache.get(cacheKey);
   if(cached&&Date.now()-cached.savedAt<300000) return cached.value;
+
   const response=await fetch(
-    `${CONFIG.KPI_API}?site_id=${encodeURIComponent(cacheKey)}&days=1`,
+    `${CONFIG.RSSI_SECTOR_API}?sites=${encodeURIComponent(normalized.join(','))}&hours=24&threshold=-100`,
     {cache:'no-store'}
   );
-  if(!response.ok) throw new Error(`RSSI HTTP ${response.status}`);
+  if(!response.ok){
+    let detail='';
+    try{detail=(await response.json())?.detail||'';}catch(_error){}
+    throw new Error(detail||`Sector RSSI HTTP ${response.status}`);
+  }
   const json=await response.json();
-  const rows=Array.isArray(json?.data)?json.data:[];
-  const value=[
-    rssiPeak(rows,'ulrssi_s1'),
-    rssiPeak(rows,'ulrssi_s2'),
-    rssiPeak(rows,'ulrssi_s3')
-  ];
+  const value={
+    threshold:Number(json?.threshold??-100),
+    hours:Number(json?.hours??24),
+    sites:json?.sites&&typeof json.sites==='object'?json.sites:{}
+  };
   state.geoRssiCache.set(cacheKey,{savedAt:Date.now(),value});
   return value;
-}
-
-async function mapWithConcurrency(items,limit,worker,onProgress){
-  const results=new Array(items.length);
-  let cursor=0;
-  let complete=0;
-  async function run(){
-    while(cursor<items.length){
-      const index=cursor++;
-      try{results[index]=await worker(items[index],index);}
-      catch(error){results[index]={...items[index],rssi:[null,null,null],rssiError:error.message||String(error)};}
-      complete++;
-      onProgress?.(complete,items.length);
-    }
-  }
-  await Promise.all(Array.from({length:Math.min(limit,items.length)},run));
-  return results;
 }
 
 function sectorPolarPoint(cx,cy,radius,azimuth){
@@ -6484,13 +6481,25 @@ function sectorFanSvg(result,isMain){
     if(azimuth===null) return '';
     const start=sectorPolarPoint(center,center,radius,azimuth-halfWidth);
     const end=sectorPolarPoint(center,center,radius,azimuth+halfWidth);
-    const label=sectorPolarPoint(center,center,radius*.47,azimuth);
-    const rssiLabel=sectorPolarPoint(center,center,radius*.83,azimuth);
-    const rssi=Number.isFinite(result.rssi?.[index])?`${result.rssi[index].toFixed(1)} dBm`:'No RSSI';
+    const label=sectorPolarPoint(center,center,radius*.39,azimuth);
+    const issueLabel=sectorPolarPoint(center,center,radius*.73,azimuth);
+    const allBands=result.rssiDetails?.sectors?.[String(index+1)]?.bands||[];
+    const badBands=allBands
+      .filter(item=>item?.bad&&Number.isFinite(Number(item.peak_rssi)))
+      .sort((a,b)=>Number(b.peak_rssi)-Number(a.peak_rssi));
+    const visibleBands=badBands.slice(0,3);
+    const overflow=badBands.length-visibleBands.length;
+    const issueLines=visibleBands.map(item=>`${escapeHtml(item.band)} | ${Number(item.peak_rssi).toFixed(1)}`);
+    if(overflow>0) issueLines.push(`+${overflow} band`);
+    const lineHeight=isMain?8.3:7.2;
+    const firstY=issueLabel[1]-((issueLines.length-1)*lineHeight/2);
+    const issueMarkup=issueLines.map((line,lineIndex)=>
+      `<text x="${issueLabel[0].toFixed(2)}" y="${(firstY+lineIndex*lineHeight).toFixed(2)}" text-anchor="middle" dominant-baseline="central" fill="#ffd1d1" font-size="${isMain?7.1:6.1}" font-weight="900" stroke="#35060a" stroke-width="2.8" paint-order="stroke">${line}</text>`
+    ).join('');
     return `
       <path class="sector-wedge" d="M ${center} ${center} L ${start[0].toFixed(2)} ${start[1].toFixed(2)} A ${radius} ${radius} 0 0 1 ${end[0].toFixed(2)} ${end[1].toFixed(2)} Z" fill="${colors[index]}" fill-opacity=".34" stroke="${colors[index]}" stroke-width="1.4"/>
       <text x="${label[0].toFixed(2)}" y="${label[1].toFixed(2)}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="${isMain?11:9}" font-weight="900" stroke="#04101e" stroke-width="3" paint-order="stroke">S${index+1}</text>
-      <text x="${rssiLabel[0].toFixed(2)}" y="${rssiLabel[1].toFixed(2)}" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="${isMain?7.8:6.6}" font-weight="800" stroke="#04101e" stroke-width="2.6" paint-order="stroke">${rssi}</text>`;
+      ${issueMarkup}`;
   }).join('');
   return `<svg class="sector-fan-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="Sectoral ${escapeHtml(result.siteId)}">
     ${sectorMarkup}
@@ -6498,14 +6507,49 @@ function sectorFanSvg(result,isMain){
   </svg>`;
 }
 
+function formatRssiDateTime(value){
+  if(!value) return '-';
+  const match=String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  return match?`${match[3]}/${match[2]} ${match[4]}:${match[5]}`:String(value);
+}
+
+function formatRssiPeriod(period){
+  const start=formatRssiDateTime(period?.start);
+  const end=formatRssiDateTime(period?.end);
+  const range=start===end?start:`${start}–${end}`;
+  const peak=Number.isFinite(Number(period?.peak_rssi))?Number(period.peak_rssi).toFixed(1):'-';
+  return `<div class="sector-period">${range} · peak ${escapeHtml(formatRssiDateTime(period?.peak_time))} (${peak}) · ${Number(period?.duration_hours||0)}h</div>`;
+}
+
 function sectorPopup(result){
-  const rows=result.sectors.map((azimuth,index)=>{
-    const rssi=Number.isFinite(result.rssi?.[index])?`${result.rssi[index].toFixed(1)} dBm`:'No data';
-    return `<span>S${index+1}</span><span>${azimuth===null?'No azimuth':`${azimuth}°`}</span><strong>${rssi}</strong>`;
+  const rows=result.sectors.flatMap((azimuth,index)=>{
+    const bands=result.rssiDetails?.sectors?.[String(index+1)]?.bands||[];
+    if(!bands.length){
+      return [`<tr><td>S${index+1}</td><td>${azimuth===null?'-':`${azimuth}°`}</td><td colspan="4" class="sector-popup-muted">No RSSI data</td></tr>`];
+    }
+    return bands.map(item=>{
+      const peak=Number.isFinite(Number(item?.peak_rssi))?`${Number(item.peak_rssi).toFixed(1)} dBm`:'-';
+      const periods=Array.isArray(item?.periods)&&item.periods.length
+        ?item.periods.map(formatRssiPeriod).join('')
+        :'<span class="sector-normal">Normal during the selected 24-hour window</span>';
+      return `<tr class="${item?.bad?'is-bad':''}">
+        <td>S${index+1}</td>
+        <td>${azimuth===null?'-':`${azimuth}°`}</td>
+        <td><strong>${escapeHtml(item?.band||'-')}</strong></td>
+        <td class="${item?.bad?'rssi-bad':'rssi-good'}">${peak}</td>
+        <td>${escapeHtml(formatRssiDateTime(item?.peak_time))}</td>
+        <td>${periods}</td>
+      </tr>`;
+    });
   }).join('');
+  const latest=formatRssiDateTime(result.rssiDetails?.latest_time);
   return `<div class="sector-popup">
     <div class="sector-popup-title">${escapeHtml(result.siteId)} · ${escapeHtml(result.siteName||'-')}</div>
-    <div class="sector-popup-grid"><span class="sector-popup-muted">Sector</span><span class="sector-popup-muted">Azimuth</span><span class="sector-popup-muted">24h Peak</span>${rows}</div>
+    <div class="sector-popup-subtitle">UL RSSI per sector and band · 24-hour window ending ${escapeHtml(latest)} · bad threshold ≥ -100.0 dBm</div>
+    <div class="sector-popup-scroll"><table class="sector-popup-table">
+      <thead><tr><th>Sector</th><th>Azimuth</th><th>Band</th><th>Peak RSSI</th><th>Peak Time</th><th>Bad Periods</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
   </div>`;
 }
 
@@ -6514,7 +6558,7 @@ function setSectoralStatus(message,{error=false,legend=false}={}){
   if(!element) return;
   if(!message){element.className='sectoral-status';element.innerHTML='';return;}
   element.className=`sectoral-status show${error?' error':''}`;
-  element.innerHTML=`<div class="sectoral-status-head"><span class="sectoral-status-dot"></span><span>${escapeHtml(message)}</span></div>${legend?`<div class="sectoral-legend"><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2de2e6"></i>S1</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2f80ff"></i>S2</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#b56cff"></i>S3</span><span>Labels at fan tips show UL RSSI peak from the last 24 hours.</span></div>`:''}`;
+  element.innerHTML=`<div class="sectoral-status-head"><span class="sectoral-status-dot"></span><span>${escapeHtml(message)}</span></div>${legend?`<div class="sectoral-legend"><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2de2e6"></i>S1</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#2f80ff"></i>S2</span><span class="sectoral-legend-item"><i class="sectoral-swatch" style="background:#b56cff"></i>S3</span><span>Data 24h peak RSSI ≥ -100.0 dBm.</span></div>`:''}`;
 }
 
 function setSectoralButton(mode){
@@ -6557,7 +6601,7 @@ function drawSectoralLayers(results){
       keyboard:true,
       zIndexOffset:isMain?900:500,
       riseOnHover:true
-    }).bindPopup(sectorPopup(result),{maxWidth:340}).addTo(group);
+    }).bindPopup(sectorPopup(result),{maxWidth:580}).addTo(group);
   });
   state.geoSectorLayers=group;
   state.geoSectorVisible=true;
@@ -6591,10 +6635,15 @@ async function toggleSectoralAnalysis(){
       return sector?{...sector,lat:Number(site.lat),lon:Number(site.lon),siteName:site.siteName||sector.siteName}:null;
     }).filter(Boolean);
     if(!candidates.length) throw new Error('No sectoral data found for sites currently displayed on the map.');
-    const results=await mapWithConcurrency(candidates,3,async candidate=>({
+    setSectoralStatus(`Loading sector-band RSSI peak last 24 hours · ${candidates.length} sites`);
+    const payload=await loadSectorRssiDetails(candidates.map(candidate=>candidate.siteId));
+    const results=candidates.map(candidate=>({
       ...candidate,
-      rssi:await loadSiteRssiPeak(candidate.siteId)
-    }),(complete,total)=>setSectoralStatus(`Loading RSSI peak last 24 hours · ${complete}/${total} sites`));
+      rssiDetails:payload.sites?.[candidate.siteId]||{
+        latest_time:null,
+        sectors:{'1':{bands:[]},'2':{bands:[]},'3':{bands:[]}}
+      }
+    }));
     state.geoSectorResults=results;
     state.geoSectorSiteId=state.analyzedSiteId;
     drawSectoralLayers(results);
